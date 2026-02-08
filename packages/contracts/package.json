@@ -1,0 +1,11 @@
+{
+  "name": "@prosektor/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.ts",
+  "dependencies": {
+    "zod": "^4.3.6"
+  }
+}
