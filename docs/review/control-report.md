@@ -1,299 +1,357 @@
-# Control Report
+# Bağımsız Kontrol Raporu (MVP Güvenlik + İzolasyon Doğrulaması)
 
-**Date:** 2026-02-09
-**Reviewer:** Bağımsız Kontrol Ajanı
-**Status:** ⚠️ CONDITIONAL SHIP-READY
+**Tarih:** 2026-02-09  
+**Reviewer:** Bağımsız Kontrol AJANI  
+**Durum (Strict):** SHIP-READY DEĞİL
 
----
-
-## Executive Summary
-
-Comprehensive MVP review completed. All frontend infrastructure is in place, contracts are well-defined, and RLS policies are comprehensive. However, backend API endpoints are **not yet implemented**, and several contract/implementation gaps were identified.
-
-| Agent | Status | Issues |
-|-------|--------|--------|
-| UX | ✅ Complete | - |
-| UI | ✅ Complete | - |
-| CSS | ✅ Complete | - |
-| Frontend | ⚠️ Partial | 4 P1 |
-| Test | ✅ Complete | 2 P1 |
-| Backend | ❌ Not Started | 3 P0 |
-| Contracts | ✅ Complete | 1 P1 |
-| DB/RLS | ✅ Complete | - |
+**Sayımlar:** P0=4, P1=6, P2=4
 
 ---
 
-## Detailed Findings
+## Girdi Kapsamı (İncelenen)
 
-### P0 - Release Blockers (2)
-
-| ID | Category | Finding | Impact | Fix |
-|----|----------|---------|--------|-----|
-| P0-01 | Backend | API endpoints not implemented (`/api/**` routes missing) | No data flow | Implement Next.js API routes per contracts |
-| P0-02 | Backend | Supabase/DB not configured & migrations not applied | No persistence | Run `packages/db/migrations` + `packages/db/rls-policies.sql` |
-
-> [!CAUTION]
-> **P0 items must be resolved before any user testing.**
-> Frontend uses mock data only. Backend is the critical path.
+| Kaynak | Durum |
+|--------|-------|
+| `/docs/ux/*` | IA, Screen Specs, Workflows - TAM |
+| `/docs/ui/*` | Component Inventory, Design System, Layouts, Page Templates - TAM |
+| `/packages/contracts/*` | Zod şemaları (common, hr, inbox, modules, pages, public-submit, publish) - TAM |
+| `/packages/db/*` | Migrations, RLS policies - TAM |
+| `/apps/web/*` | Routes, components, states, auth - KISMEN (API implementasyonu yok) |
+| `/packages/testing/*` | RLS test suite, fixtures - TAM |
 
 ---
 
-### P1 - Important (9)
+## Yönetici Özeti
 
-| ID | Category | Finding | Impact | Fix |
-|----|----------|---------|--------|-----|
-| P1-01 | Contracts | Frontend uses local validators, not shared `@prosektorweb/contracts` | Type drift risk | Import schemas from `packages/contracts` in `apps/web` |
-| P1-02 | Frontend | `hr/job-posts/page.tsx` directory is empty | No job post CRUD UI | Implement per `screen-specs.md` |
-| P1-03 | Frontend | Inbox pages use `mockOffers` hardcoded data | No real data | Wire up `api.get()` with actual endpoints |
-| P1-04 | Frontend | `ErrorState` has no `data-testid` | E2E test failures | Add `data-testid="error-state"` |
-| P1-05 | Frontend | RoleGuard uses mock permissions, not real `/api/me` | Security bypass | Connect to actual auth response |
-| P1-06 | Test | Tests use mock fetch, not real API calls | False positives | Wire to real endpoints after backend |
-| P1-07 | Test | E2E tests reference `[data-testid="inbox-drawer"]` not present in implementation | Test failures | Add testid to Sheet component |
-| P1-08 | UI | `success` state (toast) not consistently shown after actions | UX incompleteness | Add `sonner` toast on CRUD success |
-| P1-09 | Security | Rate limiting documented but not implemented in any endpoint | Spam vulnerability | Add rate-limit middleware to public endpoints |
+| Bulgu Kategorisi | Durum | Not |
+|------------------|-------|-----|
+| Backend API Route Handlers | ❌ YOK | `/api/*` implementasyonu eksik |
+| Tenant İzolasyonu (Dinamik Test) | ⚠️ BLOKE | Supabase local gerekli |
+| Public Form Güvenliği | ❌ YOK | Rate limit, honeypot, token verify uygulanmamış |
+| Contract ↔ UI Uyumu | ⚠️ UYARI | Module settings alan drift'i mevcut |
+| Phase-2 Sızıntısı | ⚠️ UYARI | Theme permissions kodda var |
 
 ---
 
-### P2 - Nice to Have (6)
+## P0 (Release Blocker) - 4 Adet
 
-| ID | Category | Finding | Impact | Fix |
-|----|----------|---------|--------|-----|
-| P2-01 | UX | Theme editor marked Phase-2 | N/A | Deferred correctly |
-| P2-02 | UX | Form builder marked Phase-2 | N/A | Deferred correctly |
-| P2-03 | UX | Pipeline/Notes/Assignment marked Phase-2 | N/A | Deferred correctly |
-| P2-04 | Frontend | Menu management drag-drop is placeholder | Reduced UX | Phase-2 |
-| P2-05 | Frontend | Media library upload not wired to storage | No media | After storage setup |
-| P2-06 | UI | Accessibility checklist items unchecked in `component-inventory.md` | WCAG risk | Review focus/ARIA before launch |
+### P0-01: Backend API Route Handler Yok
 
----
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | `apps/web/src/app/api/*` |
+| **Kanıt** | `find ... -name route.ts` → sonuç yok |
+| **Etki** | Kontratlı backend yok; frontend mock'ta kalıyor |
+| **Önerilen Fix** | `/api/*` route handlers implementasyonu |
 
-## Contract Uyumu Kontrolü
+### P0-02: Public Form Güvenliği Yok
 
-### UI ↔ API Field Mapping
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | Spec: `docs/security/public-forms.md`, `packages/contracts/public-submit.ts` |
+| **Kanıt** | Rate limit, honeypot, site_token verify, file enforce uygulanmamış |
+| **Etki** | Spam/abuse riski, KVKK uyumsuzluğu |
+| **Önerilen Fix** | `/api/public/offer/submit`, `/api/public/contact/submit`, `/api/public/hr/apply` implementasyonu |
 
-| UI Component | Expected Fields | Contract Schema | Status |
-|--------------|-----------------|-----------------|--------|
-| Offers Inbox | full_name, email, phone, company_name, message, is_read, created_at | `offerRequestSchema` | ✅ Match |
-| Contact Inbox | full_name, email, phone, subject, message, is_read, created_at | `contactMessageSchema` | ✅ Match |
-| Applications | job_post_id, job_post(mini), full_name, email, phone, cv_path, cv_file_name | `jobApplicationSchema` | ✅ Match |
-| Job Posts | title, slug, location, employment_type, is_active, applications_count | `jobPostSchema` | ✅ Match |
-| Module Settings | enabled, settings (discriminated union) | `moduleInstanceSchema` | ✅ Match |
-| Pages | slug, title, status, seo, order_index, revision_ids | `pageSchema` | ✅ Match |
+### P0-03: Tenant İzolasyonu Dinamik Test Edilemiyor
 
-### Zod Schema Consistency
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | `packages/db/rls-policies.sql`, `packages/testing/db/rls.test.ts` |
+| **Kanıt** | Testler var ama Supabase local ortamı yok |
+| **Etki** | Gate-0 (tenant A tenant B verisi okuyabilir mi?), Gate-4 (CV storage) doğrulanamıyor |
+| **Önerilen Fix** | Supabase local setup (docker) + test prosedürü |
 
-| Package | Location | Exports |
-|---------|----------|---------|
-| contracts | `packages/contracts/*.ts` | All Zod schemas |
-| frontend | `apps/web/src/validators/*.ts` | ⚠️ Duplicate schemas should import from contracts |
+### P0-04: CV İndirme Akışı Güvenlik Açığı
 
-**Verdict:** ✅ Schemas are consistent, but P1-01 (code sharing) should be fixed.
-
----
-
-## RLS / Tenant İzolasyon Kontrolü
-
-### Policy Coverage (from `packages/db/rls-policies.sql`)
-
-| Table | SELECT | INSERT | UPDATE | DELETE | Notes |
-|-------|--------|--------|--------|--------|-------|
-| tenants | ✅ | - | - | - | Service role only |
-| tenant_members | ✅ | ✅ owner/admin | ✅ owner/admin | ✅ owner | Role escalation prevented |
-| sites | ✅ | ✅ owner/admin | ✅ owner/admin | ✅ owner/admin | |
-| pages | ✅ | ✅ owner/admin/editor | ✅ owner/admin/editor | ✅ owner/admin/editor | deleted_at visible to owner/admin |
-| page_revisions | ✅ | ✅ owner/admin/editor | - | - | Immutable in MVP |
-| blocks | ✅ | ✅ owner/admin/editor | ✅ owner/admin/editor | ✅ owner/admin/editor | |
-| offer_requests | ✅ | - | ✅ owner/admin | - | Public insert via service role |
-| contact_messages | ✅ | - | ✅ owner/admin | - | Public insert via service role |
-| job_posts | ✅ | ✅ owner/admin/editor | ✅ owner/admin/editor | ✅ owner/admin/editor | |
-| job_applications | ✅ | - | ✅ owner/admin | - | Public insert via service role |
-| storage.objects | ✅ | ⚠️ public-media only | ⚠️ public-media only | ✅ owner/admin (private-cv) | CV uploads via service role |
-
-### Tenant Isolation Test Scenarios
-
-| Test Case | Expected | Policy Verified |
-|-----------|----------|-----------------|
-| Tenant A SELECT Tenant B pages | DENIED | `is_tenant_member(tenant_id)` |
-| Tenant A SELECT Tenant B offers | DENIED | `is_tenant_member(tenant_id)` |
-| INSERT with wrong tenant_id | DENIED | `has_tenant_role(tenant_id, ...)` |
-| CV signed URL tenant-scoped | Only own tenant CVs | `storage_tenant_id(name)` check |
-| Owner demote self | BLOCKED | Role check in WITH CHECK |
-
-**Verdict:** ✅ RLS policies are comprehensive. Ready for integration testing.
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | `apps/web/src/app/(dashboard)/inbox/applications/page.tsx` |
+| **Kanıt** | `window.open(application.cv_path)` - doğrudan path kullanımı |
+| **Etki** | CV `private-cv` bucket'ta ise doğrudan erişim çalışmayacak; signed URL implementasyonu gerekli |
+| **Önerilen Fix** | `/api/job-applications/:id/cv-url` endpoint'i + UI wiring |
 
 ---
 
-## Public Endpoint Güvenlik Kontrolü
+## P1 (Önemli) - 6 Adet
 
-| Control | Documented | Contract/Policy | Implementation |
-|---------|------------|-----------------|----------------|
-| Rate limiting (5/min/IP) | ✅ test-matrix.md | ⚠️ Not in contracts | ❌ P1-09 |
-| Honeypot field | ✅ workflows.md | ✅ `honeypotSchema` max(0) | ⚠️ Backend needed |
-| KVKK consent required | ✅ screen-specs.md | ✅ `z.literal(true)` | ⚠️ Backend needed |
-| CV file type validation | ✅ test-matrix.md | ✅ `cvFileSchema` | ⚠️ Backend needed |
-| CV file size limit (5MB) | ✅ test-matrix.md | ✅ `cvFileSchema` + `hrModuleSettingsSchema.max_file_size_mb` | ⚠️ Backend needed |
-| site_token validation | ✅ public-submit schemas | ✅ `siteTokenSchema` | ⚠️ Backend needed |
+### P1-01: Module Settings Field Drift
 
-**Verdict:** ⚠️ Security controls well-documented in contracts but require backend implementation.
+| Alan | Bulgu |
+|------|-------|
+| **UI** | `modules/offer/page.tsx`, `modules/contact/page.tsx` - `successMessage`, `address`, `phones`, `emails`, `mapEmbedUrl` |
+| **Contracts** | `modules.ts` - `offerModuleSettingsSchema` sadece `recipients`, `kvkk_text` içeriyor |
+| **Etki** | UI'da doldurulan veriler backend'de temsil edilemiyor |
+| **Önerilen Fix** | Module settings şemasını UI gereksinimlerine göre genişlet |
 
----
+### P1-02: Legal/KVKK Model Belirsizliği
 
-## UX Completeness Kontrolü
+| Alan | Bulgu |
+|------|-------|
+| **UI** | `/modules/legal` Legal texts CRUD ekranı mevcut |
+| **Contracts** | `legalModuleSettingsSchema` sadece `kvkk_text`, `disclosure_text` string alanları |
+| **DB** | `legal_texts` tablosu mevcut (`docs/db/schema.md`) |
+| **Etki** | Tek doğru kaynak belirsiz |
+| **Önerilen Fix** | `legal_texts` CRUD + module settings'de `kvkk_legal_text_id` referansı kullanımı |
 
-### 6-State Coverage per Screen
+### P1-03: HR Job Posts Route/API Eksik
 
-| Screen | normal | empty | loading | error | unauthorized | success |
-|--------|--------|-------|---------|-------|--------------|---------|
-| Home | ✅ | ✅ checklist | ✅ skeleton | ✅ | N/A | ✅ toast |
-| Offers Inbox | ✅ | ✅ | ✅ TableSkeleton | ⚠️ not wired | ⚠️ not wired | ⚠️ P1-08 |
-| Contact Inbox | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
-| Applications | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ |
-| Job Posts | ⚠️ P1-02 empty | - | - | - | - | - |
-| Module Settings | ✅ | N/A | ✅ | ⚠️ | ✅ RoleGuard | ✅ |
-| Site Pages | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
-| Builder | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ auto-save |
-| Domains | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ wizard |
-| Analytics | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | N/A |
+| Alan | Bulgu |
+|------|-------|
+| **UX Spec** | `/modules/hr/job-posts` CRUD gerekli |
+| **Uygulama** | Route mevcut ama implementasyon eksik |
+| **Etki** | İş ilanı oluşturma akışı çalışmıyor |
+| **Önerilen Fix** | `/api/hr/job-posts` endpoint'leri + UI wiring |
 
-**State Components Available:**
-- ✅ `EmptyState` with icon, title, description, action
-- ✅ `LoadingState` (skeleton rows)
-- ✅ `TableSkeleton` (column-aware)
-- ✅ `ErrorState` with retry button
-- ✅ `UnauthorizedScreen` (403)
+### P1-04: Test Dependencies Eksik
 
-**Verdict:** ⚠️ Components exist but not all screens wire error/unauthorized states. P1-08 for success toasts.
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | `apps/web/package.json` |
+| **Kanıt** | `vitest`, `@playwright/test` dependency olarak yok |
+| **Etki** | RLS testleri, e2e testleri koşulamıyor |
+| **Önerilen Fix** | Dev dependencies ekle |
 
----
+### P1-05: Contract Drift Testleri Eski
 
-## MVP Şişmesi Kontrolü
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | `packages/contracts/tests/contracts.test.ts` |
+| **Kanıt** | Import: `../../apps/web/src/validators` - yanlış path; örnek payload'larda `kvkk_accepted_at` gibi zorunlu alanlar eksik |
+| **Etki** | Drift detection çalışmıyor |
+| **Önerilen Fix** | Testleri `@prosektor/contracts` üzerinden gerçek şemalarla düzelt |
 
-### Phase-2 Feature Audit
+### P1-06: Viewer İzin Matrisi Uyuşmazlığı
 
-| Feature | Status | Location | Verification |
-|---------|--------|----------|--------------|
-| Theme Editor | ❌ Excluded | `ia.md` line 16 | `[Phase-2]` marker |
-| Form Builder | ❌ Excluded | `ia.md` line 124 | Not in routes |
-| Pipeline | ❌ Excluded | `ia.md` line 125 | Not in routes |
-| Notes/Assignment | ❌ Excluded | `ia.md` lines 126-127 | Not in contracts |
-| Advanced Analytics | ❌ Excluded | `ia.md` line 127 | Placeholder only |
-
-**No Phase-2 leakage detected.**
-
-**Verdict:** ✅ MVP scope correctly maintained.
+| Alan | Bulgu |
+|------|-------|
+| **UX IA** | Viewer için Inbox yok (`editor+` gerekiyor) |
+| **Auth** | `auth.ts` - viewer için `inbox:read` izni var |
+| **Etki** | Viewer beklenmedik şekilde Inbox'u görebilir |
+| **Önerilen Fix** | Viewer izinlerinden `inbox:read` kaldır |
 
 ---
 
-## Önerilen PR Düzeltme Sırası
+## P2 (İyileştirme) - 4 Adet
 
-```mermaid
-flowchart TD
-    subgraph P0 [P0 - Critical Path]
-        A[PR-01: Supabase Setup + Migrations] --> B[PR-02: Apply RLS Policies]
-        B --> C[PR-03: Implement API Routes]
-    end
-    
-    subgraph P1 [P1 - Pre-Production]
-        C --> D[PR-04: Import contracts package in frontend]
-        D --> E[PR-05: Implement job-posts page]
-        E --> F[PR-06: Wire inbox pages to real API]
-        F --> G[PR-07: Add rate-limit middleware]
-        G --> H[PR-08: Add missing data-testid]
-        H --> I[PR-09: Wire RoleGuard to /api/me]
-        I --> J[PR-10: Add success toasts]
-    end
-    
-    subgraph P2 [P2 - Post-MVP]
-        J --> K[PR-11: Accessibility review]
-        K --> L[PR-12: E2E test real endpoints]
-    end
-```
+### P2-01: Mock Data Kullanımı
 
-### Linear PR Order
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | İnbox, Modules sayfalarının çoğu mock data ile çalışıyor |
+| **Etki** | Demo var ama gerçek entegrasyon yok |
+| **Önerilen Fix** | API tamamlanınca mock'ları kaldır |
 
-| Order | PR | Finding | Effort | Dependencies |
-|-------|----|---------| -------|--------------|
-| 1 | PR-01 | P0-02: Setup Supabase, run migrations | 2h | None |
-| 2 | PR-02 | P0-02: Apply RLS policies | 1h | PR-01 |
-| 3 | PR-03 | P0-01: Implement API routes | 8h | PR-02 |
-| 4 | PR-04 | P1-01: Import from @prosektorweb/contracts | 1h | None |
-| 5 | PR-05 | P1-02: Implement job-posts/page.tsx | 3h | PR-04 |
-| 6 | PR-06 | P1-03: Wire inbox pages to real API | 2h | PR-03 |
-| 7 | PR-07 | P1-09: Rate limiting middleware | 2h | PR-03 |
-| 8 | PR-08 | P1-04, P1-07: Add data-testid attributes | 1h | None |
-| 9 | PR-09 | P1-05: Connect RoleGuard to real auth | 2h | PR-03 |
-| 10 | PR-10 | P1-08: Add success toasts with sonner | 1h | None |
+### P2-02: Theme Permissions Phase-2 Sızıntısı
 
----
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | `apps/web/src/server/auth.ts` |
+| **Kanıt** | `owner`, `admin`, `editor` rollerinde `theme:*` izinleri var |
+| **UX Spec** | Theme editor Phase-2 olarak işaretlenmiş |
+| **Etki** | MVP'de gerekmeyen kod karmaşıklığı |
+| **Önerilen Fix** | Theme izinlerini MVP'den kaldır (Phase-2'de eklenir) |
 
-## Sonuç
+### P2-03: Route Tanımı Fazlalığı
 
-### Ship-Ready Status: ⚠️ CONDITIONAL
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | `apps/web/src/components/layout/sidebar.tsx` |
+| **Kanıt** | "Başvurular (HR)" alt menüsü `/modules/hr/applications` - Inbox'a redirect |
+| **UX Spec** | Bu redirect tasarımda var, ancak Phase-2 pipeline özelliğini çağrıştırıyor olabilir |
+| **Etki** | Kafa karışıklığı |
+| **Önerilen Fix** | İsabetli redirect kalabilir, ancak Phase-2 assignment/pipeline'dan bağımsız olduğundan emin ol |
 
-| Dimension | Status |
-|-----------|--------|
-| **Frontend** | ✅ Ready for demo with mock data |
-| **Contracts** | ✅ Complete and consistent |
-| **RLS Policies** | ✅ Comprehensive isolation |
-| **Tests** | ✅ Defined (mock), ⚠️ need real endpoints |
-| **Backend** | ❌ Required before production |
-| **Security** | ⚠️ Documented, needs implementation |
+### P2-04: Monorepo Yapısı Eksik
 
-### Blockers Before Production
-
-- [ ] P0-01: Backend API implementation
-- [ ] P0-02: Supabase database setup + RLS applied
-
-### Minimum for User Testing
-
-1. Complete PRs 1-3 (database + API)
-2. Complete PR-07 (rate limiting for public forms)
+| Alan | Bulgu |
+|------|-------|
+| **Dosya** | Root klasör |
+| **Kanıt** | Tek `package.json` yok; her package ayrı `node_modules` |
+| **Etki** | CI/DX zorlaşır |
+| **Önerilen Fix** | pnpm workspaces veya npm workspaces |
 
 ---
 
-## Kontrol Listesi Özeti
+## Kontrol Listesi (20 Madde)
 
-| # | Control Item | Status | Notes |
-|---|--------------|--------|-------|
-| 1 | Zod schemas frontend/backend match | ✅ | Contracts package complete |
-| 2 | All screens have 6 states documented | ✅ | Per screen-specs.md |
-| 3 | State components implemented | ✅ | EmptyState, LoadingState, ErrorState, TableSkeleton |
-| 4 | Empty states have CTA | ✅ | Action prop available |
-| 5 | Tables have pagination | ✅ | Documented in specs |
-| 6 | Role permissions documented | ✅ | ia.md role matrix |
-| 7 | Nav structure consistent | ✅ | sidebar.tsx matches ia.md |
-| 8 | MVP scope maintained | ✅ | No Phase-2 leakage |
-| 9 | Phase-2 features excluded | ✅ | Verified in code |
-| 10 | Test matrix covers P0 items | ✅ | public-forms.test.ts |
-| 11 | RLS policies comprehensive | ✅ | 480 lines in rls-policies.sql |
-| 12 | Tenant isolation enforced | ✅ | is_tenant_member(), has_tenant_role() |
-| 13 | Rate limit tests defined | ✅ | SPAM-01 in test file |
-| 14 | Honeypot validation defined | ✅ | honeypotSchema max(0) |
-| 15 | CV upload limits defined | ✅ | cvFileSchema + hrModuleSettings |
-| 16 | E2E critical flows defined | ✅ | 3 e2e specs (contact, hr, offer) |
-| 17 | CI/CD plan documented | ✅ | docs/testing/ci.md |
-| 18 | UnauthorizedScreen exists | ✅ | role-guard.tsx |
-| 19 | API endpoints implemented | ❌ | P0-01 |
-| 20 | Database configured | ❌ | P0-02 |
-
-**Total:** 18 ✅ / 2 ❌
+| # | Kontrol | Sonuç | Kanıt |
+|---|---------|-------|-------|
+| 1 | Root git repo mevcut | ✅ | `apps/web` git worktree |
+| 2 | Deliverables versiyonlanıyor | ✅ | `/docs`, `/packages` packages altında |
+| 3 | DB migrations mevcut | ✅ | `/packages/db/migrations/*.sql` |
+| 4 | RLS policies script mevcut | ✅ | `/packages/db/rls-policies.sql` |
+| 5 | Contracts package adı doğru | ✅ | `@prosektor/contracts` |
+| 6 | API contracts dokümanı mevcut | ✅ | `/docs/api/api-contracts.md` |
+| 7 | Next `/api/*` route handlers | ❌ | Implementasyon yok (P0-01) |
+| 8 | Public submit endpoint'leri | ❌ | Implementasyon yok (P0-02) |
+| 9 | Supabase local config | ❌ | Klasör yok |
+| 10 | Supabase CLI erişilebilir | ❌ | Komut yok |
+| 11 | RLS ENABLE tüm tablolarda | ✅ (statik) | `0002_rls.sql` |
+| 12 | RLS FORCE var | ✅ (statik) | `rls-policies.sql` |
+| 13 | Gate-0 tenant izolasyonu (dinamik) | ⚠️ BLOKE | Supabase local yok |
+| 14 | Gate-4 CV storage izolasyonu (dinamik) | ⚠️ BLOKE | Supabase local yok |
+| 15 | UX MVP route'ları mevcut | ⚠️ KISMEN | Job posts hariç tam |
+| 16 | UI ↔ Contracts alan uyumu | ⚠️ UYARI | Module settings drift (P1-01) |
+| 17 | CV download spec uyumlu | ❌ | Signed url yerine direct path (P0-04) |
+| 18 | Web testleri çalıştırılabilir | ❌ | Dependencies yok (P1-04) |
+| 19 | Contract drift testleri çalışır | ❌ | Import path hatalı (P1-05) |
+| 20 | MVP scope (Phase-2 sızıntısı) | ⚠️ UYARI | Theme permissions kodda var (P2-02) |
 
 ---
 
-## Çakışan Varsayımlar → Tek Doğru
+## UI ↔ Contracts Field Mapping
 
-| Topic | Conflict Found | Resolution |
-|-------|----------------|------------|
-| CV max size | `cvFileSchema` says 5MB, `hrModuleSettingsSchema` has configurable `max_file_size_mb` | ✅ No conflict: frontend enforces 5MB default, backend can override per-tenant via settings |
-| Inbox update roles | spec says "editor+" vs RLS says "owner/admin" | ✅ RLS is source of truth: only owner/admin can mark as read |
-| Job posts write | spec says "admin" only vs RLS has "editor" | ✅ RLS includes editor for content creation, consistent with Pages policy |
-
-**All assumptions reconciled.**
+| Ekran | UI Alanları | Contracts Kaynağı | Uyum |
+|-------|-------------|-------------------|------|
+| Inbox Offers | `full_name,email,phone,company_name,message,is_read,created_at` | `offerRequestSchema` | ✅ |
+| Inbox Contact | `full_name,email,phone,subject,message,is_read,created_at` | `contactMessageSchema` | ✅ |
+| Inbox Applications | `job_post.title,cv_path` | `jobApplicationSchema` | ❌ (P0-04) |
+| Modules Offer | `recipients,successMessage,kvkkTextId` | `offerModuleSettingsSchema` | ⚠️ (P1-01) |
+| Modules Contact | `recipients,address,phones,emails,successMessage` | `contactModuleSettingsSchema` | ⚠️ (P1-01) |
+| Modules Legal | CRUD | `legalModuleSettingsSchema` | ⚠️ (P1-02) |
+| HR Job Posts | CRUD | `jobPostSchema` | ❌ (API eksik) |
 
 ---
 
-**Report Generated:** 2026-02-09T00:00:00+03:00
-**Total Checks:** 20
-**P0 Findings:** 2
-**P1 Findings:** 9
-**P2 Findings:** 6
+## RLS / Tenant İzolasyonu Değerlendirmesi
+
+### Statik İnceleme (✅ Geçti)
+
+| Kontrol | Sonuç |
+|---------|-------|
+| Helper fonksiyonlar (`is_tenant_member`, `has_tenant_role`, `storage_tenant_id`) | ✅ |
+| Tenant-scoped tablolar RLS enable | ✅ |
+| Policies tanımlı + FORCE RLS | ✅ |
+| Storage policies (`private-cv`, `public-media`) | ✅ |
+
+### Dinamik İnceleme (⚠️ Bloke)
+
+- **Gate-0:** Tenant A ≠ Tenant B veri erişimi - Supabase local gerekli
+- **Gate-4:** CV storage tenant izolasyonu - Supabase local gerekli
+
+### Uyarı: Viewer İzin Matrisi
+
+`apps/web/src/server/auth.ts` satır 79'da viewer için `inbox:read` izni var, ancak UX IA'da viewer Inbox'u göremez. Bu uyuşmazlık giderilmeli.
+
+---
+
+## Public Form Güvenliği Değerlendirmesi
+
+### Spec Gereksinimleri
+
+| Gereksinim | Uygulama |
+|------------|----------|
+| Site resolve: signed `site_token` | ❌ Yok |
+| Honeypot: doluysa kayıt yok | ❌ Yok |
+| KVKK: `kvkk_consent=true`, DB `kvkk_accepted_at` | ⚠️ Schema'da var, implementasyon yok |
+| Rate limit: `ip + endpoint + site_id`, 429 | ❌ Yok |
+| HR apply: file type/size enforce + private-cv | ⚠️ Schema'da var, implementasyon yok |
+
+### Risk: Spam/Abuse
+
+Public form'lar implementasyonu olmadan:
+- Bot saldırısı riski
+- KVKK uyumsuzluğu riski
+- CV upload güvenlik açığı riski
+
+---
+
+## MVP Şişmesi (Phase-2 Sızıntısı)
+
+### Tespit Edilen Sızıntılar
+
+| Özellik | Konum | Etki |
+|---------|-------|------|
+| Theme permissions (`theme:*`) | `auth.ts` | Phase-2 özelliğe izin kodu var, implementasyon yok |
+| Route tanımı "Başvurular (HR)" | `sidebar.tsx` | Inbox'a redirect, Phase-2 assignment'ı çağrıştırabilir |
+
+### Phase-2 Özellikler (Dokümanda Var, Kodda Yok - ✅ Temiz)
+
+- Form builder (custom fields)
+- Pipeline/Assignment
+- Notes on inbox items
+- Advanced analytics (funnel, conversion)
+
+---
+
+## Tek Doğru Kararları (Decision Log)
+
+| # | Karar | Dosya |
+|---|-------|-------|
+| 1 | Contracts package: `@prosektor/contracts` | `packages/contracts/package.json` |
+| 2 | Site resolve: signed `site_token` + `SITE_TOKEN_SECRET` | `docs/security/public-forms.md` |
+| 3 | Storage buckets: `public-media`, `private-cv` | `packages/db/rls-policies.sql` |
+| 4 | Error format: `{code,message,details}` | `packages/contracts/error.ts` |
+| 5 | **YENİ:** Theme permissions MVP'den kaldırılmalı | `auth.ts` satır 15, 35, 54, 72 |
+| 6 | **YENİ:** Viewer `inbox:read` izni kaldırılmalı | `auth.ts` satır 79 |
+
+---
+
+## Önerilen Düzeltme PR Sırası
+
+| PR | Öncelik | Başlık | İçerik |
+|----|---------|--------|--------|
+| PR-01 | P0 | Supabase Local Setup | Docker compose, migration apply script, seed strategy |
+| PR-02 | P0 | API Route Handlers Skeleton | `/api/me`, standart error format, route yapısı |
+| PR-03 | P0 | Public Forms Security | Rate limit, honeypot, token verify, file enforce |
+| PR-04 | P0 | CV Download Signed URL | `/api/job-applications/:id/cv-url` + UI wiring |
+| PR-05 | P1 | Module Settings Contract Genişletme | UI alanlarını contracts'a ekle |
+| PR-06 | P1 | Legal/KVKK Model Clarification | `legal_texts` CRUD + referans modeli |
+| PR-07 | P1 | HR Job Posts API + UI | `/api/hr/job-posts` + `/modules/hr/job-posts` |
+| PR-08 | P1 | Viewer İzin Düzeltme | `auth.ts`'ten `inbox:read` kaldır |
+| PR-09 | P1 | Theme Permissions Cleanup | `auth.ts`'ten Phase-2 theme izinlerini kaldır |
+| PR-10 | P1 | Test Dependencies | vitest, playwright ekleme |
+| PR-11 | P2 | Contract Drift Tests Fix | Import path düzeltme |
+| PR-12 | P2 | Monorepo Setup (Opsiyonel) | pnpm workspaces |
+
+---
+
+## Ship-Ready Değerlendirmesi
+
+### Koşullar
+
+| Koşul | Sonuç |
+|-------|-------|
+| P0 sayısı = 0 | ❌ 4 P0 var |
+| P1 sayısı = 0 | ❌ 6 P1 var |
+| DoD eşiği (P0+P1 < 5) | ❌ 10 bulgu |
+
+### Karar: **NOT SHIP-READY**
+
+**Nedenler:**
+1. P0-01/02/03/04: Backend implementasyonu eksik
+2. P0-02: Public form güvenliği yok - KVKK/spam riski
+3. Gate-0/Gate-4 dinamik test edilemiyor
+
+**Ship Edilmeden Önce:**
+- Minimum: PR-01, PR-02, PR-03, PR-04 tamamlanmalı
+- Önerilen: Tüm P0'lar + kritik P1'ler (05, 06, 07, 08)
+
+---
+
+## Ek: Dosya Yolları Referansı
+
+### Kritik Dosyalar
+
+| Dosya | Açıklama |
+|-------|----------|
+| `packages/contracts/index.ts` | Zod şemaları ana export |
+| `packages/db/rls-policies.sql` | RLS politikaları |
+| `docs/security/public-forms.md` | Public form güvenlik spec |
+| `apps/web/src/server/auth.ts` | İzin matrisi |
+| `packages/testing/db/rls.test.ts` | RLS test suite |
+
+### UI Eksiklikleri
+
+| Route | Durum |
+|-------|-------|
+| `/api/*` | Implementasyon yok |
+| `/modules/hr/job-posts` | Route var, implementasyon yok |
+| `/modules/legal` | Route var, implementasyon yok |
+
+---
+
+**Rapor Sonu**
+
+*Bu rapor bağımsız kontrol ajanı tarafından hazırlanmıştır. Tespit edilen bulgular, düzeltme öncesi MVP'nin güvenlik ve izolasyon açısından ship-ready olmadığını göstermektedir.*

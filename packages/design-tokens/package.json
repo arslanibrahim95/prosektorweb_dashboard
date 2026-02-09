@@ -6,6 +6,7 @@
     "exports": {
         ".": "./index.js",
         "./tokens.css": "./tokens.css",
+        "./theme.css": "./theme.css",
         "./tailwind-preset": "./tailwind-preset.js"
     },
     "files": [

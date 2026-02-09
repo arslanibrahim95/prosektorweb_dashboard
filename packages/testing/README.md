@@ -8,9 +8,10 @@ ProsektorWeb test altyapısı ve komutları.
 
 | Araç | Kullanım |
 |------|----------|
-| **Vitest** | Unit, Contract, API testleri |
+| **Vitest** | Unit, Contract, API, RLS testleri |
 | **Playwright** | E2E testler |
-| **Supabase Local** | DB/RLS testleri |
+| **Supabase Local** | Database/RLS testleri |
+| **Zod** | Schema validation + contract tests |
 
 ---
 
@@ -22,6 +23,9 @@ pnpm install
 
 # Playwright browsers
 pnpm exec playwright install
+
+# Supabase local (DB testleri için)
+npx supabase start
 ```
 
 ---
@@ -33,16 +37,26 @@ pnpm exec playwright install
 pnpm test
 
 # Kategoriye göre
-pnpm test:contracts   # Zod schema drift
-pnpm test:api         # Route handler tests
+pnpm test:contracts   # Zod schema drift testleri
+pnpm test:api         # Route handler testleri
 pnpm test:db          # RLS/tenant isolation
 pnpm test:e2e         # Playwright flows
 
 # Watch mode
 pnpm test:watch
 
-# Coverage
+# Coverage raporu
 pnpm test:coverage
+```
+
+### apps/web için
+
+```bash
+# API testleri
+cd apps/web && pnpm test:api
+
+# E2E testleri
+cd apps/web && pnpm test:e2e
 ```
 
 ---
@@ -51,26 +65,26 @@ pnpm test:coverage
 
 ### Local Setup
 
-1. Supabase Local başlat:
-```bash
-supabase start
-```
+1. **Supabase Local başlat:**
+   ```bash
+   supabase start
+   ```
 
-2. Migrations çalıştır:
-```bash
-supabase db reset
-```
+2. **Migrations çalıştır:**
+   ```bash
+   supabase db reset
+   ```
 
-3. Seed data yükle:
-```bash
-pnpm db:seed
-```
+3. **Seed data yükle:**
+   ```bash
+   pnpm db:seed
+   ```
 
 ### CI Ortamı
 
 GitHub Actions ile otomatik:
-- PR → contracts + api + db tests
-- Main merge → e2e tests
+- **PR** → `lint` + `contracts` + `api` + `db` tests
+- **Main merge** → `e2e` tests (daha uzun sürer)
 
 ---
 
@@ -78,25 +92,30 @@ GitHub Actions ile otomatik:
 
 ```
 packages/testing/
-├── README.md
-├── test-matrix.md
+├── README.md                    # Bu dosya
+├── test-matrix.md               # Senaryo matrisi (P0/P1/P2)
+├── package.json
 ├── fixtures/
-│   ├── seed.ts
-│   └── payloads.ts
+│   ├── index.ts
+│   ├── seed.ts                  # Test tenant/user verileri
+│   └── payloads.ts              # Sample request bodies
 └── db/
-    └── rls.test.ts
+    ├── rls.test.ts              # RLS isolation tests
+    └── supabase-test-client.ts  # Authenticated test clients
 
-packages/contracts/tests/
-└── contracts.test.ts
+packages/contracts/
+└── tests/
+    └── contracts.test.ts        # Zod schema drift tests
 
 apps/web/tests/
 ├── api/
-│   ├── public-forms.test.ts
-│   └── inbox.test.ts
+│   ├── api-test-helper.ts       # Test utilities
+│   ├── public-forms.test.ts     # Public form validation
+│   └── inbox.test.ts            # Inbox API tests
 └── e2e/
-    ├── hr-flow.spec.ts
-    ├── offer-flow.spec.ts
-    └── contact-flow.spec.ts
+    ├── hr-flow.spec.ts          # HR full flow
+    ├── offer-flow.spec.ts       # Offer form flow
+    └── contact-flow.spec.ts     # Contact form flow
 ```
 
 ---
@@ -108,6 +127,7 @@ apps/web/tests/
 | owner@tenant-a.test | owner | Tenant A |
 | admin@tenant-a.test | admin | Tenant A |
 | editor@tenant-a.test | editor | Tenant A |
+| viewer@tenant-a.test | viewer | Tenant A |
 | owner@tenant-b.test | owner | Tenant B |
 
 ---
@@ -125,3 +145,63 @@ await seed.tenants();
 await seed.users();
 await seed.jobPosts();
 ```
+
+---
+
+## Hızlı Kontrol
+
+```bash
+# P0 testleri (release blocker)
+pnpm test:contracts && pnpm test:db && pnpm test:api
+
+# E2E testleri
+pnpm test:e2e
+```
+
+**Önemli:** P0 testleri geçmezse release YAPILAMAZ.
+
+---
+
+## Coverage Hedefleri
+
+| Kategori | Hedef | Şu An |
+|----------|-------|-------|
+| P0 (RLS + Security) | 100% | ~90% |
+| P1 (Features) | 80% | ~60% |
+| P2 (Nice to have) | 50% | Manual |
+
+---
+
+## CI Pipeline
+
+```
+PR açılınca:
+├── lint (ESLint + TypeScript)
+├── test-contracts (Zod schemas)
+├── test-api (Route handlers)
+└── test-db (RLS policies)
+
+Main merge sonrası:
+└── test-e2e (Playwright) ← Uzun sürer, paralel değil
+```
+
+---
+
+## Troubleshooting
+
+### "RLS policy violation" hatası
+
+RLS testleri çalışmıyorsa:
+1. Supabase local çalışıyor mu? `supabase status`
+2. Migrations uygulandı mı? `supabase db reset`
+3. Test users oluşturuldu mu?
+
+### E2E testleri timeout alıyor
+
+1. Playwright browser kurulu mu? `pnpm exec playwright install`
+2. Supabase local çalışıyor mu?
+3. `PLAYWRIGHT_BASE_URL` ayarlı mı?
+
+### Rate limit testleri geçmiyor
+
+Rate limit gerçek IP bazlı çalışır. Test ortamında `X-Forwarded-For` header kullanılır.

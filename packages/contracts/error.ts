@@ -9,3 +9,4 @@ export const apiErrorSchema = z.object({
 export type APIError = z.infer<typeof apiErrorSchema>;
 
 export const ApiErrorSchema = apiErrorSchema;
+export const errorResponseSchema = apiErrorSchema; // Alias for test compatibility
