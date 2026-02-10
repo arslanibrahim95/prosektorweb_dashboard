@@ -53,10 +53,13 @@ export function buildInboxParams(
  */
 export async function markAsRead(
     endpoint: 'offers' | 'contact' | 'applications',
-    id: string
+    id: string,
+    accessToken?: string
 ): Promise<void> {
     await fetch(`/api/inbox/${endpoint}/${id}/read`, {
         method: 'POST',
+        credentials: 'include',
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
     });
 }
 
@@ -65,11 +68,33 @@ export async function markAsRead(
  */
 export async function exportInbox(
     endpoint: 'offers' | 'contact' | 'applications',
-    filters: InboxFilters
+    filters: InboxFilters,
+    options?: { accessToken?: string; siteId?: string }
 ): Promise<Blob> {
     const params = buildInboxParams(filters, { page: 1, limit: 10000 });
+    if (options?.siteId) {
+        params.set('site_id', options.siteId);
+    }
     params.set('format', 'csv');
 
-    const response = await fetch(`/api/inbox/${endpoint}/export?${params}`);
+    const response = await fetch(`/api/inbox/${endpoint}/export?${params}`, {
+        credentials: 'include',
+        headers: options?.accessToken ? { Authorization: `Bearer ${options.accessToken}` } : undefined,
+    });
+
+    if (!response.ok) {
+        // Best-effort error extraction (export endpoints should return standard JSON errors).
+        const contentType = response.headers.get('content-type') ?? '';
+        const payload = contentType.includes('application/json')
+            ? await response.json()
+            : await response.text();
+
+        const message =
+            payload && typeof payload === 'object' && 'message' in payload
+                ? String((payload as { message?: unknown }).message ?? 'Export failed')
+                : 'Export failed';
+
+        throw new Error(message);
+    }
     return response.blob();
 }
