@@ -247,7 +247,7 @@ DROP POLICY IF EXISTS offer_requests_select ON public.offer_requests;
 CREATE POLICY offer_requests_select ON public.offer_requests
   FOR SELECT
   TO authenticated
-  USING (public.is_tenant_member(tenant_id));
+  USING (public.has_tenant_role(tenant_id, ARRAY['owner', 'admin', 'editor']));
 
 DROP POLICY IF EXISTS offer_requests_update ON public.offer_requests;
 CREATE POLICY offer_requests_update ON public.offer_requests
@@ -260,7 +260,7 @@ DROP POLICY IF EXISTS contact_messages_select ON public.contact_messages;
 CREATE POLICY contact_messages_select ON public.contact_messages
   FOR SELECT
   TO authenticated
-  USING (public.is_tenant_member(tenant_id));
+  USING (public.has_tenant_role(tenant_id, ARRAY['owner', 'admin', 'editor']));
 
 DROP POLICY IF EXISTS contact_messages_update ON public.contact_messages;
 CREATE POLICY contact_messages_update ON public.contact_messages
@@ -286,7 +286,7 @@ DROP POLICY IF EXISTS job_applications_select ON public.job_applications;
 CREATE POLICY job_applications_select ON public.job_applications
   FOR SELECT
   TO authenticated
-  USING (public.is_tenant_member(tenant_id));
+  USING (public.has_tenant_role(tenant_id, ARRAY['owner', 'admin', 'editor']));
 
 DROP POLICY IF EXISTS job_applications_update ON public.job_applications;
 CREATE POLICY job_applications_update ON public.job_applications
@@ -382,78 +382,86 @@ BEGIN
     RETURN;
   END IF;
 
-  EXECUTE 'ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY';
+  -- Storage tables are not always owned by the migration role in local setups.
+  -- If we cannot manage policies here, we skip (local dev continues, but storage RLS must be addressed separately).
+  BEGIN
+    -- RLS is typically enabled on storage.objects already; keep this for hosted parity.
+    EXECUTE 'ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY';
 
-  -- Drop old policies if any
-  EXECUTE 'DROP POLICY IF EXISTS private_cv_read ON storage.objects';
-  EXECUTE 'DROP POLICY IF EXISTS private_cv_delete ON storage.objects';
-  EXECUTE 'DROP POLICY IF EXISTS public_media_read ON storage.objects';
-  EXECUTE 'DROP POLICY IF EXISTS public_media_write ON storage.objects';
+    -- Drop old policies if any
+    EXECUTE 'DROP POLICY IF EXISTS private_cv_read ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS private_cv_delete ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS public_media_read ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS public_media_write ON storage.objects';
 
-  -- Legacy names (pre bucket split)
-  EXECUTE 'DROP POLICY IF EXISTS tenant_private_cv_read ON storage.objects';
-  EXECUTE 'DROP POLICY IF EXISTS tenant_private_cv_write ON storage.objects';
-  EXECUTE 'DROP POLICY IF EXISTS tenant_private_media_read ON storage.objects';
-  EXECUTE 'DROP POLICY IF EXISTS tenant_private_media_write ON storage.objects';
+    -- Legacy names (pre bucket split)
+    EXECUTE 'DROP POLICY IF EXISTS tenant_private_cv_read ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS tenant_private_cv_write ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS tenant_private_media_read ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS tenant_private_media_write ON storage.objects';
 
-  -- -----------------------------------------------------------------------
-  -- private-cv: CVs are readable only by members of the matching tenant.
-  -- Uploads should be done server-side with service role (no INSERT policy).
-  -- Object key: tenant_<tenant_id>/cv/<timestamp>_<filename>
-  -- -----------------------------------------------------------------------
-  EXECUTE $pol$
-    CREATE POLICY private_cv_read ON storage.objects
-      FOR SELECT
-      TO authenticated
-      USING (
-        bucket_id = 'private-cv'
-        AND split_part(name, '/', 2) = 'cv'
-        AND public.is_tenant_member(public.storage_tenant_id(name))
-      )
-  $pol$;
+    -- -----------------------------------------------------------------------
+    -- private-cv: CVs are readable only by members of the matching tenant.
+    -- Uploads should be done server-side with service role (no INSERT policy).
+    -- Object key: tenant_<tenant_id>/cv/<timestamp>_<filename>
+    -- -----------------------------------------------------------------------
+    EXECUTE $pol$
+      CREATE POLICY private_cv_read ON storage.objects
+        FOR SELECT
+        TO authenticated
+        USING (
+          bucket_id = 'private-cv'
+          AND split_part(name, '/', 2) = 'cv'
+          AND public.is_tenant_member(public.storage_tenant_id(name))
+        )
+    $pol$;
 
-  -- Optional: allow owners/admins to delete CVs (e.g. cleanup).
-  EXECUTE $pol$
-    CREATE POLICY private_cv_delete ON storage.objects
-      FOR DELETE
-      TO authenticated
-      USING (
-        bucket_id = 'private-cv'
-        AND split_part(name, '/', 2) = 'cv'
-        AND public.has_tenant_role(public.storage_tenant_id(name), ARRAY['owner', 'admin'])
-      )
-  $pol$;
+    -- Optional: allow owners/admins to delete CVs (e.g. cleanup).
+    EXECUTE $pol$
+      CREATE POLICY private_cv_delete ON storage.objects
+        FOR DELETE
+        TO authenticated
+        USING (
+          bucket_id = 'private-cv'
+          AND split_part(name, '/', 2) = 'cv'
+          AND public.has_tenant_role(public.storage_tenant_id(name), ARRAY['owner', 'admin'])
+        )
+    $pol$;
 
-  -- -----------------------------------------------------------------------
-  -- public-media: Site assets. Readable by everyone; writable by tenant roles.
-  -- Object key: tenant_<tenant_id>/media/<timestamp>_<filename>
-  -- -----------------------------------------------------------------------
-  EXECUTE $pol$
-    CREATE POLICY public_media_read ON storage.objects
-      FOR SELECT
-      TO anon, authenticated
-      USING (
-        bucket_id = 'public-media'
-        AND split_part(name, '/', 2) = 'media'
-        AND public.storage_tenant_id(name) IS NOT NULL
-      )
-  $pol$;
+    -- -----------------------------------------------------------------------
+    -- public-media: Site assets. Readable by everyone; writable by tenant roles.
+    -- Object key: tenant_<tenant_id>/media/<timestamp>_<filename>
+    -- -----------------------------------------------------------------------
+    EXECUTE $pol$
+      CREATE POLICY public_media_read ON storage.objects
+        FOR SELECT
+        TO anon, authenticated
+        USING (
+          bucket_id = 'public-media'
+          AND split_part(name, '/', 2) = 'media'
+          AND public.storage_tenant_id(name) IS NOT NULL
+        )
+    $pol$;
 
-  EXECUTE $pol$
-    CREATE POLICY public_media_write ON storage.objects
-      FOR ALL
-      TO authenticated
-      USING (
-        bucket_id = 'public-media'
-        AND split_part(name, '/', 2) = 'media'
-        AND public.has_tenant_role(public.storage_tenant_id(name), ARRAY['owner', 'admin', 'editor'])
-      )
-      WITH CHECK (
-        bucket_id = 'public-media'
-        AND split_part(name, '/', 2) = 'media'
-        AND public.has_tenant_role(public.storage_tenant_id(name), ARRAY['owner', 'admin', 'editor'])
-      )
-  $pol$;
+    EXECUTE $pol$
+      CREATE POLICY public_media_write ON storage.objects
+        FOR ALL
+        TO authenticated
+        USING (
+          bucket_id = 'public-media'
+          AND split_part(name, '/', 2) = 'media'
+          AND public.has_tenant_role(public.storage_tenant_id(name), ARRAY['owner', 'admin', 'editor'])
+        )
+        WITH CHECK (
+          bucket_id = 'public-media'
+          AND split_part(name, '/', 2) = 'media'
+          AND public.has_tenant_role(public.storage_tenant_id(name), ARRAY['owner', 'admin', 'editor'])
+        )
+    $pol$;
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      RAISE NOTICE 'insufficient privilege to manage storage.objects policies; skipping storage policy setup';
+  END;
 END $$;
 
 -- ---------------------------------------------------------------------------
