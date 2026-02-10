@@ -1,0 +1,28 @@
+import { asErrorBody, asStatus, HttpError, jsonError, jsonOk, mapPostgrestError } from "@/server/api/http";
+import { requireAuthContext } from "@/server/auth/context";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// Compat: used by frontend utilities (POST).
+export async function POST(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
+  try {
+    const ctx = await requireAuthContext(req);
+    const { id } = await ctxRoute.params;
+
+    const { data, error } = await ctx.supabase
+      .from("contact_messages")
+      .update({ is_read: true })
+      .eq("tenant_id", ctx.tenant.id)
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
+
+    if (error) throw mapPostgrestError(error);
+    if (!data) throw new HttpError(404, { code: "NOT_FOUND", message: "Not found" });
+
+    return jsonOk({});
+  } catch (err) {
+    return jsonError(asErrorBody(err), asStatus(err));
+  }
+}

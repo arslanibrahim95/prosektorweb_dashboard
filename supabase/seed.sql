@@ -1,0 +1,7 @@
+-- Supabase local seed placeholder.
+--
+-- Our primary DB schema + seed lives under:
+-- - /packages/db/migrations/*.sql
+-- - /packages/db/rls-policies.sql
+--
+-- Supabase CLI runs this after migrations during `supabase db reset`.

@@ -1,88 +1,9 @@
 import type { MeResponse, UserRole } from '@prosektor/contracts';
 import { meResponseSchema } from '@prosektor/contracts';
 import { api } from './api';
+import { ROLE_DISPLAY_NAMES, ROLE_PERMISSIONS } from './auth/permissions';
 
 export type { MeResponse, UserRole };
-
-// === Permission Definitions ===
-const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-    super_admin: ['*'],
-    owner: [
-        'tenants:read',
-        'sites:*',
-        'pages:*',
-        'builder:*',
-        'theme:*',
-        'menus:*',
-        'media:*',
-        'domains:*',
-        'seo:*',
-        'publish:*',
-        'modules:*',
-        'inbox:*',
-        'users:*',
-        'billing:*',
-        'notifications:*',
-        'legal:*',
-        'analytics:read',
-        'audit:read',
-    ],
-    admin: [
-        'tenants:read',
-        'sites:*',
-        'pages:*',
-        'builder:*',
-        'theme:*',
-        'menus:*',
-        'media:*',
-        'domains:create,read,update',
-        'seo:*',
-        'publish:*',
-        'modules:*',
-        'inbox:*',
-        'users:create,read,update',
-        'notifications:*',
-        'legal:*',
-        'analytics:read',
-        'audit:read',
-    ],
-    editor: [
-        'tenants:read',
-        'sites:read',
-        'pages:*',
-        'builder:*',
-        'theme:read,update',
-        'menus:*',
-        'media:*',
-        'domains:read',
-        'seo:*',
-        'publish:staging',
-        'modules:read',
-        'inbox:read',
-        'users:read',
-        'notifications:read',
-        'legal:read,update',
-        'analytics:read',
-    ],
-    viewer: [
-        'tenants:read',
-        'sites:read',
-        'pages:read',
-        'builder:read',
-        'theme:read',
-        'menus:read',
-        'media:read',
-        'domains:read',
-        'seo:read',
-        'publish:read',
-        'modules:read',
-        'inbox:read',
-        'users:read',
-        'notifications:read',
-        'legal:read',
-        'analytics:read',
-    ],
-};
 
 // === Auth Context (Client-side cache) ===
 let cachedMe: MeResponse | null = null;
@@ -131,11 +52,4 @@ export function hasRole(userRole: UserRole, allowedRoles: UserRole[]): boolean {
     return allowedRoles.includes(userRole);
 }
 
-// === Role Display Names ===
-export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
-    super_admin: 'Super Admin',
-    owner: 'Owner',
-    admin: 'Admin',
-    editor: 'Editor',
-    viewer: 'Viewer',
-};
+export { ROLE_DISPLAY_NAMES, ROLE_PERMISSIONS };
