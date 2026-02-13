@@ -1,4 +1,4 @@
-import { ApiClient, ApiError } from '@prosektorweb/shared';
+import { ApiClient } from '@prosektorweb/shared';
 export type { APIError, PaginatedResponse, QueryParams } from '@prosektorweb/shared';
 export { ApiError } from '@prosektorweb/shared';
 

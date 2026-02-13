@@ -16,6 +16,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { clearOriginDecisionCache } from "@/server/security/origin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -137,9 +138,9 @@ export async function POST(req: Request) {
       if (auditError) throw mapPostgrestError(auditError);
     }
 
+    clearOriginDecisionCache();
     return jsonOk(domainSchema.parse(finalRow));
   } catch (err) {
     return jsonError(asErrorBody(err), asStatus(err));
   }
 }
-

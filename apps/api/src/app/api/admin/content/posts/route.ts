@@ -6,13 +6,25 @@ import {
     jsonError,
     jsonOk,
     mapPostgrestError,
+    zodErrorToDetails,
 } from "@/server/api/http";
+import { buildSafeIlikeOr, safeSearchParamSchema } from "@/server/api/postgrest-search";
 import { requireAuthContext } from "@/server/auth/context";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export const adminContentPostsQuerySchema = z
+    .object({
+        search: safeSearchParamSchema.optional(),
+        status: z.enum(["active", "inactive"]).optional(),
+        page: z.coerce.number().int().min(1).default(1),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
+    })
+    .strict();
 
 export async function GET(req: Request) {
     try {
@@ -32,11 +44,21 @@ export async function GET(req: Request) {
         );
 
         const url = new URL(req.url);
-        const search = url.searchParams.get("search") || undefined;
-        const status = url.searchParams.get("status") || undefined;
-        const page = parseInt(url.searchParams.get("page") || "1", 10);
-        const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10), 100);
+        const parsedQuery = adminContentPostsQuerySchema.safeParse({
+            search: url.searchParams.get("search") ?? undefined,
+            status: url.searchParams.get("status") ?? undefined,
+            page: url.searchParams.get("page") ?? undefined,
+            limit: url.searchParams.get("limit") ?? undefined,
+        });
+        if (!parsedQuery.success) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsedQuery.error),
+            });
+        }
 
+        const { search, status, page, limit } = parsedQuery.data;
         const offset = (page - 1) * limit;
 
         // Build query
@@ -47,7 +69,7 @@ export async function GET(req: Request) {
             .is("deleted_at", null);
 
         if (search) {
-            query = query.or(`title.ilike.%${search}%,slug.ilike.%${search}%`);
+            query = query.or(buildSafeIlikeOr(["title", "slug"], search));
         }
 
         if (status === "active") {

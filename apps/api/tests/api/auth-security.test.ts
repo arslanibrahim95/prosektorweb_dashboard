@@ -8,7 +8,7 @@
  * - Error handling
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { getServerEnv } from '@/server/env';
 import { signCustomJWT, verifyCustomJWT, createCustomJWTPayload } from '@/server/auth/custom-jwt';
 import { extractTokenFromRequest } from '@/server/auth/dual-auth';
@@ -113,7 +113,7 @@ describe('Authentication Security', () => {
                 },
             });
 
-            const { token, type } = extractTokenFromRequest(req);
+            const { type } = extractTokenFromRequest(req);
 
             // Should not be detected as custom JWT because issuer doesn't match
             expect(type).not.toBe('custom');

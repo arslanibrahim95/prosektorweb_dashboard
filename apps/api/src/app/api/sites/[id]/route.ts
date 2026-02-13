@@ -10,6 +10,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { clearOriginDecisionCache } from "@/server/security/origin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string
     if (error) throw mapPostgrestError(error);
     if (!data) throw new HttpError(404, { code: "NOT_FOUND", message: "Not found" });
 
+    clearOriginDecisionCache();
     return jsonOk(siteSchema.parse(data));
   } catch (err) {
     return jsonError(asErrorBody(err), asStatus(err));
@@ -64,4 +66,3 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
     return jsonError(asErrorBody(err), asStatus(err));
   }
 }
-

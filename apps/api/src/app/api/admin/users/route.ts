@@ -7,7 +7,6 @@ import {
     jsonOk,
     mapPostgrestError,
     parseJson,
-    zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { getServerEnv } from "@/server/env";

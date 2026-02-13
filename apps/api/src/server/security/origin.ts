@@ -2,6 +2,7 @@ import { HttpError } from "@/server/api/http";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const ORIGIN_CACHE_TTL_MS = 60_000;
+const ORIGIN_CACHE_MAX_ENTRIES = 2_048;
 const originDecisionCache = new Map<string, { allowed: boolean; expiresAt: number }>();
 
 function normalizeOrigin(value: string): string | null {
@@ -58,11 +59,32 @@ function readCachedDecision(normalizedOrigin: string): boolean | null {
   return cached.allowed;
 }
 
+function pruneCache(): void {
+  const now = Date.now();
+
+  for (const [origin, decision] of originDecisionCache.entries()) {
+    if (decision.expiresAt <= now) {
+      originDecisionCache.delete(origin);
+    }
+  }
+
+  while (originDecisionCache.size >= ORIGIN_CACHE_MAX_ENTRIES) {
+    const oldest = originDecisionCache.keys().next().value;
+    if (!oldest) break;
+    originDecisionCache.delete(oldest);
+  }
+}
+
 function writeCachedDecision(normalizedOrigin: string, allowed: boolean): void {
+  pruneCache();
   originDecisionCache.set(normalizedOrigin, {
     allowed,
     expiresAt: Date.now() + ORIGIN_CACHE_TTL_MS,
   });
+}
+
+export function clearOriginDecisionCache(): void {
+  originDecisionCache.clear();
 }
 
 function isDevLocalhostOrigin(normalizedOrigin: string): boolean {

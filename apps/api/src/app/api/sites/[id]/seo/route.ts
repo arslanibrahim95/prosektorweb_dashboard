@@ -1,5 +1,4 @@
 import {
-  seoSettingsSchema,
   updateSEOSettingsRequestSchema,
   getSEOSettingsResponseSchema,
 } from "@prosektor/contracts";

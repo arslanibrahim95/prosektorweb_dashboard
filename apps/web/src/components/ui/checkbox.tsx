@@ -8,6 +8,9 @@ import { cn } from '@/lib/utils';
 interface CheckboxProps
   extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
   indeterminate?: boolean;
+  checked?: boolean | 'indeterminate';
+  onCheckedChange?: (checked: boolean | 'indeterminate') => void;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
 const Checkbox = React.forwardRef<

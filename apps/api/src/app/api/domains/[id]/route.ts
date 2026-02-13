@@ -10,6 +10,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { clearOriginDecisionCache } from "@/server/security/origin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,6 +83,7 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
       if (auditError) throw mapPostgrestError(auditError);
     }
 
+    clearOriginDecisionCache();
     return jsonOk(domainSchema.parse(updated));
   } catch (err) {
     return jsonError(asErrorBody(err), asStatus(err));
@@ -125,6 +127,7 @@ export async function DELETE(req: Request, ctxRoute: { params: Promise<{ id: str
       if (auditError) throw mapPostgrestError(auditError);
     }
 
+    clearOriginDecisionCache();
     return jsonOk(domainSchema.parse(existing));
   } catch (err) {
     return jsonError(asErrorBody(err), asStatus(err));
