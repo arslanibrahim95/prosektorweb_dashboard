@@ -35,6 +35,11 @@ describe('modules/offer/page.tsx smoke test', () => {
     expect(source).not.toMatch(/api\.post\s*\(/);
   });
 
+  it('state sync lint bypass / JSON stringify karşılaştırması yok', () => {
+    expect(source).not.toContain('set-state-in-effect');
+    expect(source).not.toContain('JSON.stringify');
+  });
+
   it('export default function var', () => {
     expect(source).toContain('export default function');
   });
@@ -69,6 +74,11 @@ describe('modules/contact/page.tsx smoke test', () => {
   it('ham API çağrısı yok', () => {
     expect(source).not.toMatch(/api\.get\s*\(/);
     expect(source).not.toMatch(/api\.post\s*\(/);
+  });
+
+  it('state sync lint bypass / JSON stringify karşılaştırması yok', () => {
+    expect(source).not.toContain('set-state-in-effect');
+    expect(source).not.toContain('JSON.stringify');
   });
 
   it('export default function var', () => {

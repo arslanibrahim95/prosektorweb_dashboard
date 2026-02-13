@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash, randomBytes } from "crypto";
+import { isIP } from "net";
 import { z } from "zod";
 import { getServerEnv } from "./env";
 import { HttpError, mapPostgrestError } from "./api/http";
@@ -17,21 +18,36 @@ export interface RateLimitResult {
   limit: number;
 }
 
+function normalizeValidIp(value: string | null): string | null {
+  if (!value) return null;
+  const candidate = value.trim();
+  if (candidate.length === 0) return null;
+  return isIP(candidate) ? candidate : null;
+}
+
+function firstForwardedIp(forwardedFor: string): string | null {
+  const chain = forwardedFor
+    .split(",")
+    .map((ip) => ip.trim())
+    .filter((ip) => ip.length > 0);
+
+  for (const ip of chain) {
+    const valid = normalizeValidIp(ip);
+    if (valid) return valid;
+  }
+
+  return null;
+}
+
 export function getClientIp(req: Request): string {
-  const realIp = req.headers.get("x-real-ip")?.trim();
-  if (realIp) return realIp;
+  const cloudflareIp = normalizeValidIp(req.headers.get("cf-connecting-ip"));
+  if (cloudflareIp) return cloudflareIp;
 
   const forwardedFor = req.headers.get("x-forwarded-for");
   if (forwardedFor) {
-    const chain = forwardedFor
-      .split(",")
-      .map((ip) => ip.trim())
-      .filter((ip) => ip.length > 0);
-    if (chain.length > 0) return chain[chain.length - 1];
+    const forwardedIp = firstForwardedIp(forwardedFor);
+    if (forwardedIp) return forwardedIp;
   }
-
-  const cloudflareIp = req.headers.get("cf-connecting-ip")?.trim();
-  if (cloudflareIp) return cloudflareIp;
 
   return "0.0.0.0";
 }

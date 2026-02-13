@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   contactModuleSettingsSchema,
 } from '@prosektor/contracts';
@@ -25,22 +25,36 @@ import { useSite } from '@/components/site/site-provider';
 import { cn } from '@/lib/utils';
 import { useModules, useKvkkTexts, useSaveModule } from '@/hooks/use-modules';
 
+interface ContactFormState {
+  isFormEnabled: boolean;
+  address: string;
+  phones: string[];
+  emails: string[];
+  recipientEmails: string[];
+  mapEmbedUrl: string;
+  successMessage: string;
+  selectedKvkkId: string;
+}
+
+const EMPTY_CONTACT_FORM: ContactFormState = {
+  isFormEnabled: false,
+  address: '',
+  phones: [],
+  emails: [],
+  recipientEmails: [],
+  mapEmbedUrl: '',
+  successMessage: '',
+  selectedKvkkId: '',
+};
+
 export default function ContactModulePage() {
   const site = useSite();
   const siteId = site.currentSiteId;
 
-  const [isFormEnabled, setIsFormEnabled] = useState(false);
-  const [address, setAddress] = useState('');
-  const [phones, setPhones] = useState<string[]>([]);
-  const [emails, setEmails] = useState<string[]>([]);
-  const [recipientEmails, setRecipientEmails] = useState<string[]>([]);
-  const [mapEmbedUrl, setMapEmbedUrl] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [selectedKvkkId, setSelectedKvkkId] = useState('');
-
   const [newPhone, setNewPhone] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newRecipient, setNewRecipient] = useState('');
+  const [draftBySite, setDraftBySite] = useState<Record<string, Partial<ContactFormState>>>({});
 
   const { data: modules, isLoading: modulesLoading } = useModules(siteId);
   const { data: kvkkData, isLoading: kvkkLoading } = useKvkkTexts();
@@ -49,59 +63,115 @@ export default function ContactModulePage() {
   const isLoading = modulesLoading || kvkkLoading;
   const kvkkTexts = kvkkData?.items ?? [];
 
-  // Sync module data into form state
-  useEffect(() => {
-    if (!modules) return;
-    const contact = modules.find(
-      (m) => m.module_key === 'contact',
-    );
-    if (contact) {
-      setIsFormEnabled(Boolean(contact.enabled));
-      const parsed = contactModuleSettingsSchema.safeParse(contact.settings ?? {});
-      if (parsed.success) {
-        setRecipientEmails(parsed.data.recipients ?? []);
-        setAddress(parsed.data.address ?? '');
-        setPhones(parsed.data.phones ?? []);
-        setEmails(parsed.data.emails ?? []);
-        setMapEmbedUrl(parsed.data.map_embed_url ?? '');
-        setSuccessMessage(parsed.data.success_message ?? '');
-        setSelectedKvkkId(parsed.data.kvkk_legal_text_id ?? '');
-      }
+  const serverForm = useMemo<ContactFormState>(() => {
+    const contactModule = modules?.find((module) => module.module_key === 'contact');
+    if (!contactModule) {
+      return EMPTY_CONTACT_FORM;
     }
+
+    const parsed = contactModuleSettingsSchema.safeParse(contactModule.settings ?? {});
+    if (!parsed.success) {
+      return {
+        ...EMPTY_CONTACT_FORM,
+        isFormEnabled: Boolean(contactModule.enabled),
+      };
+    }
+
+    return {
+      isFormEnabled: Boolean(contactModule.enabled),
+      recipientEmails: parsed.data.recipients ?? [],
+      address: parsed.data.address ?? '',
+      phones: parsed.data.phones ?? [],
+      emails: parsed.data.emails ?? [],
+      mapEmbedUrl: parsed.data.map_embed_url ?? '',
+      successMessage: parsed.data.success_message ?? '',
+      selectedKvkkId: parsed.data.kvkk_legal_text_id ?? '',
+    };
   }, [modules]);
 
-  const addItem = (list: string[], setList: (items: string[]) => void, item: string, clear: () => void) => {
-    if (item.trim()) {
-      setList([...list, item.trim()]);
+  const activeDraft = siteId ? draftBySite[siteId] : undefined;
+
+  const formState = useMemo<ContactFormState>(() => {
+    return {
+      isFormEnabled: activeDraft?.isFormEnabled ?? serverForm.isFormEnabled,
+      address: activeDraft?.address ?? serverForm.address,
+      phones: activeDraft?.phones ?? serverForm.phones,
+      emails: activeDraft?.emails ?? serverForm.emails,
+      recipientEmails: activeDraft?.recipientEmails ?? serverForm.recipientEmails,
+      mapEmbedUrl: activeDraft?.mapEmbedUrl ?? serverForm.mapEmbedUrl,
+      successMessage: activeDraft?.successMessage ?? serverForm.successMessage,
+      selectedKvkkId: activeDraft?.selectedKvkkId ?? serverForm.selectedKvkkId,
+    };
+  }, [activeDraft, serverForm]);
+
+  const hasDraftChanges = Boolean(siteId && activeDraft);
+
+  const updateDraft = useCallback(<K extends keyof ContactFormState>(key: K, value: ContactFormState[K]) => {
+    if (!siteId) return;
+
+    setDraftBySite((prev) => ({
+      ...prev,
+      [siteId]: {
+        ...(prev[siteId] ?? {}),
+        [key]: value,
+      },
+    }));
+  }, [siteId]);
+
+  const clearDraft = useCallback(() => {
+    if (!siteId) return;
+
+    setDraftBySite((prev) => {
+      if (!prev[siteId]) return prev;
+      const next = { ...prev };
+      delete next[siteId];
+      return next;
+    });
+  }, [siteId]);
+
+  const addItem = useCallback((field: 'phones' | 'emails' | 'recipientEmails', value: string, clear: () => void) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    const list = formState[field];
+    if (list.includes(trimmed)) {
       clear();
+      return;
     }
-  };
 
-  const removeItem = (list: string[], setList: (items: string[]) => void, item: string) => {
-    setList(list.filter((i) => i !== item));
-  };
+    updateDraft(field, [...list, trimmed]);
+    clear();
+  }, [formState, updateDraft]);
 
-  const handleSave = () => {
+  const removeItem = useCallback((field: 'phones' | 'emails' | 'recipientEmails', item: string) => {
+    const list = formState[field].filter((entry) => entry !== item);
+    updateDraft(field, list);
+  }, [formState, updateDraft]);
+
+  const handleSave = useCallback(() => {
     saveMutation.mutate(
       {
         module_key: 'contact',
-        enabled: isFormEnabled,
+        enabled: formState.isFormEnabled,
         settings: {
-          recipients: recipientEmails,
-          address: address || undefined,
-          phones,
-          emails,
-          map_embed_url: mapEmbedUrl || undefined,
-          success_message: successMessage || undefined,
-          kvkk_legal_text_id: selectedKvkkId || undefined,
+          recipients: formState.recipientEmails,
+          address: formState.address || undefined,
+          phones: formState.phones,
+          emails: formState.emails,
+          map_embed_url: formState.mapEmbedUrl || undefined,
+          success_message: formState.successMessage || undefined,
+          kvkk_legal_text_id: formState.selectedKvkkId || undefined,
         },
       },
       {
-        onSuccess: () => toast.success('Ayarlar kaydedildi'),
+        onSuccess: () => {
+          toast.success('Ayarlar kaydedildi');
+          clearDraft();
+        },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Kaydedilemedi'),
       },
     );
-  };
+  }, [clearDraft, formState, saveMutation]);
 
   return (
     <div className={cn('dashboard-page', 'dashboard-page-narrow')}>
@@ -124,7 +194,12 @@ export default function ContactModulePage() {
           {/* Address */}
           <div className="grid gap-2">
             <Label>Adres</Label>
-            <Textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} disabled={isLoading || saveMutation.isPending} />
+            <Textarea
+              value={formState.address}
+              onChange={(e) => updateDraft('address', e.target.value)}
+              rows={2}
+              disabled={isLoading || saveMutation.isPending}
+            />
           </div>
 
           {/* Phones */}
@@ -134,10 +209,10 @@ export default function ContactModulePage() {
               Telefon Numaraları
             </Label>
             <div className="flex flex-wrap gap-2">
-              {phones.map((phone) => (
+              {formState.phones.map((phone) => (
                 <Badge key={phone} variant="secondary" className="pr-1">
                   {phone}
-                  <button onClick={() => removeItem(phones, setPhones, phone)} className="ml-2 hover:text-destructive">
+                  <button onClick={() => removeItem('phones', phone)} className="ml-2 hover:text-destructive">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
@@ -149,13 +224,13 @@ export default function ContactModulePage() {
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
                 onKeyDown={(e) =>
-                  e.key === 'Enter' && addItem(phones, setPhones, newPhone, () => setNewPhone(''))
+                  e.key === 'Enter' && addItem('phones', newPhone, () => setNewPhone(''))
                 }
                 disabled={isLoading || saveMutation.isPending}
               />
               <Button
                 variant="outline"
-                onClick={() => addItem(phones, setPhones, newPhone, () => setNewPhone(''))}
+                onClick={() => addItem('phones', newPhone, () => setNewPhone(''))}
                 disabled={isLoading || saveMutation.isPending}
               >
                 <Plus className="h-4 w-4" />
@@ -170,10 +245,10 @@ export default function ContactModulePage() {
               Email Adresleri
             </Label>
             <div className="flex flex-wrap gap-2">
-              {emails.map((email) => (
+              {formState.emails.map((email) => (
                 <Badge key={email} variant="secondary" className="pr-1">
                   {email}
-                  <button onClick={() => removeItem(emails, setEmails, email)} className="ml-2 hover:text-destructive">
+                  <button onClick={() => removeItem('emails', email)} className="ml-2 hover:text-destructive">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
@@ -186,13 +261,13 @@ export default function ContactModulePage() {
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 onKeyDown={(e) =>
-                  e.key === 'Enter' && addItem(emails, setEmails, newEmail, () => setNewEmail(''))
+                  e.key === 'Enter' && addItem('emails', newEmail, () => setNewEmail(''))
                 }
                 disabled={isLoading || saveMutation.isPending}
               />
               <Button
                 variant="outline"
-                onClick={() => addItem(emails, setEmails, newEmail, () => setNewEmail(''))}
+                onClick={() => addItem('emails', newEmail, () => setNewEmail(''))}
                 disabled={isLoading || saveMutation.isPending}
               >
                 <Plus className="h-4 w-4" />
@@ -205,8 +280,8 @@ export default function ContactModulePage() {
             <Label>Google Maps Embed URL</Label>
             <Input
               placeholder="https://www.google.com/maps/embed?..."
-              value={mapEmbedUrl}
-              onChange={(e) => setMapEmbedUrl(e.target.value)}
+              value={formState.mapEmbedUrl}
+              onChange={(e) => updateDraft('mapEmbedUrl', e.target.value)}
               disabled={isLoading || saveMutation.isPending}
             />
           </div>
@@ -226,17 +301,21 @@ export default function ContactModulePage() {
               <Label>Form Aktif</Label>
               <p className="text-sm text-muted-foreground">Devre dışı bırakırsanız ziyaretçiler form göremez</p>
             </div>
-            <Switch checked={isFormEnabled} onCheckedChange={setIsFormEnabled} disabled={isLoading || saveMutation.isPending} />
+            <Switch
+              checked={formState.isFormEnabled}
+              onCheckedChange={(value) => updateDraft('isFormEnabled', value)}
+              disabled={isLoading || saveMutation.isPending}
+            />
           </div>
 
           {/* Recipients */}
           <div className="grid gap-2">
             <Label>Bildirim Alıcıları</Label>
             <div className="flex flex-wrap gap-2">
-              {recipientEmails.map((email) => (
+              {formState.recipientEmails.map((email) => (
                 <Badge key={email} variant="secondary" className="pr-1">
                   {email}
-                  <button onClick={() => removeItem(recipientEmails, setRecipientEmails, email)} className="ml-2 hover:text-destructive">
+                  <button onClick={() => removeItem('recipientEmails', email)} className="ml-2 hover:text-destructive">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
@@ -249,13 +328,13 @@ export default function ContactModulePage() {
                 value={newRecipient}
                 onChange={(e) => setNewRecipient(e.target.value)}
                 onKeyDown={(e) =>
-                  e.key === 'Enter' && addItem(recipientEmails, setRecipientEmails, newRecipient, () => setNewRecipient(''))
+                  e.key === 'Enter' && addItem('recipientEmails', newRecipient, () => setNewRecipient(''))
                 }
                 disabled={isLoading || saveMutation.isPending}
               />
               <Button
                 variant="outline"
-                onClick={() => addItem(recipientEmails, setRecipientEmails, newRecipient, () => setNewRecipient(''))}
+                onClick={() => addItem('recipientEmails', newRecipient, () => setNewRecipient(''))}
                 disabled={isLoading || saveMutation.isPending}
               >
                 <Plus className="h-4 w-4" />
@@ -266,7 +345,12 @@ export default function ContactModulePage() {
           {/* Success Message */}
           <div className="grid gap-2">
             <Label>Başarı Mesajı</Label>
-            <Textarea value={successMessage} onChange={(e) => setSuccessMessage(e.target.value)} rows={2} disabled={isLoading || saveMutation.isPending} />
+            <Textarea
+              value={formState.successMessage}
+              onChange={(e) => updateDraft('successMessage', e.target.value)}
+              rows={2}
+              disabled={isLoading || saveMutation.isPending}
+            />
           </div>
 
           {/* KVKK */}
@@ -275,7 +359,11 @@ export default function ContactModulePage() {
               <Shield className="h-4 w-4" />
               KVKK Metni
             </Label>
-            <Select value={selectedKvkkId || '__none__'} onValueChange={(v) => setSelectedKvkkId(v === '__none__' ? '' : v)} disabled={isLoading || saveMutation.isPending}>
+            <Select
+              value={formState.selectedKvkkId || '__none__'}
+              onValueChange={(value) => updateDraft('selectedKvkkId', value === '__none__' ? '' : value)}
+              disabled={isLoading || saveMutation.isPending}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="KVKK metni seçin" />
               </SelectTrigger>
@@ -293,7 +381,16 @@ export default function ContactModulePage() {
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {hasDraftChanges && (
+          <Button
+            variant="ghost"
+            onClick={clearDraft}
+            disabled={isLoading || saveMutation.isPending}
+          >
+            Sıfırla
+          </Button>
+        )}
         <ActionButton
           onClick={handleSave}
           disabled={isLoading || !siteId}

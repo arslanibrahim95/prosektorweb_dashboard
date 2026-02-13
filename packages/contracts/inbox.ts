@@ -77,6 +77,16 @@ export const markReadRequestSchema = z.object({
   is_read: z.boolean(),
 });
 
+export const bulkMarkReadRequestSchema = z
+  .object({
+    ids: z.array(uuidSchema).min(1).max(500),
+  })
+  .strict();
+
+export const bulkMarkReadResponseSchema = z.object({
+  updated: z.number().int().min(0),
+});
+
 export const getCvSignedUrlResponseSchema = z.object({
   url: z.string().url(),
   expires_at: isoDateTimeSchema,

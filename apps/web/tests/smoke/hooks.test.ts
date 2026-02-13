@@ -62,12 +62,13 @@ describe.each(EXPECTED_HOOKS)('%s hook smoke test', (hookName) => {
 
 // — Spesifik hook export kontrolleri —
 describe('hook export doğrulaması', () => {
-  it('use-inbox: useOffers, useContacts, useApplications, useMarkAsRead export ediyor', () => {
+  it('use-inbox: useOffers, useContacts, useApplications, useMarkAsRead, useBulkMarkAsRead export ediyor', () => {
     const source = readFileSync(path.join(HOOKS_DIR, 'use-inbox.ts'), 'utf8');
     expect(source).toContain('export function useOffers');
     expect(source).toContain('export function useContacts');
     expect(source).toContain('export function useApplications');
     expect(source).toContain('export function useMarkAsRead');
+    expect(source).toContain('export function useBulkMarkAsRead');
   });
 
   it('use-hr: useJobPosts, useCreateJobPost, useUpdateJobPost, useDeleteJobPost export ediyor', () => {

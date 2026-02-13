@@ -20,16 +20,14 @@ export default function NotFound() {
                     </h2>
 
                     {/* Description */}
-                    <p className="text-muted-foreground mb-8">
-                        Aradığınız sayfa mevcut değil veya taşınmış olabilir.
-                    </p>
+                    <p className="text-muted-foreground mb-8">Aradığınız sayfayı bulamadık. Silinmiş veya taşınmış olabilir.</p>
 
                     {/* Action */}
                     <Button
                         asChild
                         className="gradient-primary border-0 text-white hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 w-full sm:w-auto"
                     >
-                        <Link href="/home">Ana Sayfa'ya Dön</Link>
+                        <Link href="/home">Ana Sayfa&#39;ya Dön</Link>
                     </Button>
                 </div>
             </div>

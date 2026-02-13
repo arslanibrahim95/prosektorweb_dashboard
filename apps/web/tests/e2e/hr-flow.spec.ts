@@ -10,7 +10,7 @@ test.describe('E2E-HR: HR Full Flow', () => {
     test.beforeEach(async ({ page }) => {
         // Login as admin
         await page.goto('/login');
-        await page.fill('[data-testid="email-input"]', 'owner@tenant-a.test');
+        await page.fill('[data-testid="email-input"]', 'owner@prosektorweb.com');
         await page.fill('[data-testid="password-input"]', 'test-password');
         await page.click('[data-testid="login-button"]');
         await page.waitForURL('/home');
@@ -36,7 +36,7 @@ test.describe('E2E-HR: HR Full Flow', () => {
         await page.goto('/jobs/e2e-test-job');
 
         await page.fill('[data-testid="apply-name"]', 'Test Applicant');
-        await page.fill('[data-testid="apply-email"]', 'applicant@test.com');
+        await page.fill('[data-testid="apply-email"]', 'applicant@prosektorweb.com');
         await page.fill('[data-testid="apply-phone"]', '5551234567');
         await page.fill('[data-testid="apply-message"]', 'Test application message');
 

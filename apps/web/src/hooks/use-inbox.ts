@@ -7,6 +7,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+    bulkMarkReadResponseSchema,
     listOfferRequestsResponseSchema,
     listContactMessagesResponseSchema,
     listJobApplicationsResponseSchema,
@@ -19,12 +20,15 @@ import { unreadCountKeys } from '@/hooks/use-unread-count';
 
 // === Query Keys ===
 export const inboxKeys = {
-    offers: (siteId: string, filters?: Record<string, unknown>) =>
-        ['inbox', 'offers', siteId, filters] as const,
-    contacts: (siteId: string, filters?: Record<string, unknown>) =>
-        ['inbox', 'contacts', siteId, filters] as const,
-    applications: (siteId: string, filters?: Record<string, unknown>) =>
-        ['inbox', 'applications', siteId, filters] as const,
+    offersBase: (siteId: string) => ['inbox', 'offers', siteId] as const,
+    offersList: (siteId: string, filters?: Record<string, unknown>) =>
+        ['inbox', 'offers', siteId, 'list', filters] as const,
+    contactsBase: (siteId: string) => ['inbox', 'contacts', siteId] as const,
+    contactsList: (siteId: string, filters?: Record<string, unknown>) =>
+        ['inbox', 'contacts', siteId, 'list', filters] as const,
+    applicationsBase: (siteId: string) => ['inbox', 'applications', siteId] as const,
+    applicationsList: (siteId: string, filters?: Record<string, unknown>) =>
+        ['inbox', 'applications', siteId, 'list', filters] as const,
 };
 
 // === Offers ===
@@ -32,7 +36,7 @@ export function useOffers(siteId: string | null, filters?: { search?: string; pa
     const search = filters?.search?.trim();
     const page = filters?.page ?? PAGINATION.DEFAULT_PAGE;
     return useQuery({
-        queryKey: inboxKeys.offers(siteId ?? '', { ...filters, page }),
+        queryKey: inboxKeys.offersList(siteId ?? '', { ...filters, page }),
         queryFn: () =>
             api.get(
                 '/inbox/offers',
@@ -53,7 +57,7 @@ export function useContacts(siteId: string | null, filters?: { search?: string; 
     const search = filters?.search?.trim();
     const page = filters?.page ?? PAGINATION.DEFAULT_PAGE;
     return useQuery({
-        queryKey: inboxKeys.contacts(siteId ?? '', { ...filters, page }),
+        queryKey: inboxKeys.contactsList(siteId ?? '', { ...filters, page }),
         queryFn: () =>
             api.get(
                 '/inbox/contact',
@@ -77,7 +81,7 @@ export function useApplications(
     const search = filters?.search?.trim();
     const page = filters?.page ?? PAGINATION.DEFAULT_PAGE;
     return useQuery({
-        queryKey: inboxKeys.applications(siteId ?? '', { ...filters, page }),
+        queryKey: inboxKeys.applicationsList(siteId ?? '', { ...filters, page }),
         queryFn: () =>
             api.get(
                 '/inbox/applications',
@@ -107,9 +111,36 @@ export function useMarkAsRead(
         onSuccess: () => {
             if (siteId) {
                 const keyMap = {
-                    offers: inboxKeys.offers(siteId),
-                    contact: inboxKeys.contacts(siteId),
-                    applications: inboxKeys.applications(siteId),
+                    offers: inboxKeys.offersBase(siteId),
+                    contact: inboxKeys.contactsBase(siteId),
+                    applications: inboxKeys.applicationsBase(siteId),
+                };
+                void queryClient.invalidateQueries({ queryKey: keyMap[endpoint] });
+                void queryClient.invalidateQueries({ queryKey: unreadCountKeys.total(siteId) });
+            }
+        },
+    });
+}
+
+export function useBulkMarkAsRead(
+    endpoint: 'offers' | 'contact' | 'applications',
+    siteId: string | null,
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ ids }: { ids: string[] }) =>
+            api.post(
+                `/inbox/${endpoint}/bulk-read`,
+                { ids },
+                bulkMarkReadResponseSchema,
+            ),
+        onSuccess: () => {
+            if (siteId) {
+                const keyMap = {
+                    offers: inboxKeys.offersBase(siteId),
+                    contact: inboxKeys.contactsBase(siteId),
+                    applications: inboxKeys.applicationsBase(siteId),
                 };
                 void queryClient.invalidateQueries({ queryKey: keyMap[endpoint] });
                 void queryClient.invalidateQueries({ queryKey: unreadCountKeys.total(siteId) });

@@ -451,11 +451,6 @@ List module instances for a site.
 
 **Response:**
 ```typescript
-{
-  items: ModuleInstance[];
-  total: number;
-}
-
 type ModuleInstance = {
   id: string;
   tenant_id: string;
@@ -910,6 +905,28 @@ Mark an application as read/unread.
 ```
 
 **Response:** `JobApplication`
+
+#### `POST /api/inbox/offers/bulk-read`
+#### `POST /api/inbox/contact/bulk-read`
+#### `POST /api/inbox/applications/bulk-read`
+
+Mark multiple inbox items as read in a single request.
+
+**Auth Required:** Yes
+
+**Request:**
+```typescript
+{
+  ids: string[]; // uuid[], min 1
+}
+```
+
+**Response:**
+```typescript
+{
+  updated: number;
+}
+```
 
 #### `GET /api/inbox/offers/export`
 

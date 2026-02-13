@@ -8,10 +8,10 @@ E2E test rehberi ve selector dokümanı.
 
 | Role | Email | Erişim |
 |------|-------|--------|
-| owner | owner@test.com | Tüm özellikler |
-| admin | admin@test.com | Ayarlar hariç fatura |
-| editor | editor@test.com | İçerik düzenleme |
-| viewer | viewer@test.com | Sadece görüntüleme |
+| owner | owner@prosektorweb.com | Tüm özellikler |
+| admin | admin@prosektorweb.com | Ayarlar hariç fatura |
+| editor | editor@prosektorweb.com | İçerik düzenleme |
+| viewer | viewer@prosektorweb.com | Sadece görüntüleme |
 
 ---
 

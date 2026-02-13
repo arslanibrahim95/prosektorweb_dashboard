@@ -12,7 +12,7 @@ test.describe('E2E-CONTACT: Contact Form Flow', () => {
         await page.goto('/iletisim'); // Public contact page
 
         await page.fill('[data-testid="contact-name"]', 'E2E Contact User');
-        await page.fill('[data-testid="contact-email"]', 'contact@test.com');
+        await page.fill('[data-testid="contact-email"]', 'contact@prosektorweb.com');
         await page.fill('[data-testid="contact-phone"]', '5551112233');
         await page.fill('[data-testid="contact-subject"]', 'E2E Test Subject');
         await page.fill('[data-testid="contact-message"]', 'This is an E2E test contact message with enough length.');
@@ -27,7 +27,7 @@ test.describe('E2E-CONTACT: Contact Form Flow', () => {
 
         // Step 2: Login and check inbox
         await page.goto('/login');
-        await page.fill('[data-testid="email-input"]', 'owner@tenant-a.test');
+        await page.fill('[data-testid="email-input"]', 'owner@prosektorweb.com');
         await page.fill('[data-testid="password-input"]', 'test-password');
         await page.click('[data-testid="login-button"]');
         await page.waitForURL('/home');
@@ -48,7 +48,7 @@ test.describe('E2E-CONTACT: Contact Form Flow', () => {
     test('should filter messages by date', async ({ page }) => {
         // Login
         await page.goto('/login');
-        await page.fill('[data-testid="email-input"]', 'owner@tenant-a.test');
+        await page.fill('[data-testid="email-input"]', 'owner@prosektorweb.com');
         await page.fill('[data-testid="password-input"]', 'test-password');
         await page.click('[data-testid="login-button"]');
 
@@ -67,7 +67,7 @@ test.describe('E2E-CONTACT: Contact Form Flow', () => {
     test('should search messages', async ({ page }) => {
         // Login
         await page.goto('/login');
-        await page.fill('[data-testid="email-input"]', 'owner@tenant-a.test');
+        await page.fill('[data-testid="email-input"]', 'owner@prosektorweb.com');
         await page.fill('[data-testid="password-input"]', 'test-password');
         await page.click('[data-testid="login-button"]');
 

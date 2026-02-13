@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { z } from 'zod';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   getCvSignedUrlResponseSchema,
   jobApplicationSchema,
@@ -39,7 +40,7 @@ import { api } from '@/server/api';
 import { useSite } from '@/components/site/site-provider';
 import { useAuth } from '@/components/auth/auth-provider';
 import { exportInbox } from '@/features/inbox';
-import { useApplications, useMarkAsRead } from '@/hooks/use-inbox';
+import { inboxKeys, useApplications, useBulkMarkAsRead, useMarkAsRead } from '@/hooks/use-inbox';
 import { useJobPosts } from '@/hooks/use-hr';
 import { toast } from 'sonner';
 import { formatRelativeTime, formatDate } from '@/lib/format';
@@ -60,6 +61,7 @@ export default function ApplicationsInboxPage() {
   const [currentPage, setCurrentPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [dateRange, setDateRange] = useState<{ from: string; to: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
 
   // Debounce search
   useEffect(() => {
@@ -79,14 +81,38 @@ export default function ApplicationsInboxPage() {
   const { data: jobPostsData } = useJobPosts(site.currentSiteId);
   const jobPosts = jobPostsData?.items ?? [];
 
+  const selectedJobPostId = jobFilter === 'all' ? undefined : jobFilter;
+  const knownTotal = useMemo(() => {
+    const keyRoot = inboxKeys.applicationsBase(site.currentSiteId ?? '');
+    const cached = queryClient.getQueriesData<{ total: number }>({ queryKey: keyRoot });
+    const totals = cached
+      .map(([queryKey, value]) => {
+        const filters = (queryKey as unknown[])[4] as { search?: string; jobPostId?: string } | undefined;
+        if (filters?.search !== searchForApi) return undefined;
+        if (filters?.jobPostId !== selectedJobPostId) return undefined;
+        return typeof value?.total === 'number' ? value.total : undefined;
+      })
+      .filter((value): value is number => typeof value === 'number');
+
+    return totals.length > 0 ? Math.max(...totals) : 0;
+  }, [queryClient, searchForApi, selectedJobPostId, site.currentSiteId]);
+  const knownTotalPages = Math.max(
+    PAGINATION.DEFAULT_PAGE,
+    Math.ceil(knownTotal / PAGINATION.DEFAULT_LIMIT),
+  );
+  const effectivePage = useMemo(
+    () => Math.min(Math.max(PAGINATION.DEFAULT_PAGE, currentPage), knownTotalPages),
+    [currentPage, knownTotalPages],
+  );
   const { data, isLoading } = useApplications(site.currentSiteId, {
     search: searchForApi,
-    jobPostId: jobFilter === 'all' ? undefined : jobFilter,
-    page: currentPage,
+    jobPostId: selectedJobPostId,
+    page: effectivePage,
   });
   const markAsReadMutation = useMarkAsRead('applications', site.currentSiteId);
+  const bulkMarkAsReadMutation = useBulkMarkAsRead('applications', site.currentSiteId);
 
-  const jobApplications = data?.items ?? [];
+  const jobApplications = useMemo(() => data?.items ?? [], [data?.items]);
   const total = data?.total ?? 0;
 
   const unreadCount = useMemo(
@@ -121,13 +147,16 @@ export default function ApplicationsInboxPage() {
       return;
     }
     try {
-      await Promise.all(unreadSelected.map((a) => markAsReadMutation.mutateAsync({ id: a.id })));
-      toast.success(`${unreadSelected.length} öge okundu olarak işaretlendi`);
+      const result = await bulkMarkAsReadMutation.mutateAsync({
+        ids: unreadSelected.map((application) => application.id),
+      });
+      const updated = result.updated ?? unreadSelected.length;
+      toast.success(`${updated} öge okundu olarak işaretlendi`);
       setSelectedIds(new Set());
     } catch {
       toast.error('Toplu işlem başarısız');
     }
-  }, [jobApplications, selectedIds, markAsReadMutation]);
+  }, [jobApplications, selectedIds, bulkMarkAsReadMutation]);
 
   const handleBulkExport = useCallback(async () => {
     if (!site.currentSiteId) return;
@@ -149,12 +178,10 @@ export default function ApplicationsInboxPage() {
     () => Math.max(1, Math.ceil(total / PAGINATION.DEFAULT_LIMIT)),
     [total],
   );
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  const displayPage = useMemo(
+    () => Math.min(effectivePage, totalPages),
+    [effectivePage, totalPages],
+  );
 
   const openCv = useCallback(async (applicationId: string) => {
     try {
@@ -189,20 +216,7 @@ export default function ApplicationsInboxPage() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={async () => {
-              if (!site.currentSiteId) return;
-              try {
-                const blob = await exportInbox(
-                  'applications',
-                  { search: searchForApi, status: 'all' },
-                  { accessToken: auth.accessToken ?? undefined, siteId: site.currentSiteId },
-                );
-                const today = new Date().toISOString().slice(0, 10);
-                downloadBlob(blob, `applications_${today}.csv`);
-              } catch (err) {
-                toast.error(err instanceof Error ? err.message : 'Export failed');
-              }
-            }}
+            onClick={() => void handleBulkExport()}
           >
             <Download className="mr-2 h-4 w-4" />
             Dışa Aktar
@@ -364,19 +378,19 @@ export default function ApplicationsInboxPage() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={currentPage <= 1 || isLoading}
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={displayPage <= 1 || isLoading}
+                onClick={() => setCurrentPage(Math.max(1, displayPage - 1))}
               >
                 Önceki
               </Button>
               <span>
-                Sayfa {currentPage} / {totalPages}
+                Sayfa {displayPage} / {totalPages}
               </span>
               <Button
                 size="sm"
                 variant="outline"
-                disabled={currentPage >= totalPages || isLoading}
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={displayPage >= totalPages || isLoading}
+                onClick={() => setCurrentPage(Math.min(totalPages, displayPage + 1))}
               >
                 Sonraki
               </Button>

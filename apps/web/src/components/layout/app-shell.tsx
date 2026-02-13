@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState, createContext, useContext, useEffect } from 'react';
+import { ReactNode, useState, createContext, useContext } from 'react';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { Breadcrumbs } from './breadcrumbs';
@@ -46,15 +46,15 @@ export const useSidebar = () => useContext(SidebarContext);
  */
 export function AppShell({ children, user, tenant }: AppShellProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-    // Load sidebar collapsed state from localStorage on mount
-    useEffect(() => {
-        const stored = localStorage.getItem('sidebar-collapsed');
-        if (stored !== null) {
-            setSidebarCollapsed(stored === 'true');
+    // Load sidebar collapsed state from localStorage on initialization (lazy)
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('sidebar-collapsed');
+            return stored === 'true';
         }
-    }, []);
+        return false;
+    });
 
     // Persist sidebar collapsed state to localStorage
     const handleSetSidebarCollapsed = (value: boolean) => {
@@ -94,8 +94,8 @@ export function AppShell({ children, user, tenant }: AppShellProps) {
 
                 {/* Main content */}
                 <main className={`pt-[var(--topbar-height)] pb-16 lg:pb-0 min-h-screen transition-[margin-left] duration-300 ease-[var(--ease-smooth)] ${sidebarCollapsed
-                        ? 'lg:ml-[var(--sidebar-width-collapsed)]'
-                        : 'lg:ml-[var(--sidebar-width)]'
+                    ? 'lg:ml-[var(--sidebar-width-collapsed)]'
+                    : 'lg:ml-[var(--sidebar-width)]'
                     }`}>
                     <div className="dashboard-main-content page-enter">
                         <Breadcrumbs />

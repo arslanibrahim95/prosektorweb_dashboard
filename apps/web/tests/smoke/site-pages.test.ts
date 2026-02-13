@@ -27,6 +27,11 @@ describe('site/pages/page.tsx smoke test', () => {
     expect(source).not.toMatch(/api\.post\s*\(/);
   });
 
+  it('state sync JSON stringify/lint bypass kullanmıyor', () => {
+    expect(source).not.toContain('set-state-in-effect');
+    expect(source).not.toContain('JSON.stringify');
+  });
+
   it('export default function var', () => {
     expect(source).toContain('export default function');
   });

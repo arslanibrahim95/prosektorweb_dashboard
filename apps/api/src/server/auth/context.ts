@@ -1,11 +1,9 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { MeResponse, UserRole } from "@prosektor/contracts";
+import type { UserRole } from "@prosektor/contracts";
 import { permissionsForRole } from "./permissions";
-import { HttpError } from "../api/http";
 import {
   createAdminClient,
   createUserClientFromBearer,
-  createUserClientFromCookies,
   getBearerToken,
 } from "../supabase";
 import { createError } from "../errors";
@@ -69,11 +67,17 @@ function extractUserName(user: User, defaultEmail: string): string {
 
 /**
  * Auth context oluşturmak için Supabase client'ı hazırlar.
- * Bearer token varsa onu kullanır, yoksa cookie'den okur.
+ * SECURITY: Authenticated API only accepts Bearer tokens.
  */
-async function createAuthClient(req: Request): Promise<SupabaseClient> {
+function createAuthClient(req: Request): SupabaseClient {
   const bearer = getBearerToken(req);
-  return bearer ? createUserClientFromBearer(bearer) : await createUserClientFromCookies();
+  if (!bearer) {
+    throw createError({
+      code: "UNAUTHORIZED",
+      message: "Oturum bilgisi bulunamadı. Lütfen giriş yapın.",
+    });
+  }
+  return createUserClientFromBearer(bearer);
 }
 
 /**
@@ -161,7 +165,7 @@ function resolveUserRole(user: User, membershipRole: string): UserRole {
  * Auth Context oluşturur.
  */
 export async function requireAuthContext(req: Request): Promise<AuthContext> {
-  const supabase = await createAuthClient(req);
+  const supabase = createAuthClient(req);
   const admin = createAdminClient();
 
   const user = await validateAndGetUser(supabase);

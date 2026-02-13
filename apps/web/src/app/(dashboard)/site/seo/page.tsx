@@ -1,13 +1,12 @@
 'use client';
 
+import { useCallback, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Save, Image, Globe, FileText, ExternalLink, CheckCircle2, Loader2 } from 'lucide-react';
+import { Save, Image as ImageIcon, Globe, FileText, ExternalLink, CheckCircle2, Loader2 } from 'lucide-react';
 import { ActionButton } from '@/components/ui/action-button';
-import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useSite } from '@/components/site/site-provider';
 import { type SEOSettings } from '@prosektor/contracts';
@@ -18,59 +17,94 @@ const DEFAULT_SEO_SETTINGS: SEOSettings = {
   title_template: '%s | %s',
   default_description: '',
   og_image: '',
-  robots_txt: "User-agent: *\nAllow: /\n\nSitemap: /sitemap.xml",
+  robots_txt: 'User-agent: *\nAllow: /\n\nSitemap: /sitemap.xml',
 };
+
+function areSeoSettingsEqual(a: SEOSettings, b: SEOSettings): boolean {
+  return (
+    a.title_template === b.title_template
+    && (a.default_description ?? '') === (b.default_description ?? '')
+    && (a.og_image ?? '') === (b.og_image ?? '')
+    && (a.robots_txt ?? '') === (b.robots_txt ?? '')
+  );
+}
 
 export default function SEOPage() {
   const site = useSite();
   const siteId = site.currentSiteId;
-  const [formData, setFormData] = useState<SEOSettings>(DEFAULT_SEO_SETTINGS);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [initialData, setInitialData] = useState<SEOSettings>(DEFAULT_SEO_SETTINGS);
+
+  const [draftBySite, setDraftBySite] = useState<Record<string, Partial<SEOSettings>>>({});
 
   const { data: seoData, isLoading } = useSEOSettings(siteId);
   const saveMutation = useSaveSEOSettings(siteId);
 
-  // Sync fetched data into form state
-  useEffect(() => {
-    if (seoData) {
-      const settings = { ...DEFAULT_SEO_SETTINGS, ...seoData };
-      setFormData(settings);
-      setInitialData(settings);
-      setHasChanges(false);
-    }
+  const serverData = useMemo<SEOSettings>(() => {
+    return {
+      ...DEFAULT_SEO_SETTINGS,
+      ...seoData,
+    };
   }, [seoData]);
 
-  const handleSave = () => {
+  const activeDraft = siteId ? draftBySite[siteId] : undefined;
+
+  const formData = useMemo<SEOSettings>(() => {
+    return {
+      title_template: activeDraft?.title_template ?? serverData.title_template,
+      default_description: activeDraft?.default_description ?? serverData.default_description,
+      og_image: activeDraft?.og_image ?? serverData.og_image,
+      robots_txt: activeDraft?.robots_txt ?? serverData.robots_txt,
+      json_ld: activeDraft?.json_ld ?? serverData.json_ld,
+    };
+  }, [activeDraft, serverData]);
+
+  const hasChanges = useMemo(() => !areSeoSettingsEqual(formData, serverData), [formData, serverData]);
+
+  const updateField = useCallback(<K extends keyof SEOSettings>(key: K, value: SEOSettings[K]) => {
+    if (!siteId) return;
+
+    setDraftBySite((prev) => ({
+      ...prev,
+      [siteId]: {
+        ...(prev[siteId] ?? {}),
+        [key]: value,
+      },
+    }));
+  }, [siteId]);
+
+  const clearDraft = useCallback(() => {
+    if (!siteId) return;
+
+    setDraftBySite((prev) => {
+      if (!prev[siteId]) return prev;
+      const next = { ...prev };
+      delete next[siteId];
+      return next;
+    });
+  }, [siteId]);
+
+  const handleSave = useCallback(() => {
     saveMutation.mutate(formData, {
       onSuccess: () => {
-        setInitialData(formData);
-        setHasChanges(false);
+        clearDraft();
         toast.success('SEO ayarları kaydedildi');
       },
       onError: (err) => {
         toast.error(err instanceof Error ? err.message : 'SEO ayarları kaydedilemedi');
       },
     });
-  };
+  }, [clearDraft, formData, saveMutation]);
 
-  const updateField = <K extends keyof SEOSettings>(key: K, value: SEOSettings[K]) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-    setHasChanges(true);
-  };
-
-  const openSitemap = () => {
+  const openSitemap = useCallback(() => {
     window.open('/sitemap.xml', '_blank');
-  };
+  }, []);
 
-  const openRobots = () => {
+  const openRobots = useCallback(() => {
     window.open('/robots.txt', '_blank');
-  };
+  }, []);
 
   const currentSite = site.sites.find((s) => s.id === site.currentSiteId);
   const domain = currentSite?.primary_domain ?? 'prosektorweb.com';
   const sitemapUrl = `https://${domain}/sitemap.xml`;
-  const robotsUrl = `https://${domain}/robots.txt`;
 
   return (
     <div className={cn('dashboard-page', 'dashboard-page-narrow')}>
@@ -143,7 +177,7 @@ export default function SEOPage() {
           <Card className="glass">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Image className="h-5 w-5" />
+                <ImageIcon className="h-5 w-5" />
                 Varsayılan OG Image
               </CardTitle>
               <CardDescription>
@@ -231,7 +265,7 @@ export default function SEOPage() {
           {/* Save Button */}
           <div className="flex justify-end gap-2">
             {hasChanges && (
-              <Button variant="ghost" onClick={() => setFormData(initialData)}>
+              <Button variant="ghost" onClick={clearDraft}>
                 İptal
               </Button>
             )}

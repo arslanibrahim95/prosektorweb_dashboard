@@ -34,5 +34,26 @@ describe('ApiClient abort support', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.signal).toBe(controller.signal);
+    expect(init.credentials).toBe('omit');
+  });
+
+  it('uses bearer token provider and omits credentials by default', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+    const client = new ApiClient('/api');
+    client.setAccessTokenProvider(() => 'token-123');
+
+    await client.get('/me');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.credentials).toBe('omit');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer token-123');
   });
 });

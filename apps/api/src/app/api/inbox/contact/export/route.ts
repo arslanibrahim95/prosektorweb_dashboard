@@ -11,6 +11,7 @@ import {
   mapPostgrestError,
   zodErrorToDetails,
 } from "@/server/api/http";
+import { buildSafeIlikeOr, safeSearchParamSchema } from "@/server/api/postgrest-search";
 import { requireAuthContext } from "@/server/auth/context";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
@@ -23,7 +24,7 @@ export const exportContactQuerySchema = z
     site_id: uuidSchema,
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(2000).default(1000),
-    search: z.string().min(2).optional(),
+    search: safeSearchParamSchema.optional(),
     status: z.enum(["read", "unread"]).optional(),
     date_from: z.string().min(1).optional(),
     date_to: z.string().min(1).optional(),
@@ -79,10 +80,7 @@ export async function GET(req: Request) {
     if (parsed.data.date_from) query = query.gte("created_at", parsed.data.date_from);
     if (parsed.data.date_to) query = query.lte("created_at", parsed.data.date_to);
     if (parsed.data.search) {
-      const term = parsed.data.search.replace(/%/g, "\\%");
-      query = query.or(
-        `full_name.ilike.%${term}%,email.ilike.%${term}%,subject.ilike.%${term}%`,
-      );
+      query = query.or(buildSafeIlikeOr(["full_name", "email", "subject"], parsed.data.search));
     }
 
     const { data, error } = await query;

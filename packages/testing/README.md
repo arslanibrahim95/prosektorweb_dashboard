@@ -124,11 +124,11 @@ apps/web/tests/
 
 | Email | Rol | Tenant |
 |-------|-----|--------|
-| owner@tenant-a.test | owner | Tenant A |
-| admin@tenant-a.test | admin | Tenant A |
-| editor@tenant-a.test | editor | Tenant A |
-| viewer@tenant-a.test | viewer | Tenant A |
-| owner@tenant-b.test | owner | Tenant B |
+| owner@prosektorweb.com | owner | Tenant A |
+| admin@prosektorweb.com | admin | Tenant A |
+| editor@prosektorweb.com | editor | Tenant A |
+| viewer@prosektorweb.com | viewer | Tenant A |
+| owner-b@prosektorweb.com | owner | Tenant B |
 
 ---
 

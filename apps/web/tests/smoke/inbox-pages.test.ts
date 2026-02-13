@@ -21,6 +21,15 @@ describe('inbox/offers/page.tsx smoke test', () => {
     expect(source).toContain("useMarkAsRead");
   });
 
+  it('bulk mark-read hook import ediliyor', () => {
+    expect(source).toContain("useBulkMarkAsRead");
+  });
+
+  it('sayfa clamp mantığı effect içinde setState kullanmıyor', () => {
+    expect(source).toContain('effectivePage');
+    expect(source).not.toContain('set-state-in-effect');
+  });
+
   it('useSite provider kullanılıyor', () => {
     expect(source).toContain("useSite");
     expect(source).toContain("from '@/components/site/site-provider'");
@@ -53,6 +62,15 @@ describe('inbox/contact/page.tsx smoke test', () => {
     expect(source).toContain("useMarkAsRead");
   });
 
+  it('bulk mark-read hook import ediliyor', () => {
+    expect(source).toContain("useBulkMarkAsRead");
+  });
+
+  it('sayfa clamp mantığı effect içinde setState kullanmıyor', () => {
+    expect(source).toContain('effectivePage');
+    expect(source).not.toContain('set-state-in-effect');
+  });
+
   it('useSite provider kullanılıyor', () => {
     expect(source).toContain("useSite");
     expect(source).toContain("from '@/components/site/site-provider'");
@@ -83,6 +101,15 @@ describe('inbox/applications/page.tsx smoke test', () => {
 
   it('useMarkAsRead hook import ediliyor', () => {
     expect(source).toContain("useMarkAsRead");
+  });
+
+  it('bulk mark-read hook import ediliyor', () => {
+    expect(source).toContain("useBulkMarkAsRead");
+  });
+
+  it('sayfa clamp mantığı effect içinde setState kullanmıyor', () => {
+    expect(source).toContain('effectivePage');
+    expect(source).not.toContain('set-state-in-effect');
   });
 
   it('useSite provider kullanılıyor', () => {

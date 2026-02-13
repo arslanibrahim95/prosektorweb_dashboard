@@ -13,4 +13,5 @@ export * from "./domains";
 export * from "./tenant-members";
 export * from "./legal-texts";
 export * from "./sites";
+export * from "./contract-defs";
 export * from "./seo";

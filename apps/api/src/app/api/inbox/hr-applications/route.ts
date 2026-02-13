@@ -14,6 +14,7 @@ import {
   mapPostgrestError,
   zodErrorToDetails,
 } from "@/server/api/http";
+import { buildSafeIlikeOr, safeSearchParamSchema } from "@/server/api/postgrest-search";
 import { getOrSetCachedValue } from "@/server/cache";
 import { requireAuthContext } from "@/server/auth/context";
 import { getServerEnv } from "@/server/env";
@@ -29,7 +30,7 @@ export const inboxApplicationsQuerySchema = z
     job_post_id: uuidSchema.optional(),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(50),
-    search: z.string().min(2).optional(),
+    search: safeSearchParamSchema.optional(),
     status: z.enum(["read", "unread"]).optional(),
     date_from: z.string().min(1).optional(),
     date_to: z.string().min(1).optional(),
@@ -92,8 +93,7 @@ export async function GET(req: Request) {
     if (parsed.data.date_from) dataQuery = dataQuery.gte("created_at", parsed.data.date_from);
     if (parsed.data.date_to) dataQuery = dataQuery.lte("created_at", parsed.data.date_to);
     if (parsed.data.search) {
-      const term = parsed.data.search.replace(/%/g, "\\%");
-      dataQuery = dataQuery.or(`full_name.ilike.%${term}%,email.ilike.%${term}%`);
+      dataQuery = dataQuery.or(buildSafeIlikeOr(["full_name", "email"], parsed.data.search));
     }
 
     const { data, error } = await dataQuery;
@@ -126,8 +126,7 @@ export async function GET(req: Request) {
       if (parsed.data.date_from) countQuery = countQuery.gte("created_at", parsed.data.date_from);
       if (parsed.data.date_to) countQuery = countQuery.lte("created_at", parsed.data.date_to);
       if (parsed.data.search) {
-        const term = parsed.data.search.replace(/%/g, "\\%");
-        countQuery = countQuery.or(`full_name.ilike.%${term}%,email.ilike.%${term}%`);
+        countQuery = countQuery.or(buildSafeIlikeOr(["full_name", "email"], parsed.data.search));
       }
 
       const { error: countError, count } = await countQuery;

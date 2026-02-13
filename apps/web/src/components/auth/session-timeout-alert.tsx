@@ -208,7 +208,6 @@ export function SessionTimeoutIndicator() {
     }
 
     // Set initial time
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTimeRemaining(sessionWarning.timeUntilExpiry);
 
     // Start interval

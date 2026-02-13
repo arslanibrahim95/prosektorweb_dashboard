@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { z } from 'zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { offerRequestSchema } from '@prosektor/contracts';
 import {
   Table,
@@ -28,7 +29,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useSite } from '@/components/site/site-provider';
 import { useAuth } from '@/components/auth/auth-provider';
 import { exportInbox } from '@/features/inbox';
-import { useOffers, useMarkAsRead } from '@/hooks/use-inbox';
+import { inboxKeys, useBulkMarkAsRead, useMarkAsRead, useOffers } from '@/hooks/use-inbox';
 import { toast } from 'sonner';
 import { formatRelativeTime, formatDate } from '@/lib/format';
 import { downloadBlob } from '@/lib/download';
@@ -47,6 +48,7 @@ export default function OffersInboxPage() {
   const [currentPage, setCurrentPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [dateRange, setDateRange] = useState<{ from: string; to: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
 
   // Debounce search
   useEffect(() => {
@@ -63,14 +65,44 @@ export default function OffersInboxPage() {
   }, [debouncedSearch]);
 
   // React Query hooks
+  const knownTotal = useMemo(() => {
+    const keyRoot = inboxKeys.offersBase(site.currentSiteId ?? '');
+    const cached = queryClient.getQueriesData<{ total: number }>({ queryKey: keyRoot });
+    const totals = cached
+      .map(([queryKey, value]) => {
+        const filters = (queryKey as unknown[])[4] as { search?: string } | undefined;
+        if (filters?.search !== searchForApi) return undefined;
+        return typeof value?.total === 'number' ? value.total : undefined;
+      })
+      .filter((value): value is number => typeof value === 'number');
+
+    return totals.length > 0 ? Math.max(...totals) : 0;
+  }, [queryClient, searchForApi, site.currentSiteId]);
+  const knownTotalPages = Math.max(
+    PAGINATION.DEFAULT_PAGE,
+    Math.ceil(knownTotal / PAGINATION.DEFAULT_LIMIT),
+  );
+  const effectivePage = useMemo(
+    () => Math.min(Math.max(PAGINATION.DEFAULT_PAGE, currentPage), knownTotalPages),
+    [currentPage, knownTotalPages],
+  );
   const { data, isLoading } = useOffers(site.currentSiteId, {
     search: searchForApi,
-    page: currentPage,
+    page: effectivePage,
   });
   const markAsReadMutation = useMarkAsRead('offers', site.currentSiteId);
+  const bulkMarkAsReadMutation = useBulkMarkAsRead('offers', site.currentSiteId);
 
-  const offers = data?.items ?? [];
+  const offers = useMemo(() => data?.items ?? [], [data?.items]);
   const total = data?.total ?? 0;
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(total / PAGINATION.DEFAULT_LIMIT)),
+    [total],
+  );
+  const displayPage = useMemo(
+    () => Math.min(effectivePage, totalPages),
+    [effectivePage, totalPages],
+  );
 
   const unreadCount = useMemo(() => offers.filter((o) => !o.is_read).length, [offers]);
 
@@ -101,13 +133,16 @@ export default function OffersInboxPage() {
       return;
     }
     try {
-      await Promise.all(unreadSelected.map((o) => markAsReadMutation.mutateAsync({ id: o.id })));
-      toast.success(`${unreadSelected.length} öge okundu olarak işaretlendi`);
+      const result = await bulkMarkAsReadMutation.mutateAsync({
+        ids: unreadSelected.map((offer) => offer.id),
+      });
+      const updated = result.updated ?? unreadSelected.length;
+      toast.success(`${updated} öge okundu olarak işaretlendi`);
       setSelectedIds(new Set());
     } catch {
       toast.error('Toplu işlem başarısız');
     }
-  }, [offers, selectedIds, markAsReadMutation]);
+  }, [offers, selectedIds, bulkMarkAsReadMutation]);
 
   const handleBulkExport = useCallback(async () => {
     if (!site.currentSiteId) return;
@@ -124,17 +159,6 @@ export default function OffersInboxPage() {
       toast.error(err instanceof Error ? err.message : 'Export failed');
     }
   }, [site.currentSiteId, searchForApi, auth.accessToken]);
-
-  const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(total / PAGINATION.DEFAULT_LIMIT)),
-    [total],
-  );
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
 
   const sourcePageUrl = useCallback((source: OfferRequest['source']) => {
     const v = (source as Record<string, unknown> | undefined)?.page_url;
@@ -161,20 +185,7 @@ export default function OffersInboxPage() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={async () => {
-              if (!site.currentSiteId) return;
-              try {
-                const blob = await exportInbox(
-                  'offers',
-                  { search: searchForApi, status: 'all' },
-                  { accessToken: auth.accessToken ?? undefined, siteId: site.currentSiteId },
-                );
-                const today = new Date().toISOString().slice(0, 10);
-                downloadBlob(blob, `offers_${today}.csv`);
-              } catch (err) {
-                toast.error(err instanceof Error ? err.message : 'Export failed');
-              }
-            }}
+            onClick={() => void handleBulkExport()}
           >
             <Download className="mr-2 h-4 w-4" />
             Dışa Aktar
@@ -304,19 +315,19 @@ export default function OffersInboxPage() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={currentPage <= 1 || isLoading}
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={displayPage <= 1 || isLoading}
+                onClick={() => setCurrentPage(Math.max(1, displayPage - 1))}
               >
                 Önceki
               </Button>
               <span>
-                Sayfa {currentPage} / {totalPages}
+                Sayfa {displayPage} / {totalPages}
               </span>
               <Button
                 size="sm"
                 variant="outline"
-                disabled={currentPage >= totalPages || isLoading}
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={displayPage >= totalPages || isLoading}
+                onClick={() => setCurrentPage(Math.min(totalPages, displayPage + 1))}
               >
                 Sonraki
               </Button>

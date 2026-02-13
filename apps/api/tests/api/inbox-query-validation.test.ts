@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { bulkMarkReadRequestSchema } from "@prosektor/contracts";
 import { inboxOffersQuerySchema } from "../../src/app/api/inbox/offers/route";
 import { inboxContactQuerySchema } from "../../src/app/api/inbox/contact/route";
 import { inboxApplicationsQuerySchema } from "../../src/app/api/inbox/hr-applications/route";
@@ -45,5 +46,14 @@ describe("inbox query validation", () => {
     expect(
       exportApplicationsQuerySchema.safeParse({ site_id: siteId, limit: 2001 }).success,
     ).toBe(false);
+  });
+
+  it("validates bulk mark-read request ids", () => {
+    expect(
+      bulkMarkReadRequestSchema.safeParse({
+        ids: ["aaaaaaaa-0000-4000-8001-000000000001"],
+      }).success,
+    ).toBe(true);
+    expect(bulkMarkReadRequestSchema.safeParse({ ids: [] }).success).toBe(false);
   });
 });

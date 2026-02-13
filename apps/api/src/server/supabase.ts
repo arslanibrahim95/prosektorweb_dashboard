@@ -1,7 +1,7 @@
-import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { getServerEnv } from "./env";
+
+const MAX_BEARER_TOKEN_LENGTH = 8 * 1024;
 
 /**
  * Authorization Bearer header'dan token çıkarır.
@@ -12,11 +12,15 @@ import { getServerEnv } from "./env";
 export function getBearerToken(req: Request): string | null {
   const header = req.headers.get("authorization") ?? req.headers.get("Authorization");
   if (!header) return null;
+  if (header.length > MAX_BEARER_TOKEN_LENGTH + 20) return null;
 
-  const [scheme, token] = header.split(" ");
-  if (!scheme || !token) return null;
-  if (scheme.toLowerCase() !== "bearer") return null;
-  return token.trim();
+  const match = /^Bearer\s+(\S+)$/.exec(header.trim());
+  if (!match) return null;
+
+  const token = match[1].trim();
+  if (token.length === 0 || token.length > MAX_BEARER_TOKEN_LENGTH) return null;
+
+  return token;
 }
 
 /**
@@ -57,23 +61,6 @@ export function createUserClientFromBearer(token: string): SupabaseClient {
     global: {
       headers: {
         Authorization: `Bearer ${token}`,
-      },
-    },
-  });
-}
-
-/**
- * Cookie'lerden session kullanarak user client oluşturur.
- * Next.js server-side context'inde çalışır.
- */
-export async function createUserClientFromCookies(): Promise<SupabaseClient> {
-  const env = getServerEnv();
-  const cookieStore = await cookies();
-
-  return createServerClient(env.supabaseUrl, env.supabaseAnonKey, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
       },
     },
   });

@@ -7,6 +7,41 @@ export interface APIError {
     details?: Record<string, string[]>;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toApiError(payload: unknown, status: number): APIError {
+    const source = isRecord(payload) && isRecord(payload.error) ? payload.error : payload;
+
+    if (!isRecord(source)) {
+        return {
+            code: 'INTERNAL_ERROR',
+            message: `Request failed with status ${status}`,
+        };
+    }
+
+    const code =
+        typeof source.code === 'string' && source.code.length > 0
+            ? source.code
+            : 'INTERNAL_ERROR';
+    const message =
+        typeof source.message === 'string' && source.message.length > 0
+            ? source.message
+            : `Request failed with status ${status}`;
+
+    const details = isRecord(source.details)
+        ? Object.fromEntries(
+            Object.entries(source.details).map(([key, value]) => [
+                key,
+                Array.isArray(value) ? value.map((v) => String(v)) : [String(value)],
+            ]),
+        )
+        : undefined;
+
+    return { code, message, details };
+}
+
 // === Response Types ===
 export interface PaginatedResponse<T> {
     items: T[];
@@ -82,14 +117,19 @@ export class ApiClient {
             method,
             headers,
             body: options?.body ? JSON.stringify(options.body) : undefined,
-            credentials: 'include',
+            credentials: 'omit',
             signal: options?.signal,
         });
 
-        const data = await response.json();
+        let data: unknown;
+        try {
+            data = await response.json();
+        } catch {
+            data = null;
+        }
 
         if (!response.ok) {
-            const error = data as APIError;
+            const error = toApiError(data, response.status);
             throw new ApiError(error.code, error.message, response.status, error.details);
         }
 

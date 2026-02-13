@@ -6,11 +6,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createUserClientFromBearer, createAdminClient } from '@/server/supabase';
+import { createUserClientFromBearer, createAdminClient, getBearerToken } from '@/server/supabase';
 import { createCustomTokenFromSupabase } from '@/server/auth/dual-auth';
 import { createError } from '@/server/errors';
 import { asErrorBody, asStatus, jsonError } from '@/server/api/http';
 import { enforceRateLimit, getClientIp, hashIp, rateLimitAuthKey } from '@/server/rate-limit';
+import { assertAllowedWebOrigin, getAllowedCorsOrigin } from '@/server/security/origin';
 import { z } from 'zod';
 
 // Request schema
@@ -40,9 +41,11 @@ const tokenExchangeRequestSchema = z.object({
  *   }
  */
 export async function POST(req: NextRequest) {
-  const admin = createAdminClient();
-
   try {
+    const admin = createAdminClient();
+    const origin = req.headers.get('origin');
+    await assertAllowedWebOrigin(origin, admin);
+
     // SECURITY: Rate limit by IP address first (before authentication)
     // This prevents brute force attacks on the token exchange endpoint
     const clientIp = getClientIp(req);
@@ -69,19 +72,11 @@ export async function POST(req: NextRequest) {
     const { rememberMe } = parsed.data;
 
     // Authorization header'dan Supabase token'ı al
-    const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
-    if (!authHeader) {
+    const token = getBearerToken(req);
+    if (!token) {
       throw createError({
         code: 'UNAUTHORIZED',
         message: 'Oturum bilgisi bulunamadı.',
-      });
-    }
-
-    const [scheme, token] = authHeader.split(' ');
-    if (scheme?.toLowerCase() !== 'bearer' || !token) {
-      throw createError({
-        code: 'UNAUTHORIZED',
-        message: 'Geçersiz oturum formatı.',
       });
     }
 
@@ -144,12 +139,26 @@ export async function POST(req: NextRequest) {
  *
  * CORS preflight
  */
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
+  const admin = createAdminClient();
+  const allowedOrigin = await getAllowedCorsOrigin(req.headers.get('origin'), admin);
+  if (!allowedOrigin) {
+    return new NextResponse(null, {
+      status: 403,
+      headers: {
+        Vary: 'Origin',
+      },
+    });
+  }
+
   return new NextResponse(null, {
     status: 204,
     headers: {
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+      'Access-Control-Max-Age': '600',
+      Vary: 'Origin',
     },
   });
 }

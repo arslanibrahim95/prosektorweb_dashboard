@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 interface CelebrationProps {
@@ -22,22 +22,32 @@ export function Celebration({
   className,
 }: CelebrationProps) {
   const [active, setActive] = useState(false);
-  const prevTriggerRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const prevTriggerRef = useRef(trigger);
 
-  // Detect trigger transition (false -> true) without useEffect
-  if (trigger && !prevTriggerRef.current) {
-    setActive(true);
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setActive(false), duration);
-  }
-  prevTriggerRef.current = trigger;
+  // Detect trigger transition (false -> true)
+  useEffect(() => {
+    const shouldActivate = trigger && !prevTriggerRef.current;
+    prevTriggerRef.current = trigger;
+
+    if (shouldActivate) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActive(true);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      timerRef.current = setTimeout(() => setActive(false), duration);
+    }
+  }, [trigger, duration]);
 
   // Cleanup on unmount
-  const cleanupRef = useCallback(() => {
-    return () => clearTimeout(timerRef.current);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
   }, []);
-  React.useEffect(cleanupRef, [cleanupRef]);
 
   if (!active) return null;
 

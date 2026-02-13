@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { z } from 'zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { contactMessageSchema } from '@prosektor/contracts';
 import {
   Table,
@@ -28,7 +29,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useSite } from '@/components/site/site-provider';
 import { useAuth } from '@/components/auth/auth-provider';
 import { exportInbox } from '@/features/inbox';
-import { useContacts, useMarkAsRead } from '@/hooks/use-inbox';
+import { inboxKeys, useBulkMarkAsRead, useContacts, useMarkAsRead } from '@/hooks/use-inbox';
 import { toast } from 'sonner';
 import { formatRelativeTime, formatDate } from '@/lib/format';
 import { downloadBlob } from '@/lib/download';
@@ -47,6 +48,7 @@ export default function ContactInboxPage() {
   const [currentPage, setCurrentPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [dateRange, setDateRange] = useState<{ from: string; to: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
 
   // Debounce search
   useEffect(() => {
@@ -63,13 +65,35 @@ export default function ContactInboxPage() {
   }, [debouncedSearch]);
 
   // React Query hooks
+  const knownTotal = useMemo(() => {
+    const keyRoot = inboxKeys.contactsBase(site.currentSiteId ?? '');
+    const cached = queryClient.getQueriesData<{ total: number }>({ queryKey: keyRoot });
+    const totals = cached
+      .map(([queryKey, value]) => {
+        const filters = (queryKey as unknown[])[4] as { search?: string } | undefined;
+        if (filters?.search !== searchForApi) return undefined;
+        return typeof value?.total === 'number' ? value.total : undefined;
+      })
+      .filter((value): value is number => typeof value === 'number');
+
+    return totals.length > 0 ? Math.max(...totals) : 0;
+  }, [queryClient, searchForApi, site.currentSiteId]);
+  const knownTotalPages = Math.max(
+    PAGINATION.DEFAULT_PAGE,
+    Math.ceil(knownTotal / PAGINATION.DEFAULT_LIMIT),
+  );
+  const effectivePage = useMemo(
+    () => Math.min(Math.max(PAGINATION.DEFAULT_PAGE, currentPage), knownTotalPages),
+    [currentPage, knownTotalPages],
+  );
   const { data, isLoading } = useContacts(site.currentSiteId, {
     search: searchForApi,
-    page: currentPage,
+    page: effectivePage,
   });
   const markAsReadMutation = useMarkAsRead('contact', site.currentSiteId);
+  const bulkMarkAsReadMutation = useBulkMarkAsRead('contact', site.currentSiteId);
 
-  const contactMessages = data?.items ?? [];
+  const contactMessages = useMemo(() => data?.items ?? [], [data?.items]);
   const total = data?.total ?? 0;
 
   const unreadCount = useMemo(
@@ -104,13 +128,16 @@ export default function ContactInboxPage() {
       return;
     }
     try {
-      await Promise.all(unreadSelected.map((m) => markAsReadMutation.mutateAsync({ id: m.id })));
-      toast.success(`${unreadSelected.length} öge okundu olarak işaretlendi`);
+      const result = await bulkMarkAsReadMutation.mutateAsync({
+        ids: unreadSelected.map((message) => message.id),
+      });
+      const updated = result.updated ?? unreadSelected.length;
+      toast.success(`${updated} öge okundu olarak işaretlendi`);
       setSelectedIds(new Set());
     } catch {
       toast.error('Toplu işlem başarısız');
     }
-  }, [contactMessages, selectedIds, markAsReadMutation]);
+  }, [contactMessages, selectedIds, bulkMarkAsReadMutation]);
 
   const handleBulkExport = useCallback(async () => {
     if (!site.currentSiteId) return;
@@ -132,12 +159,10 @@ export default function ContactInboxPage() {
     () => Math.max(1, Math.ceil(total / PAGINATION.DEFAULT_LIMIT)),
     [total],
   );
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  const displayPage = useMemo(
+    () => Math.min(effectivePage, totalPages),
+    [effectivePage, totalPages],
+  );
 
   if (isLoading && contactMessages.length === 0) {
     return (
@@ -159,20 +184,7 @@ export default function ContactInboxPage() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={async () => {
-              if (!site.currentSiteId) return;
-              try {
-                const blob = await exportInbox(
-                  'contact',
-                  { search: searchForApi, status: 'all' },
-                  { accessToken: auth.accessToken ?? undefined, siteId: site.currentSiteId },
-                );
-                const today = new Date().toISOString().slice(0, 10);
-                downloadBlob(blob, `contact_${today}.csv`);
-              } catch (err) {
-                toast.error(err instanceof Error ? err.message : 'Export failed');
-              }
-            }}
+            onClick={() => void handleBulkExport()}
           >
             <Download className="mr-2 h-4 w-4" />
             Dışa Aktar
@@ -300,19 +312,19 @@ export default function ContactInboxPage() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={currentPage <= 1 || isLoading}
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={displayPage <= 1 || isLoading}
+                onClick={() => setCurrentPage(Math.max(1, displayPage - 1))}
               >
                 Önceki
               </Button>
               <span>
-                Sayfa {currentPage} / {totalPages}
+                Sayfa {displayPage} / {totalPages}
               </span>
               <Button
                 size="sm"
                 variant="outline"
-                disabled={currentPage >= totalPages || isLoading}
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={displayPage >= totalPages || isLoading}
+                onClick={() => setCurrentPage(Math.min(totalPages, displayPage + 1))}
               >
                 Sonraki
               </Button>

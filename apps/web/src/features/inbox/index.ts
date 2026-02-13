@@ -84,18 +84,20 @@ export async function exportInbox(
     if (!options?.siteId) {
         throw new Error('site_id is required for export');
     }
+    if (!options?.accessToken) {
+        throw new Error('access token is required for export');
+    }
     const params = buildInboxParams(filters, { page: 1, limit: CSV_EXPORT.LIMIT });
     params.set('site_id', options.siteId);
     params.set('format', 'csv');
 
-    const headers: Record<string, string> = {};
-    if (options?.accessToken) {
-        headers.Authorization = `Bearer ${options.accessToken}`;
-    }
+    const headers: Record<string, string> = {
+        Authorization: `Bearer ${options.accessToken}`,
+    };
 
     const response = await fetch(`/api/inbox/${endpoint}/export?${params}`, {
-        credentials: 'include',
-        headers: Object.keys(headers).length > 0 ? headers : undefined,
+        credentials: 'omit',
+        headers,
     });
 
     if (!response.ok) {

@@ -12,7 +12,7 @@ test.describe('E2E-OFFER: Offer Form Flow', () => {
         await page.goto('/teklif-al'); // Public offer form page
 
         await page.fill('[data-testid="offer-name"]', 'E2E Offer User');
-        await page.fill('[data-testid="offer-email"]', 'offer@test.com');
+        await page.fill('[data-testid="offer-email"]', 'offer@prosektorweb.com');
         await page.fill('[data-testid="offer-phone"]', '5559876543');
         await page.fill('[data-testid="offer-company"]', 'E2E Test Company');
         await page.fill('[data-testid="offer-message"]', 'E2E test offer message');
@@ -27,7 +27,7 @@ test.describe('E2E-OFFER: Offer Form Flow', () => {
 
         // Step 2: Login and check inbox
         await page.goto('/login');
-        await page.fill('[data-testid="email-input"]', 'owner@tenant-a.test');
+        await page.fill('[data-testid="email-input"]', 'owner@prosektorweb.com');
         await page.fill('[data-testid="password-input"]', 'test-password');
         await page.click('[data-testid="login-button"]');
         await page.waitForURL('/home');
@@ -48,7 +48,7 @@ test.describe('E2E-OFFER: Offer Form Flow', () => {
     test('should mark offer as read', async ({ page }) => {
         // Login first
         await page.goto('/login');
-        await page.fill('[data-testid="email-input"]', 'owner@tenant-a.test');
+        await page.fill('[data-testid="email-input"]', 'owner@prosektorweb.com');
         await page.fill('[data-testid="password-input"]', 'test-password');
         await page.click('[data-testid="login-button"]');
 

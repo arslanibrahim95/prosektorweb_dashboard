@@ -1,0 +1,24 @@
+
+> api@0.1.0 test /Users/root9581/Desktop/prosektorweb_dashboard/apps/api
+> vitest run "tests/webhooks/publish.test.ts"
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v1.6.1 /Users/root9581/Desktop/prosektorweb_dashboard/apps/api
+
+ ❯ tests/webhooks/publish.test.ts  (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/webhooks/publish.test.ts [ tests/webhooks/publish.test.ts ]
+Error: Failed to load url ./publish (resolved id: ./publish) in /Users/root9581/Desktop/prosektorweb_dashboard/apps/api/tests/webhooks/publish.test.ts. Does the file exist?
+ ❯ loadAndTransform ../../node_modules/.pnpm/vite@5.4.21_@types+node@20.19.33_lightningcss@1.30.2/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51969:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  22:21:11
+   Duration  182ms (transform 16ms, setup 0ms, collect 0ms, tests 0ms, environment 0ms, prepare 41ms)
+
+ ELIFECYCLE  Test failed. See above for more details.

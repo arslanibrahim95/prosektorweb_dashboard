@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   offerModuleSettingsSchema,
 } from '@prosektor/contracts';
@@ -25,15 +25,26 @@ import { useSite } from '@/components/site/site-provider';
 import { cn } from '@/lib/utils';
 import { useModules, useKvkkTexts, useSaveModule } from '@/hooks/use-modules';
 
+interface OfferFormState {
+  isEnabled: boolean;
+  recipientEmails: string[];
+  successMessage: string;
+  selectedKvkkId: string;
+}
+
+const EMPTY_OFFER_FORM: OfferFormState = {
+  isEnabled: false,
+  recipientEmails: [],
+  successMessage: '',
+  selectedKvkkId: '',
+};
+
 export default function OfferModulePage() {
   const site = useSite();
   const siteId = site.currentSiteId;
 
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [recipientEmails, setRecipientEmails] = useState<string[]>([]);
   const [newEmail, setNewEmail] = useState('');
-  const [successMessage, setSuccessMessage] = useState<string>('');
-  const [selectedKvkkId, setSelectedKvkkId] = useState<string>('');
+  const [draftBySite, setDraftBySite] = useState<Record<string, Partial<OfferFormState>>>({});
 
   const { data: modules, isLoading: modulesLoading } = useModules(siteId);
   const { data: kvkkData, isLoading: kvkkLoading } = useKvkkTexts();
@@ -42,58 +53,107 @@ export default function OfferModulePage() {
   const isLoading = modulesLoading || kvkkLoading;
   const kvkkTexts = kvkkData?.items ?? [];
 
-  // Sync module data into form state
-  useEffect(() => {
-    if (!modules) return;
-    const offer = modules.find(
-      (m) => m.module_key === 'offer',
-    );
-    if (offer) {
-      setIsEnabled(Boolean(offer.enabled));
-      const parsed = offerModuleSettingsSchema.safeParse(offer.settings ?? {});
-      if (parsed.success) {
-        setRecipientEmails(parsed.data.recipients ?? []);
-        setSuccessMessage(parsed.data.success_message ?? '');
-        setSelectedKvkkId(parsed.data.kvkk_legal_text_id ?? '');
-      }
+  const serverForm = useMemo<OfferFormState>(() => {
+    const offerModule = modules?.find((module) => module.module_key === 'offer');
+    if (!offerModule) {
+      return EMPTY_OFFER_FORM;
     }
+
+    const parsed = offerModuleSettingsSchema.safeParse(offerModule.settings ?? {});
+    if (!parsed.success) {
+      return {
+        ...EMPTY_OFFER_FORM,
+        isEnabled: Boolean(offerModule.enabled),
+      };
+    }
+
+    return {
+      isEnabled: Boolean(offerModule.enabled),
+      recipientEmails: parsed.data.recipients ?? [],
+      successMessage: parsed.data.success_message ?? '',
+      selectedKvkkId: parsed.data.kvkk_legal_text_id ?? '',
+    };
   }, [modules]);
 
-  const handleAddEmail = () => {
-    const trimmed = newEmail.trim();
-    if (trimmed && trimmed.includes('@')) {
-      setRecipientEmails([...recipientEmails, trimmed]);
-      setNewEmail('');
-    }
-  };
+  const activeDraft = siteId ? draftBySite[siteId] : undefined;
 
-  const handleRemoveEmail = (email: string) => {
-    setRecipientEmails(recipientEmails.filter((e) => e !== email));
-  };
+  const formState = useMemo<OfferFormState>(() => {
+    return {
+      isEnabled: activeDraft?.isEnabled ?? serverForm.isEnabled,
+      recipientEmails: activeDraft?.recipientEmails ?? serverForm.recipientEmails,
+      successMessage: activeDraft?.successMessage ?? serverForm.successMessage,
+      selectedKvkkId: activeDraft?.selectedKvkkId ?? serverForm.selectedKvkkId,
+    };
+  }, [activeDraft, serverForm]);
+
+  const hasDraftChanges = Boolean(siteId && activeDraft);
+
+  const updateDraft = useCallback(<K extends keyof OfferFormState>(key: K, value: OfferFormState[K]) => {
+    if (!siteId) return;
+
+    setDraftBySite((prev) => ({
+      ...prev,
+      [siteId]: {
+        ...(prev[siteId] ?? {}),
+        [key]: value,
+      },
+    }));
+  }, [siteId]);
+
+  const clearDraft = useCallback(() => {
+    if (!siteId) return;
+
+    setDraftBySite((prev) => {
+      if (!prev[siteId]) return prev;
+      const next = { ...prev };
+      delete next[siteId];
+      return next;
+    });
+  }, [siteId]);
+
+  const handleAddEmail = useCallback(() => {
+    const trimmed = newEmail.trim();
+    if (!trimmed || !trimmed.includes('@') || formState.recipientEmails.includes(trimmed)) {
+      return;
+    }
+
+    updateDraft('recipientEmails', [...formState.recipientEmails, trimmed]);
+    setNewEmail('');
+  }, [formState.recipientEmails, newEmail, updateDraft]);
+
+  const handleRemoveEmail = useCallback((email: string) => {
+    updateDraft(
+      'recipientEmails',
+      formState.recipientEmails.filter((item) => item !== email),
+    );
+  }, [formState.recipientEmails, updateDraft]);
 
   const unreadNote = useMemo(() => {
-    if (!selectedKvkkId) return 'KVKK metni seçilmedi';
-    const text = kvkkTexts.find((t) => t.id === selectedKvkkId);
+    if (!formState.selectedKvkkId) return 'KVKK metni seçilmedi';
+    const text = kvkkTexts.find((item) => item.id === formState.selectedKvkkId);
     return text ? `Seçilen: ${text.title}` : 'KVKK metni bulunamadı';
-  }, [kvkkTexts, selectedKvkkId]);
+  }, [formState.selectedKvkkId, kvkkTexts]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     saveMutation.mutate(
       {
         module_key: 'offer',
-        enabled: isEnabled,
+        enabled: formState.isEnabled,
         settings: {
-          recipients: recipientEmails,
-          success_message: successMessage || undefined,
-          kvkk_legal_text_id: selectedKvkkId || undefined,
+          recipients: formState.recipientEmails,
+          success_message: formState.successMessage || undefined,
+          kvkk_legal_text_id: formState.selectedKvkkId || undefined,
         },
       },
       {
-        onSuccess: () => toast.success('Ayarlar kaydedildi'),
+        onSuccess: () => {
+          toast.success('Ayarlar kaydedildi');
+          clearDraft();
+        },
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Kaydedilemedi'),
       },
     );
-  };
+  }, [clearDraft, formState, saveMutation]);
 
   return (
     <div className={cn('dashboard-page', 'dashboard-page-narrow', 'stagger-children')}>
@@ -122,7 +182,11 @@ export default function OfferModulePage() {
                 Devre dışı bırakırsanız ziyaretçiler form göremez
               </p>
             </div>
-            <Switch checked={isEnabled} onCheckedChange={setIsEnabled} disabled={isLoading || saveMutation.isPending} />
+            <Switch
+              checked={formState.isEnabled}
+              onCheckedChange={(value) => updateDraft('isEnabled', value)}
+              disabled={isLoading || saveMutation.isPending}
+            />
           </div>
         </CardContent>
       </Card>
@@ -140,7 +204,7 @@ export default function OfferModulePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
-            {recipientEmails.map((email) => (
+            {formState.recipientEmails.map((email) => (
               <Badge
                 key={email}
                 variant="secondary"
@@ -186,8 +250,8 @@ export default function OfferModulePage() {
         </CardHeader>
         <CardContent>
           <Textarea
-            value={successMessage}
-            onChange={(e) => setSuccessMessage(e.target.value)}
+            value={formState.successMessage}
+            onChange={(e) => updateDraft('successMessage', e.target.value)}
             rows={3}
             className="bg-muted/50 border-transparent focus:border-ring focus:bg-background transition-all duration-200 resize-none"
             disabled={isLoading || saveMutation.isPending}
@@ -207,7 +271,11 @@ export default function OfferModulePage() {
           <CardDescription>Formda gösterilecek yasal onay metni</CardDescription>
         </CardHeader>
         <CardContent>
-          <Select value={selectedKvkkId || '__none__'} onValueChange={(v) => setSelectedKvkkId(v === '__none__' ? '' : v)} disabled={isLoading || saveMutation.isPending}>
+          <Select
+            value={formState.selectedKvkkId || '__none__'}
+            onValueChange={(value) => updateDraft('selectedKvkkId', value === '__none__' ? '' : value)}
+            disabled={isLoading || saveMutation.isPending}
+          >
             <SelectTrigger className="bg-muted/50 border-transparent focus:border-ring">
               <SelectValue placeholder="KVKK metni seçin" />
             </SelectTrigger>
@@ -231,7 +299,16 @@ export default function OfferModulePage() {
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-end pb-4">
+      <div className="flex justify-end gap-2 pb-4">
+        {hasDraftChanges && (
+          <Button
+            variant="ghost"
+            onClick={clearDraft}
+            disabled={isLoading || saveMutation.isPending}
+          >
+            Sıfırla
+          </Button>
+        )}
         <ActionButton
           onClick={handleSave}
           disabled={isLoading || !siteId}

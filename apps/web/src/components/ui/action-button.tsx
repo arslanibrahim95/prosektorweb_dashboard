@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -9,7 +9,7 @@ import { buttonVariants } from '@/components/ui/button';
 
 interface ActionButtonProps
   extends React.ComponentProps<'button'>,
-    VariantProps<typeof buttonVariants> {
+  VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isLoading?: boolean;
   isSuccess?: boolean;
@@ -30,23 +30,32 @@ export function ActionButton({
   ...props
 }: ActionButtonProps) {
   const [showSuccess, setShowSuccess] = useState(false);
-  const prevSuccessRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const prevIsSuccessRef = useRef(isSuccess);
 
-  // Detect isSuccess transition (false -> true) without useEffect
-  if (isSuccess && !prevSuccessRef.current) {
-    setShowSuccess(true);
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setShowSuccess(false), successDuration);
-  }
-  prevSuccessRef.current = isSuccess;
+  // Detect isSuccess transition (false -> true)
+  useEffect(() => {
+    const shouldShowSuccess = isSuccess && !prevIsSuccessRef.current;
+    prevIsSuccessRef.current = isSuccess;
+
+    if (shouldShowSuccess) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowSuccess(true);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      timerRef.current = setTimeout(() => setShowSuccess(false), successDuration);
+    }
+  }, [isSuccess, successDuration]);
 
   // Cleanup on unmount
-  const cleanupRef = useCallback(() => {
-    return () => clearTimeout(timerRef.current);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
   }, []);
-  // Store cleanup ref for React to call
-  React.useEffect(cleanupRef, [cleanupRef]);
 
   return (
     <Button

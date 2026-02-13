@@ -18,6 +18,8 @@ import {
     listOfferRequestsResponseSchema,
     listContactMessagesResponseSchema,
     listJobApplicationsResponseSchema,
+    bulkMarkReadRequestSchema,
+    bulkMarkReadResponseSchema,
     // Public submit
     publicOfferSubmitSchema,
     publicContactSubmitSchema,
@@ -35,9 +37,9 @@ describe('Contract Tests: Auth Schemas', () => {
             const validPayload = {
                 user: {
                     id: '123e4567-e89b-42d3-a456-426614174000',
-                    email: 'test@example.com',
+                    email: 'test@prosektorweb.com',
                     name: 'Test User',
-                    avatar_url: 'https://example.com/avatar.jpg', // Optional, not null
+                    avatar_url: 'https://prosektorweb.com/avatar.jpg', // Optional, not null
                 },
                 tenant: {
                     id: '123e4567-e89b-42d3-a456-426614174001',
@@ -54,7 +56,7 @@ describe('Contract Tests: Auth Schemas', () => {
 
         it('rejects invalid role', () => {
             const invalidPayload = {
-                user: { id: '123e4567-e89b-42d3-a456-426614174000', email: 'test@test.com', name: 'Test' },
+                user: { id: '123e4567-e89b-42d3-a456-426614174000', email: 'test@prosektorweb.com', name: 'Test' },
                 tenant: { id: '123e4567-e89b-42d3-a456-426614174001', name: 'Tenant', slug: 'slug', plan: 'pro' },
                 role: 'invalid_role',
                 permissions: [],
@@ -73,7 +75,7 @@ describe('Contract Tests: Inbox Schemas', () => {
                 tenant_id: '123e4567-e89b-12d3-a456-426614174001',
                 site_id: '123e4567-e89b-12d3-a456-426614174002',
                 full_name: 'Test User',
-                email: 'test@example.com',
+                email: 'test@prosektorweb.com',
                 phone: '5551234567',
                 company_name: 'Test Co',
                 message: 'Test message',
@@ -91,7 +93,7 @@ describe('Contract Tests: Inbox Schemas', () => {
                 // missing tenant_id
                 site_id: '123e4567-e89b-12d3-a456-426614174002',
                 full_name: 'Test User',
-                email: 'test@example.com',
+                email: 'test@prosektorweb.com',
                 phone: '5551234567',
                 kvkk_accepted_at: '2024-01-01T00:00:00Z',
                 is_read: false,
@@ -109,7 +111,7 @@ describe('Contract Tests: Inbox Schemas', () => {
                 tenant_id: '123e4567-e89b-12d3-a456-426614174001',
                 site_id: '123e4567-e89b-12d3-a456-426614174002',
                 full_name: 'Test User',
-                email: 'test@example.com',
+                email: 'test@prosektorweb.com',
                 phone: '5551234567',
                 subject: 'Test Subject',
                 message: 'Test message content',
@@ -130,7 +132,7 @@ describe('Contract Tests: Inbox Schemas', () => {
                 site_id: '123e4567-e89b-12d3-a456-426614174002',
                 job_post_id: '123e4567-e89b-12d3-a456-426614174003',
                 full_name: 'Test User',
-                email: 'test@example.com',
+                email: 'test@prosektorweb.com',
                 phone: '5551234567',
                 message: null,
                 cv_path: '/cv/test.pdf',
@@ -142,6 +144,26 @@ describe('Contract Tests: Inbox Schemas', () => {
             expect(() => jobApplicationSchema.parse(valid)).not.toThrow();
         });
     });
+
+    describe('bulk mark-read schemas', () => {
+        it('accepts valid bulk mark-read request', () => {
+            const valid = {
+                ids: [
+                    '123e4567-e89b-42d3-a456-426614174000',
+                    '123e4567-e89b-42d3-a456-426614174001',
+                ],
+            };
+            expect(() => bulkMarkReadRequestSchema.parse(valid)).not.toThrow();
+        });
+
+        it('rejects empty ids list', () => {
+            expect(() => bulkMarkReadRequestSchema.parse({ ids: [] })).toThrow();
+        });
+
+        it('accepts valid bulk mark-read response', () => {
+            expect(() => bulkMarkReadResponseSchema.parse({ updated: 3 })).not.toThrow();
+        });
+    });
 });
 
 describe('Contract Tests: Public Form Schemas', () => {
@@ -150,7 +172,7 @@ describe('Contract Tests: Public Form Schemas', () => {
             const withoutKvkk = {
                 site_token: 'test-token',
                 full_name: 'Test',
-                email: 'test@test.com',
+                email: 'test@prosektorweb.com',
                 phone: '5551234567',
                 kvkk_consent: false,
                 honeypot: '',
@@ -163,7 +185,7 @@ describe('Contract Tests: Public Form Schemas', () => {
             const filledHoneypot = {
                 site_token: 'test-token',
                 full_name: 'Test',
-                email: 'test@test.com',
+                email: 'test@prosektorweb.com',
                 phone: '5551234567',
                 kvkk_consent: true,
                 honeypot: 'spam bot text',
@@ -178,7 +200,7 @@ describe('Contract Tests: Public Form Schemas', () => {
             const noMessage = {
                 site_token: 'test-token',
                 full_name: 'Test',
-                email: 'test@test.com',
+                email: 'test@prosektorweb.com',
                 phone: '5551234567',
                 message: '',
                 kvkk_consent: true,
@@ -195,7 +217,7 @@ describe('Contract Tests: Public Form Schemas', () => {
                 site_token: 'test-token',
                 job_post_id: 'not-a-uuid',
                 full_name: 'Test',
-                email: 'test@test.com',
+                email: 'test@prosektorweb.com',
                 phone: '5551234567',
                 kvkk_consent: true,
                 honeypot: '',

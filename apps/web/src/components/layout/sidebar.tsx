@@ -24,6 +24,7 @@ import {
     Sparkles,
     PanelLeftClose,
     PanelLeftOpen,
+    Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,6 +33,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { useSite } from '@/components/site/site-provider';
 import { useUnreadCount } from '@/hooks/use-unread-count';
+import { useAuth } from '@/components/auth/auth-provider';
 
 export interface NavItem {
     label: string;
@@ -250,6 +252,11 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
     const { isOpen } = useSidebar();
     const site = useSite();
     const { data: unreadCount = 0 } = useUnreadCount(site.currentSiteId);
+    const auth = useAuth();
+
+    // Check if user has admin or owner role
+    const userRole = auth.me?.role;
+    const isAdmin = userRole === 'owner' || userRole === 'admin';
 
     return (
         <TooltipProvider>
@@ -287,6 +294,27 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
                             <NavItemComponent key={item.href} item={item} collapsed={collapsed} unreadCount={unreadCount} />
                         ))}
                     </nav>
+
+                    {/* Admin Panel Link - Only visible to owner/admin */}
+                    {isAdmin && (
+                        <>
+                            {/* Separator before admin link */}
+                            <div className="my-4 mx-1 h-px bg-white/[0.06]" />
+
+                            <nav className="space-y-1">
+                                <NavItemComponent
+                                    key="/admin"
+                                    item={{
+                                        label: 'Yönetici Paneli',
+                                        href: '/admin',
+                                        icon: <Shield className={NAV_ICON_SIZE_CLASS} />,
+                                    }}
+                                    collapsed={collapsed}
+                                    unreadCount={0}
+                                />
+                            </nav>
+                        </>
+                    )}
 
                     {/* Bottom section */}
                     <div className={cn(

@@ -38,7 +38,7 @@ describe('Public Forms: Zod Schema Validation', () => {
             const result = publicOfferSubmitSchema.safeParse(invalidOfferMissingEmail);
             expect(result.success).toBe(false);
             if (!result.success) {
-                expect(result.error.issues.some((i: { path: string[] }) => i.path.includes('email'))).toBe(true);
+                expect(result.error.issues.some((i: { path: PropertyKey[] }) => i.path.includes('email'))).toBe(true);
             }
         });
     });
@@ -48,7 +48,7 @@ describe('Public Forms: Zod Schema Validation', () => {
             const result = publicOfferSubmitSchema.safeParse(invalidOfferMissingPhone);
             expect(result.success).toBe(false);
             if (!result.success) {
-                expect(result.error.issues.some((i: { path: string[] }) => i.path.includes('phone'))).toBe(true);
+                expect(result.error.issues.some((i: { path: PropertyKey[] }) => i.path.includes('phone'))).toBe(true);
             }
         });
     });
@@ -58,7 +58,7 @@ describe('Public Forms: Zod Schema Validation', () => {
             const result = publicOfferSubmitSchema.safeParse(invalidOfferNoKvkk);
             expect(result.success).toBe(false);
             if (!result.success) {
-                expect(result.error.issues.some((i: { path: string[] }) => i.path.includes('kvkk_consent'))).toBe(true);
+                expect(result.error.issues.some((i: { path: PropertyKey[] }) => i.path.includes('kvkk_consent'))).toBe(true);
             }
         });
     });
@@ -101,7 +101,7 @@ describe('Public Forms: Spam Protection', () => {
             // Honeypot schema requires max 0 length
             expect(result.success).toBe(false);
             if (!result.success) {
-                expect(result.error.issues.some((i: { path: string[] }) => i.path.includes('honeypot'))).toBe(true);
+                expect(result.error.issues.some((i: { path: PropertyKey[] }) => i.path.includes('honeypot'))).toBe(true);
             }
         });
 

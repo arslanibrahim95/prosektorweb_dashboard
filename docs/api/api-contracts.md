@@ -207,6 +207,18 @@ CSV export constraints:
 Request: `markReadRequestSchema` (`/packages/contracts/inbox.ts`)  
 Response: `jobApplicationSchema` (`/packages/contracts/inbox.ts`)
 
+### `POST /api/inbox/offers/bulk-read` (auth required)
+### `POST /api/inbox/contact/bulk-read` (auth required)
+### `POST /api/inbox/applications/bulk-read` (auth required)
+
+Request: `bulkMarkReadRequestSchema` (`/packages/contracts/inbox.ts`)  
+Response: `bulkMarkReadResponseSchema` (`/packages/contracts/inbox.ts`)
+
+Notes:
+- `ids` array is required and must be non-empty.
+- Updates are tenant-scoped on server side.
+- Response includes `{ updated }` count for affected rows.
+
 ### `GET /api/job-applications/:id/cv-url` (auth required)
 
 Returns a short-lived signed URL for a CV.  
