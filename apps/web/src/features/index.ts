@@ -5,5 +5,4 @@
  */
 
 export * from './inbox';
-export * from './hr';
 export * from './builder';

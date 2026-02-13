@@ -1,4 +1,9 @@
 @theme {
+    /* Font Families */
+    --font-family-heading: var(--font-heading);
+    --font-family-body: var(--font-body);
+    --font-family-mono: var(--font-mono);
+
     /* Colors */
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -58,9 +63,27 @@
     --radius-xl: var(--radius-xl);
     --radius-full: var(--radius-full);
 
-    /* Animations (Optional - if custom) */
+    /* Shadows */
+    --shadow-xs: var(--shadow-xs);
+    --shadow-sm: var(--shadow-sm);
+    --shadow-md: var(--shadow-md);
+    --shadow-lg: var(--shadow-lg);
+    --shadow-xl: var(--shadow-xl);
+    --shadow-2xl: var(--shadow-2xl);
+
+    /* Animation Easings */
+    --ease-spring: var(--ease-spring);
+    --ease-smooth: var(--ease-smooth);
+    --ease-bounce: var(--ease-bounce);
+
+    /* Animations */
     --animate-accordion-down: accordion-down 0.2s ease-out;
     --animate-accordion-up: accordion-up 0.2s ease-out;
+    --animate-fade-in: fade-in 0.3s var(--ease-smooth) forwards;
+    --animate-slide-up: slide-up-fade 0.4s var(--ease-smooth) forwards;
+    --animate-scale-in: scale-in 0.2s var(--ease-spring) forwards;
+    --animate-shimmer: shimmer 2s linear infinite;
+    --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
 
     @keyframes accordion-down {
         from {
@@ -80,5 +103,101 @@
         to {
             height: 0
         }
+    }
+
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes page-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slide-up-fade {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes scale-in {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes shimmer {
+        0% {
+            background-position: -200% 0;
+        }
+
+        100% {
+            background-position: 200% 0;
+        }
+    }
+
+    @keyframes pulse-soft {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.6;
+        }
+    }
+
+    @keyframes expand-width {
+        from {
+            width: 0%;
+        }
+
+        to {
+            width: var(--target-width, 100%);
+        }
+    }
+
+    /* Container Query Breakpoints */
+    --breakpoint-xs: 20rem;
+    --breakpoint-sm: 24rem;
+    --breakpoint-md: 28rem;
+    --breakpoint-lg: 32rem;
+    --breakpoint-xl: 36rem;
+    --breakpoint-2xl: 42rem;
+}
+
+/* View Transitions API Support */
+@supports (view-transition-name: none) {
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation-duration: 0.3s;
+        animation-timing-function: var(--ease-smooth);
     }
 }

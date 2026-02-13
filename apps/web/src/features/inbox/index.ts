@@ -5,6 +5,9 @@
  * (Offers, Contact, Applications)
  */
 
+import { CSV_EXPORT, SEARCH_MIN_CHARS } from '@/lib/constants';
+import { api } from '@/server/api';
+
 export type InboxItemStatus = 'unread' | 'read' | 'archived';
 
 export interface InboxFilters {
@@ -14,10 +17,22 @@ export interface InboxFilters {
     dateTo?: string;
 }
 
-export interface InboxPagination {
-    page: number;
-    limit: number;
-    total: number;
+export function normalizeInboxSearch(query: string): string | undefined {
+    const normalized = query.trim();
+    if (normalized.length < SEARCH_MIN_CHARS) {
+        return undefined;
+    }
+    return normalized;
+}
+
+export function calculateTotalPages(total: number, limit: number): number {
+    if (!Number.isFinite(total) || total <= 0) {
+        return 1;
+    }
+    if (!Number.isFinite(limit) || limit <= 0) {
+        return 1;
+    }
+    return Math.max(1, Math.ceil(total / limit));
 }
 
 /**
@@ -49,18 +64,13 @@ export function buildInboxParams(
 }
 
 /**
- * Mark item as read
+ * Mark item as read — uses API client for consistent auth handling
  */
 export async function markAsRead(
     endpoint: 'offers' | 'contact' | 'applications',
     id: string,
-    accessToken?: string
 ): Promise<void> {
-    await fetch(`/api/inbox/${endpoint}/${id}/read`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-    });
+    await api.post(`/inbox/${endpoint}/${id}/read`);
 }
 
 /**
@@ -71,19 +81,24 @@ export async function exportInbox(
     filters: InboxFilters,
     options?: { accessToken?: string; siteId?: string }
 ): Promise<Blob> {
-    const params = buildInboxParams(filters, { page: 1, limit: 10000 });
-    if (options?.siteId) {
-        params.set('site_id', options.siteId);
+    if (!options?.siteId) {
+        throw new Error('site_id is required for export');
     }
+    const params = buildInboxParams(filters, { page: 1, limit: CSV_EXPORT.LIMIT });
+    params.set('site_id', options.siteId);
     params.set('format', 'csv');
+
+    const headers: Record<string, string> = {};
+    if (options?.accessToken) {
+        headers.Authorization = `Bearer ${options.accessToken}`;
+    }
 
     const response = await fetch(`/api/inbox/${endpoint}/export?${params}`, {
         credentials: 'include',
-        headers: options?.accessToken ? { Authorization: `Bearer ${options.accessToken}` } : undefined,
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
     });
 
     if (!response.ok) {
-        // Best-effort error extraction (export endpoints should return standard JSON errors).
         const contentType = response.headers.get('content-type') ?? '';
         const payload = contentType.includes('application/json')
             ? await response.json()

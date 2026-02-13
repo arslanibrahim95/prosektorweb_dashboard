@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -14,8 +14,9 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@prosektor/contracts": "file:../../packages/contracts",
-    "@prosektorweb/design-tokens": "file:../../packages/design-tokens",
+    "@prosektor/contracts": "workspace:*",
+    "@prosektorweb/design-tokens": "workspace:*",
+    "@prosektorweb/shared": "workspace:*",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.57.0",
     "@tanstack/react-query": "^5.90.20",
@@ -36,7 +37,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
-    "@prosektorweb/testing": "file:../../packages/testing",
+    "@prosektorweb/testing": "workspace:*",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -1,0 +1,29 @@
+{
+  "name": "prosektorweb_dashboard",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter web --filter api dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "build": "pnpm -r --filter web --filter api build",
+    "lint": "pnpm -r --filter web --filter api lint",
+    "test:contracts": "pnpm --filter @prosektor/contracts test",
+    "test:api": "pnpm --filter api test",
+    "test:db": "pnpm --filter @prosektorweb/testing test:db",
+    "test:web": "pnpm --filter web test",
+    "test:e2e": "pnpm --filter web test:e2e",
+    "security:audit": "pnpm audit --audit-level=moderate",
+    "security:gitleaks": "docker run --rm -v \"$(pwd):/repo\" -w /repo zricethezav/gitleaks:latest detect --no-banner --redact",
+    "security:semgrep": "docker run --rm -v \"$(pwd):/src\" -w /src returntocorp/semgrep:latest semgrep scan --config p/ci --exclude node_modules --exclude .next --exclude dist --exclude build --exclude out --timeout 120 --max-target-bytes 2000000",
+    "security:all": "pnpm security:audit && pnpm security:gitleaks && pnpm security:semgrep"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.27.3"
+    }
+  }
+}

@@ -21,7 +21,7 @@ import {
     invalidOfferNoKvkk,
     invalidOfferHoneypotFilled,
     invalidOfferMissingPhone,
-} from '../../packages/testing/fixtures/payloads';
+} from '@prosektorweb/testing/fixtures/payloads';
 import {
     publicOfferSubmitSchema,
     publicContactSubmitSchema,

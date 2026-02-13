@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { users, tenants, offerRequests } from '../../packages/testing/fixtures/seed';
+import { users, tenants, offerRequests } from '@prosektorweb/testing/fixtures/seed';
 import {
     offerRequestSchema,
     contactMessageSchema,

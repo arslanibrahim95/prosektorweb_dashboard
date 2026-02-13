@@ -1,0 +1,12 @@
+# Test fixtures and example secrets (not real secrets)
+75a004e71789849681cf8f7b4ec8715ebbfb5e72:packages/testing/db/supabase-test-client.ts:jwt:13
+75a004e71789849681cf8f7b4ec8715ebbfb5e72:packages/testing/db/supabase-test-client.ts:jwt:14
+
+# Example environment files (template secrets, not real)
+.env.example:SITE_TOKEN_SECRET
+.env.example:CUSTOM_JWT_SECRET
+apps/api/.env.example:SITE_TOKEN_SECRET
+apps/api/.env.example:CUSTOM_JWT_SECRET
+
+# Test files with mock secrets
+apps/api/tests/api/auth-security.test.ts:*

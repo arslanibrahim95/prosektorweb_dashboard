@@ -20,6 +20,11 @@ Gerekli env:
 
 - `SITE_TOKEN_SECRET` (server-only)
 
+Token uretimi (Dashboard / authenticated):
+
+- `GET /api/sites/:id/site-token` endpoint'i `site_token` dondurur.
+- Frontend bu token'i public formlara (website tarafina) embed eder.
+
 ## Public Submit Endpoint'leri
 
 ### Offer
@@ -80,9 +85,24 @@ Notlar:
 
 ## Inbox Endpoint'leri (Tenant)
 
-- `GET /api/inbox/offers?site_id=...`
-- `GET /api/inbox/contact?site_id=...`
-- `GET /api/inbox/hr-applications?site_id=...&job_post_id=...`
+- `GET /api/inbox/offers?site_id=...&page=...&limit=...&search=...`
+- `GET /api/inbox/contact?site_id=...&page=...&limit=...&search=...`
+- `GET /api/inbox/hr-applications?site_id=...&job_post_id=...&page=...&limit=...&search=...`
+
+Inbox constraints:
+- `limit` default `50`, max `100`
+- `search` minimum `2` karakter (opsiyonel)
+- Auth endpointlerinde rate-limit header'lari donulebilir: `X-RateLimit-*`
+
+Export endpoint'leri:
+- `GET /api/inbox/offers/export?site_id=...`
+- `GET /api/inbox/contact/export?site_id=...`
+- `GET /api/inbox/applications/export?site_id=...`
+- `site_id` zorunlu, `limit` default `1000`, max `2000`
+
+Dashboard summary:
+- `GET /api/dashboard/summary?site_id=...`
+- Home ekrani bu endpoint'i tek cagriyla kullanacak sekilde tasarlanmistir.
 
 Okundu isaretleme:
 
@@ -107,4 +127,3 @@ Onerilen kodlar:
 - `NOT_FOUND`
 - `RATE_LIMITED`
 - `SPAM_DETECTED`
-

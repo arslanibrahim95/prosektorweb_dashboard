@@ -5,16 +5,28 @@ const emailRecipientsSchema = z.array(z.string().email()).default([]);
 
 export const offerModuleSettingsSchema = z.object({
   recipients: emailRecipientsSchema,
+  success_message: z.string().min(1).max(2000).optional(),
+  kvkk_legal_text_id: uuidSchema.optional(),
+  // Backwards-compatible (older UI may still store raw text)
   kvkk_text: z.string().min(1).max(20000).optional(),
 });
 
 export const contactModuleSettingsSchema = z.object({
   recipients: emailRecipientsSchema,
+  address: z.string().min(1).max(500).optional(),
+  phones: z.array(z.string().min(1).max(50)).default([]),
+  emails: emailRecipientsSchema,
+  map_embed_url: z.string().min(1).max(2000).optional(),
+  success_message: z.string().min(1).max(2000).optional(),
+  kvkk_legal_text_id: uuidSchema.optional(),
+  // Backwards-compatible (older UI may still store raw text)
   kvkk_text: z.string().min(1).max(20000).optional(),
 });
 
 export const hrModuleSettingsSchema = z.object({
   recipients: emailRecipientsSchema,
+  kvkk_legal_text_id: uuidSchema.optional(),
+  // Backwards-compatible (older UI may still store raw text)
   kvkk_text: z.string().min(1).max(20000).optional(),
   max_file_size_mb: z.number().int().min(1).max(50).default(5),
   allowed_mime_types: z

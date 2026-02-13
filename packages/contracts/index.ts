@@ -1,3 +1,4 @@
+export * from "./auth";
 export * from "./common";
 export * from "./error";
 export * from "./me";
@@ -5,5 +6,11 @@ export * from "./pages";
 export * from "./publish";
 export * from "./modules";
 export * from "./inbox";
+export * from "./dashboard";
 export * from "./public-submit";
 export * from "./hr";
+export * from "./domains";
+export * from "./tenant-members";
+export * from "./legal-texts";
+export * from "./sites";
+export * from "./seo";

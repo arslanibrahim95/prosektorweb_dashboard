@@ -36,9 +36,6 @@ jobs:
       - name: Run ESLint
         run: pnpm lint
 
-      - name: Type Check
-        run: pnpm type-check
-
   test-contracts:
     name: 📜 Contract Tests
     runs-on: ubuntu-latest

@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { SupabaseClient } from '@supabase/supabase-js';
 import {
     createAdminClient,
@@ -26,15 +27,23 @@ let tenantAClient: SupabaseClient;
 let tenantBClient: SupabaseClient;
 
 describe('RLS: Multi-Tenant Isolation', () => {
-    beforeAll(async () => {
-        // Set up admin client and test data
-        adminClient = createAdminClient();
-        await setupTestData();
+	    beforeAll(async () => {
+	        // Set up admin client and test data
+	        adminClient = createAdminClient();
+	        await setupTestData();
 
-        // Create sites and test data using admin client
-        await adminClient.from('sites').upsert(Object.values(sites), { onConflict: 'id' });
-        await adminClient.from('job_posts').upsert(Object.values(jobPosts), { onConflict: 'id' });
-        await adminClient.from('offer_requests').upsert(Object.values(offerRequests), { onConflict: 'id' });
+	        // Ensure storage buckets exist (Gate-4).
+	        {
+	            const { error: e1 } = await adminClient.storage.createBucket('private-cv', { public: false });
+	            if (e1 && !e1.message.toLowerCase().includes('already exists')) throw e1;
+	            const { error: e2 } = await adminClient.storage.createBucket('public-media', { public: true });
+	            if (e2 && !e2.message.toLowerCase().includes('already exists')) throw e2;
+	        }
+
+	        // Create sites and test data using admin client
+	        await adminClient.from('sites').upsert(Object.values(sites), { onConflict: 'id' });
+	        await adminClient.from('job_posts').upsert(Object.values(jobPosts), { onConflict: 'id' });
+	        await adminClient.from('offer_requests').upsert(Object.values(offerRequests), { onConflict: 'id' });
         await adminClient.from('job_applications').upsert(Object.values(jobApplications), { onConflict: 'id' });
 
         // Create authenticated clients for testing
@@ -151,30 +160,48 @@ describe('RLS: Multi-Tenant Isolation', () => {
         });
     });
 
-    // =========================================================================
-    // RLS-05: Tenant B cannot access Tenant A's CV storage
-    // =========================================================================
-    describe('RLS-05: Tenant B cannot access Tenant A CV storage', () => {
-        it('should not be able to get signed URL for other tenant CV', async () => {
-            // CV path format: tenant_<id>/cv/<filename>
-            const tenantACvPath = `tenant_${tenants.tenantA.id}/cv/private-cv.pdf`;
+	    // =========================================================================
+	    // RLS-05: Tenant B cannot access Tenant A's CV storage
+	    // =========================================================================
+	    describe('RLS-05: Tenant B cannot access Tenant A CV storage', () => {
+	        it('should not be able to get signed URL for other tenant CV', async () => {
+	            // CV path format: tenant_<tenant_id>/cv/<filename>
+	            const tenantACvPath = `tenant_${tenants.tenantA.id}/cv/rls-test.pdf`;
 
-            // Tenant B tries to get signed URL
-            const { data, error } = await tenantBClient.storage
-                .from('private-cv')
-                .createSignedUrl(tenantACvPath, 60);
+	            // Ensure the object exists (uploaded with service role, bypassing RLS).
+	            const uploadRes = await adminClient.storage
+	                .from('private-cv')
+	                .upload(tenantACvPath, Buffer.from('rls-test'), {
+	                    upsert: true,
+	                    contentType: 'application/pdf',
+	                });
+	            expect(uploadRes.error).toBeNull();
 
-            // Should fail - either error or no data
-            if (error) {
-                // Expected: access denied
-                expect(error.message).toMatch(/not found|denied|permission|RLS/i);
-            } else {
-                // If no error, the URL should not work (storage bucket might not exist in test)
-                expect(data?.signedUrl).toBeFalsy();
-            }
-        });
-    });
-});
+	            // Tenant A should be able to get a signed URL
+	            const { data: aData, error: aErr } = await tenantAClient.storage
+	                .from('private-cv')
+	                .createSignedUrl(tenantACvPath, 60);
+	            expect(aErr).toBeNull();
+	            expect(aData?.signedUrl).toBeTruthy();
+
+	            // Tenant B tries to get signed URL
+	            const { data, error } = await tenantBClient.storage
+	                .from('private-cv')
+	                .createSignedUrl(tenantACvPath, 60);
+
+	            // Should fail - either error or no data
+	            if (error) {
+	                // Expected: access denied
+	                expect(error.message).toMatch(/not found|denied|permission|RLS/i);
+	            } else {
+	                expect(data?.signedUrl).toBeFalsy();
+	            }
+
+	            // Cleanup
+	            await adminClient.storage.from('private-cv').remove([tenantACvPath]);
+	        });
+	    });
+	});
 
 // =========================================================================
 // Additional Positive Tests
@@ -204,13 +231,13 @@ describe('RLS: Positive Cases (should work)', () => {
         expect(error).toBeNull();
     });
 
-    it('Tenant A owner CAN update offer_requests in own tenant', async () => {
-        // First ensure we have an offer
-        const testOffer = {
-            ...offerRequests.offerA1,
-            id: `test-offer-${Date.now()}`,
-        };
-        await adminClient.from('offer_requests').insert(testOffer);
+	    it('Tenant A owner CAN update offer_requests in own tenant', async () => {
+	        // First ensure we have an offer
+	        const testOffer = {
+	            ...offerRequests.offerA1,
+	            id: randomUUID(),
+	        };
+	        await adminClient.from('offer_requests').insert(testOffer);
 
         // Update as tenant owner
         const { error } = await tenantAClient
@@ -257,5 +284,21 @@ describe('RLS: Role-Based Access', () => {
         });
 
         expect(insertError).not.toBeNull();
+    });
+
+    it('Viewer cannot SELECT inbox tables (offers, job applications)', async () => {
+        const { data: offers, error: offersError } = await viewerClient
+            .from('offer_requests')
+            .select('id')
+            .eq('tenant_id', tenants.tenantA.id);
+        expect(offersError).toBeNull();
+        expect(offers).toHaveLength(0);
+
+        const { data: apps, error: appsError } = await viewerClient
+            .from('job_applications')
+            .select('id')
+            .eq('tenant_id', tenants.tenantA.id);
+        expect(appsError).toBeNull();
+        expect(apps).toHaveLength(0);
     });
 });

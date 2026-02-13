@@ -16,6 +16,10 @@ Token icerigi onerisi:
 - `iat` (issued at)
 - opsiyonel: `exp` (token rotation icin)
 
+Token uretimi:
+
+- Dashboard tarafinda (auth required) `GET /api/sites/:id/site-token` ile uretilebilir.
+
 ## Zorunlu Kontroller (Tum Public Endpoint'lerde)
 
 - Zod validation: `/packages/contracts/public-submit.ts`
@@ -47,6 +51,7 @@ Uygulama secenekleri:
 Rate limit asiminda:
 
 - HTTP `429`
+- Header: `Retry-After`, `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
 - Body: `{ "code": "RATE_LIMITED", "message": "Too many requests" }`
 
 ## HR CV Dosyasi (Server-Side Enforce)
@@ -89,4 +94,3 @@ Onerilen kodlar:
 - `SPAM_DETECTED`
 - `RATE_LIMITED`
 - `INTERNAL_ERROR`
-

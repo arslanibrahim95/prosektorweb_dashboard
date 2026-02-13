@@ -1,267 +1,441 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { z } from 'zod';
+import { offerRequestSchema } from '@prosektor/contracts';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
 } from '@/components/ui/sheet';
 import { EmptyState, TableSkeleton } from '@/components/layout';
-import { Search, Calendar, Mail, Phone, Building, FileText, Eye } from 'lucide-react';
-import { format } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Search, Mail, Phone, Building, FileText, Eye, Download, CheckCheck } from 'lucide-react';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { useSite } from '@/components/site/site-provider';
+import { useAuth } from '@/components/auth/auth-provider';
+import { exportInbox } from '@/features/inbox';
+import { useOffers, useMarkAsRead } from '@/hooks/use-inbox';
+import { toast } from 'sonner';
+import { formatRelativeTime, formatDate } from '@/lib/format';
+import { downloadBlob } from '@/lib/download';
+import { PAGINATION, SEARCH_DEBOUNCE_MS, SEARCH_MIN_CHARS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
-// Mock data
-const mockOffers = [
-    {
-        id: '1',
-        full_name: 'Ahmet Yılmaz',
-        email: 'ahmet@firma.com',
-        phone: '+90 532 123 4567',
-        company_name: 'ABC Holding',
-        message: 'OSGB hizmetleriniz hakkında bilgi almak istiyorum. 200 çalışanımız için fiyat teklifi alabilir miyiz?',
-        source: { page_url: '/hizmetler' },
-        is_read: false,
-        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: '2',
-        full_name: 'Mehmet Kaya',
-        email: 'mehmet@xyz.com',
-        phone: '+90 533 987 6543',
-        company_name: 'XYZ Ltd.',
-        message: 'İş sağlığı ve güvenliği eğitimi için teklif rica ediyoruz.',
-        source: { page_url: '/' },
-        is_read: true,
-        created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: '3',
-        full_name: 'Zeynep Demir',
-        email: 'zeynep@demir.co',
-        phone: '+90 534 111 2233',
-        company_name: 'Demir İnşaat',
-        message: 'Şantiye için iş güvenliği hizmetleri almak istiyoruz. Acil olarak görüşebilir miyiz?',
-        source: { page_url: '/iletisim' },
-        is_read: false,
-        created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    },
-];
-
-type OfferRequest = typeof mockOffers[number];
+type OfferRequest = z.infer<typeof offerRequestSchema>;
 
 export default function OffersInboxPage() {
-    const [selectedOffer, setSelectedOffer] = useState<OfferRequest | null>(null);
-    const [isLoading] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+  const auth = useAuth();
+  const site = useSite();
 
-    const filteredOffers = mockOffers.filter(offer =>
-        offer.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        offer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        offer.company_name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  const [selectedOffer, setSelectedOffer] = useState<OfferRequest | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
+  const [dateRange, setDateRange] = useState<{ from: string; to: string } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    const formatDate = (dateString: string) => {
-        return format(new Date(dateString), 'd MMM yyyy, HH:mm', { locale: tr });
-    };
+  // Debounce search
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
 
-    const formatRelativeTime = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diff = now.getTime() - date.getTime();
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const days = Math.floor(hours / 24);
+  const normalizedSearch = useMemo(() => searchQuery.trim(), [searchQuery]);
+  const searchForApi = useMemo(() => {
+    const s = debouncedSearch.trim();
+    return s.length >= SEARCH_MIN_CHARS ? s : undefined;
+  }, [debouncedSearch]);
 
-        if (days > 0) return `${days} gün önce`;
-        if (hours > 0) return `${hours} saat önce`;
-        return 'Az önce';
-    };
+  // React Query hooks
+  const { data, isLoading } = useOffers(site.currentSiteId, {
+    search: searchForApi,
+    page: currentPage,
+  });
+  const markAsReadMutation = useMarkAsRead('offers', site.currentSiteId);
 
-    if (isLoading) {
-        return (
-            <div className="space-y-6">
-                <h1 className="text-2xl font-bold">Teklifler</h1>
-                <TableSkeleton columns={6} rows={5} />
-            </div>
-        );
+  const offers = data?.items ?? [];
+  const total = data?.total ?? 0;
+
+  const unreadCount = useMemo(() => offers.filter((o) => !o.is_read).length, [offers]);
+
+  const allSelected = offers.length > 0 && selectedIds.size === offers.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < offers.length;
+
+  const toggleSelectAll = useCallback(() => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(offers.map((o) => o.id)));
     }
+  }, [allSelected, offers]);
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleBulkMarkRead = useCallback(async () => {
+    const unreadSelected = offers.filter((o) => selectedIds.has(o.id) && !o.is_read);
+    if (unreadSelected.length === 0) {
+      toast.info('Seçili okunmamış öge yok');
+      return;
+    }
+    try {
+      await Promise.all(unreadSelected.map((o) => markAsReadMutation.mutateAsync({ id: o.id })));
+      toast.success(`${unreadSelected.length} öge okundu olarak işaretlendi`);
+      setSelectedIds(new Set());
+    } catch {
+      toast.error('Toplu işlem başarısız');
+    }
+  }, [offers, selectedIds, markAsReadMutation]);
+
+  const handleBulkExport = useCallback(async () => {
+    if (!site.currentSiteId) return;
+    try {
+      const blob = await exportInbox(
+        'offers',
+        { search: searchForApi, status: 'all' },
+        { accessToken: auth.accessToken ?? undefined, siteId: site.currentSiteId },
+      );
+      const today = new Date().toISOString().slice(0, 10);
+      downloadBlob(blob, `offers_${today}.csv`);
+      toast.success('Dışa aktarma başarılı');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Export failed');
+    }
+  }, [site.currentSiteId, searchForApi, auth.accessToken]);
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(total / PAGINATION.DEFAULT_LIMIT)),
+    [total],
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const sourcePageUrl = useCallback((source: OfferRequest['source']) => {
+    const v = (source as Record<string, unknown> | undefined)?.page_url;
+    return typeof v === 'string' ? v : '-';
+  }, []);
+
+  if (isLoading && offers.length === 0) {
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Teklifler</h1>
-                    <p className="text-gray-500">Gelen teklif talepleri</p>
-                </div>
-                <Badge variant="secondary">
-                    {mockOffers.filter(o => !o.is_read).length} okunmamış
-                </Badge>
-            </div>
-
-            {/* Filters */}
-            <div className="flex gap-4">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <Input
-                        placeholder="İsim, email veya firma ara..."
-                        className="pl-10"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-                <Button variant="outline">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Tarih Filtresi
-                </Button>
-            </div>
-
-            {/* Table */}
-            {filteredOffers.length === 0 ? (
-                <EmptyState
-                    icon={<FileText className="h-12 w-12" />}
-                    title="Henüz teklif talebi yok"
-                    description="Sitenizde teklif formu dolduran kişiler burada görüntülenecek."
-                    action={{
-                        label: 'Teklif Modülünü Ayarla',
-                        onClick: () => window.location.href = '/modules/offer',
-                    }}
-                />
-            ) : (
-                <div className="rounded-lg border bg-white">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[50px]"></TableHead>
-                                <TableHead>Tarih</TableHead>
-                                <TableHead>Ad Soyad</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Telefon</TableHead>
-                                <TableHead>Firma</TableHead>
-                                <TableHead className="w-[100px]">İşlem</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredOffers.map((offer) => (
-                                <TableRow
-                                    key={offer.id}
-                                    className={`cursor-pointer hover:bg-gray-50 ${!offer.is_read ? 'bg-blue-50/50' : ''}`}
-                                    onClick={() => setSelectedOffer(offer)}
-                                >
-                                    <TableCell>
-                                        {!offer.is_read && (
-                                            <div className="h-2 w-2 rounded-full bg-blue-500" />
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-sm text-gray-500">
-                                        {formatRelativeTime(offer.created_at)}
-                                    </TableCell>
-                                    <TableCell className="font-medium">{offer.full_name}</TableCell>
-                                    <TableCell>{offer.email}</TableCell>
-                                    <TableCell>{offer.phone}</TableCell>
-                                    <TableCell>{offer.company_name || '-'}</TableCell>
-                                    <TableCell>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedOffer(offer);
-                                            }}
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            )}
-
-            {/* Detail Drawer */}
-            <Sheet open={!!selectedOffer} onOpenChange={() => setSelectedOffer(null)}>
-                <SheetContent className="sm:max-w-lg">
-                    {selectedOffer && (
-                        <>
-                            <SheetHeader>
-                                <SheetTitle>{selectedOffer.full_name}</SheetTitle>
-                                <SheetDescription>
-                                    {formatDate(selectedOffer.created_at)}
-                                </SheetDescription>
-                            </SheetHeader>
-                            <div className="mt-6 space-y-6">
-                                {/* Contact Info */}
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-3 text-sm">
-                                        <Mail className="h-4 w-4 text-gray-400" />
-                                        <a href={`mailto:${selectedOffer.email}`} className="text-blue-600 hover:underline">
-                                            {selectedOffer.email}
-                                        </a>
-                                    </div>
-                                    <div className="flex items-center gap-3 text-sm">
-                                        <Phone className="h-4 w-4 text-gray-400" />
-                                        <a href={`tel:${selectedOffer.phone}`} className="text-blue-600 hover:underline">
-                                            {selectedOffer.phone}
-                                        </a>
-                                    </div>
-                                    {selectedOffer.company_name && (
-                                        <div className="flex items-center gap-3 text-sm">
-                                            <Building className="h-4 w-4 text-gray-400" />
-                                            <span>{selectedOffer.company_name}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Message */}
-                                <div>
-                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Mesaj</h4>
-                                    <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
-                                        {selectedOffer.message || 'Mesaj yok'}
-                                    </p>
-                                </div>
-
-                                {/* Source */}
-                                <div>
-                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Kaynak Sayfa</h4>
-                                    <Badge variant="outline">
-                                        {selectedOffer.source.page_url}
-                                    </Badge>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-2 pt-4 border-t">
-                                    <Button className="flex-1" asChild>
-                                        <a href={`mailto:${selectedOffer.email}`}>
-                                            <Mail className="mr-2 h-4 w-4" />
-                                            Email Gönder
-                                        </a>
-                                    </Button>
-                                    <Button variant="outline" className="flex-1" asChild>
-                                        <a href={`tel:${selectedOffer.phone}`}>
-                                            <Phone className="mr-2 h-4 w-4" />
-                                            Ara
-                                        </a>
-                                    </Button>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </SheetContent>
-            </Sheet>
-        </div>
+      <div className="dashboard-page">
+        <h1 className="text-2xl font-bold font-heading">Teklifler</h1>
+        <TableSkeleton columns={6} rows={5} />
+      </div>
     );
+  }
+
+  return (
+    <div className="dashboard-page page-enter">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground font-heading">Teklifler</h1>
+          <p className="text-muted-foreground text-balance">Gelen teklif talepleri</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              if (!site.currentSiteId) return;
+              try {
+                const blob = await exportInbox(
+                  'offers',
+                  { search: searchForApi, status: 'all' },
+                  { accessToken: auth.accessToken ?? undefined, siteId: site.currentSiteId },
+                );
+                const today = new Date().toISOString().slice(0, 10);
+                downloadBlob(blob, `offers_${today}.csv`);
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Export failed');
+              }
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Dışa Aktar
+          </Button>
+          <Badge variant="secondary" className="bg-warning/10 text-warning border-warning/20">{unreadCount} okunmamış</Badge>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4 p-4 rounded-lg bg-muted/30 border border-border/50">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="İsim, email veya firma ara..."
+            className="pl-10 bg-background"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(PAGINATION.DEFAULT_PAGE);
+            }}
+          />
+          {normalizedSearch.length > 0 && normalizedSearch.length < SEARCH_MIN_CHARS && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Arama için en az {SEARCH_MIN_CHARS} karakter girin.
+            </p>
+          )}
+        </div>
+        <DateRangePicker
+          value={dateRange}
+          onChange={(range) => {
+            setDateRange(range);
+            setCurrentPage(PAGINATION.DEFAULT_PAGE);
+          }}
+        />
+      </div>
+
+      {/* Table */}
+      {offers.length === 0 ? (
+        <EmptyState
+          icon={<FileText className="h-12 w-12" />}
+          title="Henüz teklif talebi yok"
+          description="Sitenize teklif formu ekleyin. Ziyaretçiler formu doldurduğunda gelen talepler burada görünecek ve email ile bildirim alacaksınız."
+          action={{
+            label: 'Teklif Modülünü Ayarla',
+            href: '/modules/offer',
+          }}
+          secondaryAction={{
+            label: 'Nasıl çalışır?',
+            href: '/modules/offer',
+          }}
+        />
+      ) : (
+        <div className="rounded-lg border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allSelected}
+                    indeterminate={someSelected}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Tümünü seç"
+                  />
+                </TableHead>
+                <TableHead className="w-[var(--table-col-xs)]"></TableHead>
+                <TableHead>Tarih</TableHead>
+                <TableHead>Ad Soyad</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Telefon</TableHead>
+                <TableHead>Firma</TableHead>
+                <TableHead className="w-[var(--table-col-sm)]">İşlem</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="stagger-children">
+              {offers.map((offer) => (
+                <TableRow
+                  key={offer.id}
+                  className={cn(
+                    'cursor-pointer hover:bg-muted/50 hover:shadow-sm transition-shadow',
+                    !offer.is_read && 'bg-primary/10',
+                    selectedIds.has(offer.id) && 'bg-primary/5',
+                  )}
+                  onClick={() => {
+                    setSelectedOffer(offer);
+                    if (!offer.is_read) {
+                      markAsReadMutation.mutate({ id: offer.id });
+                    }
+                  }}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(offer.id)}
+                      onCheckedChange={() => toggleSelect(offer.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`${offer.full_name} seç`}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {!offer.is_read && <div className="h-2 w-2 rounded-full bg-primary" />}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatRelativeTime(offer.created_at)}
+                  </TableCell>
+                  <TableCell className="font-medium">{offer.full_name}</TableCell>
+                  <TableCell>{offer.email}</TableCell>
+                  <TableCell>{offer.phone}</TableCell>
+                  <TableCell>{offer.company_name || '-'}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedOffer(offer);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <div className="px-4 py-3 text-xs text-muted-foreground border-t flex items-center justify-between gap-3">
+            <span>Toplam: {total}</span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage <= 1 || isLoading}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              >
+                Önceki
+              </Button>
+              <span>
+                Sayfa {currentPage} / {totalPages}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage >= totalPages || isLoading}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              >
+                Sonraki
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-40 glass-strong rounded-xl border border-border/50 px-4 py-3 flex items-center gap-3 shadow-lg animate-in slide-in-from-bottom-4 duration-200">
+          <span className="text-sm font-medium whitespace-nowrap">
+            {selectedIds.size} seçili
+          </span>
+          <div className="h-4 w-px bg-border" />
+          <Button size="sm" variant="outline" onClick={() => void handleBulkMarkRead()}>
+            <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
+            Okundu İşaretle
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void handleBulkExport()}>
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            Dışa Aktar
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+            İptal
+          </Button>
+        </div>
+      )}
+
+      {/* Detail Drawer */}
+      <Sheet open={!!selectedOffer} onOpenChange={() => setSelectedOffer(null)}>
+        <SheetContent className="sm:max-w-lg p-0 flex flex-col">
+          {selectedOffer && (
+            <>
+              {/* Status Strip */}
+              <div className={cn(
+                'h-1 w-full shrink-0',
+                selectedOffer.is_read ? 'bg-muted' : 'gradient-primary',
+              )} />
+
+              {/* Header with Avatar */}
+              <div className="px-6 pt-5 pb-4">
+                <SheetHeader className="flex-row items-start gap-4 space-y-0">
+                  <div className="h-12 w-12 rounded-full gradient-primary flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-white">
+                      {selectedOffer.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <SheetTitle className="text-lg">{selectedOffer.full_name}</SheetTitle>
+                    <SheetDescription className="flex items-center gap-2 mt-0.5">
+                      {formatDate(selectedOffer.created_at)}
+                      {!selectedOffer.is_read && (
+                        <Badge className="bg-warning/10 text-warning border-warning/20 text-[10px] h-5">Yeni</Badge>
+                      )}
+                    </SheetDescription>
+                  </div>
+                </SheetHeader>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto px-6 space-y-4">
+                {/* Contact Info Card */}
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">İletişim Bilgileri</h4>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <a href={`mailto:${selectedOffer.email}`} className="text-primary hover:underline truncate">
+                      {selectedOffer.email}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <a href={`tel:${selectedOffer.phone}`} className="text-primary hover:underline">
+                      {selectedOffer.phone}
+                    </a>
+                  </div>
+                  {selectedOffer.company_name && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Building className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>{selectedOffer.company_name}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Message Card */}
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Mesaj</h4>
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                    {selectedOffer.message || 'Mesaj yok'}
+                  </p>
+                </div>
+
+                {/* Source Card */}
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Kaynak</h4>
+                  <Badge variant="outline">{sourcePageUrl(selectedOffer.source)}</Badge>
+                </div>
+              </div>
+
+              {/* Fixed Bottom Actions */}
+              <div className="shrink-0 border-t bg-background/80 backdrop-blur-sm px-6 py-4 flex gap-2">
+                <Button className="flex-1 gradient-primary border-0 text-white" asChild>
+                  <a href={`mailto:${selectedOffer.email}`}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Email Gönder
+                  </a>
+                </Button>
+                <Button variant="outline" className="flex-1" asChild>
+                  <a href={`tel:${selectedOffer.phone}`}>
+                    <Phone className="mr-2 h-4 w-4" />
+                    Ara
+                  </a>
+                </Button>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
 }

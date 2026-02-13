@@ -10,9 +10,42 @@ import { tenants, users } from '../fixtures/seed';
 
 // Test environment configuration
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+const LOCAL_SUPABASE_ANON_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'; // gitleaks:allow
+const LOCAL_SUPABASE_SERVICE_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'; // gitleaks:allow
 const JWT_SECRET = process.env.SUPABASE_JWT_SECRET ?? 'super-secret-jwt-token-with-at-least-32-characters-long';
+
+function isLocalSupabaseUrl(url: string): boolean {
+    try {
+        const hostname = new URL(url).hostname;
+        return hostname === '127.0.0.1' || hostname === 'localhost';
+    } catch {
+        return false;
+    }
+}
+
+function resolveSupabaseKey(
+    envName: 'SUPABASE_ANON_KEY' | 'SUPABASE_SERVICE_ROLE_KEY',
+    localFallback: string
+): string {
+    const envValue = process.env[envName];
+    if (envValue && envValue.length > 0) {
+        return envValue;
+    }
+
+    if (isLocalSupabaseUrl(SUPABASE_URL)) {
+        return localFallback;
+    }
+
+    throw new Error(`Missing ${envName} for non-local SUPABASE_URL: ${SUPABASE_URL}`);
+}
+
+const SUPABASE_ANON_KEY = resolveSupabaseKey('SUPABASE_ANON_KEY', LOCAL_SUPABASE_ANON_KEY);
+const SUPABASE_SERVICE_KEY = resolveSupabaseKey(
+    'SUPABASE_SERVICE_ROLE_KEY',
+    LOCAL_SUPABASE_SERVICE_KEY
+);
 
 export interface TestUser {
     id: string;

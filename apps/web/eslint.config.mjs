@@ -13,6 +13,22 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['clsx', 'tailwind-merge'],
+              message: 'Use `cn` from `@/lib/utils` instead. This ensures consistent class merging behavior across the app.',
+              allowTypeImports: true
+            }
+          ]
+        }
+      ]
+    }
+  }
 ]);
 
 export default eslintConfig;

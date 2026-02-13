@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { type UserRole, hasRole } from '@/server/auth';
+import { type UserRole, hasRole } from '@prosektor/contracts';
 
 interface RoleGuardProps {
     children: ReactNode;
