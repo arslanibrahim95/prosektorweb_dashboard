@@ -16,6 +16,8 @@ export interface AuthContext {
     email: string;
     name: string;
     avatar_url?: string;
+    app_metadata?: unknown;
+    user_metadata?: unknown;
   };
   tenant: {
     id: string;
@@ -34,7 +36,16 @@ export interface AuthContext {
 function isSuperAdmin(user: { app_metadata?: unknown; user_metadata?: unknown }): boolean {
   const appMeta = (user.app_metadata ?? {}) as Record<string, unknown>;
   const userMeta = (user.user_metadata ?? {}) as Record<string, unknown>;
-  return appMeta.role === "super_admin" || userMeta.role === "super_admin";
+
+  // Check app_metadata (secure) first
+  if (appMeta.role === "super_admin") return true;
+  if (Array.isArray(appMeta.roles) && appMeta.roles.includes("super_admin")) return true;
+
+  // Check user_metadata (in case it was set there manually via dashboard)
+  if (userMeta.role === "super_admin") return true;
+  if (Array.isArray(userMeta.roles) && userMeta.roles.includes("super_admin")) return true;
+
+  return false;
 }
 
 /**
@@ -186,6 +197,8 @@ export async function requireAuthContext(req: Request): Promise<AuthContext> {
       email,
       name,
       avatar_url: (user.user_metadata as Record<string, unknown> | null)?.avatar_url as string | undefined,
+      app_metadata: user.app_metadata,
+      user_metadata: user.user_metadata,
     },
     tenant,
     role,
