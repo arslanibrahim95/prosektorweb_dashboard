@@ -390,6 +390,7 @@ export default function LocalizationPage() {
                                                         <button
                                                             onClick={() => handleStartEdit(translation.id, translation.target)}
                                                             className="text-sm hover:underline"
+                                                            aria-label={`${translation.key} çevirisini düzenle`}
                                                         >
                                                             {translation.target || (
                                                                 <span className="text-muted-foreground italic">
