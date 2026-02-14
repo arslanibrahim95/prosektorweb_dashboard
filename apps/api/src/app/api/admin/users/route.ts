@@ -1,4 +1,9 @@
 import {
+    inviteTenantMemberRequestSchema,
+    tenantRoleSchema,
+    type UserRole,
+} from "@prosektor/contracts";
+import {
     asHeaders,
     asErrorBody,
     asStatus,
@@ -7,13 +12,35 @@ import {
     jsonOk,
     mapPostgrestError,
     parseJson,
+    zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { isAdminRole } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function assertAdminRole(role: UserRole) {
+    if (!isAdminRole(role)) {
+        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
+    }
+}
+
+function normalizeRoleFilter(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    if (value === "member") return "viewer";
+    const parsed = tenantRoleSchema.safeParse(value);
+    if (!parsed.success) {
+        throw new HttpError(400, {
+            code: "VALIDATION_ERROR",
+            message: "Geçersiz rol filtresi",
+            details: { role: ["Rol owner, admin, editor veya viewer olmalıdır."] },
+        });
+    }
+    return parsed.data;
+}
 
 function safeUserName(email?: string, meta?: Record<string, unknown> | null): string | undefined {
     const nameCandidate = meta?.name?.toString().trim();
@@ -26,10 +53,7 @@ export async function GET(req: Request) {
         const ctx = await requireAuthContext(req);
         const env = getServerEnv();
 
-        // Admin role check
-        if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "super_admin") {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role);
 
         const rateLimit = await enforceRateLimit(
             ctx.admin,
@@ -40,7 +64,7 @@ export async function GET(req: Request) {
 
         const url = new URL(req.url);
         const search = url.searchParams.get("search") || undefined;
-        const role = url.searchParams.get("role") || undefined;
+        const role = normalizeRoleFilter(url.searchParams.get("role") || undefined);
         const status = url.searchParams.get("status") || undefined;
         const page = parseInt(url.searchParams.get("page") || "1", 10);
         const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10), 100);
@@ -151,34 +175,14 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
+        assertAdminRole(ctx.role);
         const body = await parseJson(req);
-
-        // Admin role check
-        if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "super_admin") {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-        }
-
-        // Validate input
-        if (!body || typeof body !== "object") {
+        const parsed = inviteTenantMemberRequestSchema.safeParse(body);
+        if (!parsed.success) {
             throw new HttpError(400, {
                 code: "VALIDATION_ERROR",
-                message: "Invalid request body",
-            });
-        }
-
-        const { email, role } = body as { email?: string; role?: string };
-
-        if (!email || typeof email !== "string") {
-            throw new HttpError(400, {
-                code: "VALIDATION_ERROR",
-                message: "Email is required",
-            });
-        }
-
-        if (!role || typeof role !== "string") {
-            throw new HttpError(400, {
-                code: "VALIDATION_ERROR",
-                message: "Role is required",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsed.error),
             });
         }
 
@@ -189,11 +193,11 @@ export async function POST(req: Request) {
             | { id: string; email?: string; user_metadata?: Record<string, unknown> | null; invited_at?: string | null }
             | null = null;
 
-        const { data: inviteData, error: inviteError } = await ctx.admin.auth.admin.inviteUserByEmail(email);
+        const { data: inviteData, error: inviteError } = await ctx.admin.auth.admin.inviteUserByEmail(parsed.data.email);
         if (inviteError) {
             // Local dev often lacks SMTP; fallback to createUser
             const { data: createdData, error: createError } = await ctx.admin.auth.admin.createUser({
-                email,
+                email: parsed.data.email,
                 email_confirm: false,
             });
             if (createError) throw new HttpError(500, { code: "INTERNAL_ERROR", message: "Invite failed" });
@@ -220,7 +224,7 @@ export async function POST(req: Request) {
             .insert({
                 tenant_id: ctx.tenant.id,
                 user_id: invitedUser.id,
-                role,
+                role: parsed.data.role,
             })
             .select("*")
             .single();

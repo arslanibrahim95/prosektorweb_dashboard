@@ -49,6 +49,7 @@ export function hasPermission(
 }
 
 export function hasRole(userRole: UserRole, allowedRoles: UserRole[]): boolean {
+    if (userRole === 'super_admin') return true;
     return allowedRoles.includes(userRole);
 }
 

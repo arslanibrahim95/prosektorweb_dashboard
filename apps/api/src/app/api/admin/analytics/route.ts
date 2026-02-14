@@ -7,8 +7,10 @@ import {
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
+import { type UserRole } from "@prosektor/contracts";
 import { getOrSetCachedValue } from "@/server/cache";
 import { requireAuthContext } from "@/server/auth/context";
+import { isAdminRole } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
@@ -16,6 +18,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PERIOD_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
+
+function assertAdminRole(role: UserRole) {
+    if (!isAdminRole(role)) {
+        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
+    }
+}
 
 function changePct(current: number, previous: number): number {
     if (previous === 0) return current > 0 ? 100 : 0;
@@ -27,10 +35,7 @@ export async function GET(req: Request) {
         const ctx = await requireAuthContext(req);
         const env = getServerEnv();
 
-        // Admin role check
-        if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "super_admin") {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role);
 
         const rateLimit = await enforceRateLimit(
             ctx.admin,

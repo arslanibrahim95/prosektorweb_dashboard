@@ -10,6 +10,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { isAdminRole } from "@/server/auth/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
       });
     }
 
-    if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "super_admin") {
+    if (!isAdminRole(ctx.role)) {
       throw new HttpError(403, { code: "FORBIDDEN", message: "Forbidden" });
     }
 
@@ -112,4 +113,3 @@ export async function POST(req: Request) {
     return jsonError(asErrorBody(err), asStatus(err));
   }
 }
-

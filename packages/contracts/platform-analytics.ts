@@ -5,6 +5,7 @@ export const platformAnalyticsResponseSchema = z.object({
     tenants: z.number().int().nonnegative(),
     active_tenants: z.number().int().nonnegative(),
     suspended_tenants: z.number().int().nonnegative(),
+    active_users: z.number().int().nonnegative(),
     sites: z.number().int().nonnegative(),
     offers: z.number().int().nonnegative(),
     contacts: z.number().int().nonnegative(),
@@ -27,4 +28,3 @@ export const platformAnalyticsResponseSchema = z.object({
   ),
 });
 export type PlatformAnalyticsResponse = z.infer<typeof platformAnalyticsResponseSchema>;
-

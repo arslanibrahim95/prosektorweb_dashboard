@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
+    "start:standalone": "node scripts/start-standalone.mjs",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",

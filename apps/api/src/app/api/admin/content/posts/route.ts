@@ -8,8 +8,10 @@ import {
     mapPostgrestError,
     zodErrorToDetails,
 } from "@/server/api/http";
+import { type UserRole } from "@prosektor/contracts";
 import { buildSafeIlikeOr, safeSearchParamSchema } from "@/server/api/postgrest-search";
 import { requireAuthContext } from "@/server/auth/context";
+import { isAdminRole } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import { z } from "zod";
@@ -26,15 +28,18 @@ export const adminContentPostsQuerySchema = z
     })
     .strict();
 
+function assertAdminRole(role: UserRole) {
+    if (!isAdminRole(role)) {
+        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
+    }
+}
+
 export async function GET(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
         const env = getServerEnv();
 
-        // Admin role check
-        if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "super_admin") {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role);
 
         const rateLimit = await enforceRateLimit(
             ctx.admin,

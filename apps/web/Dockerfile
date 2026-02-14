@@ -40,7 +40,8 @@ ENV PORT=3000
 COPY --from=builder /repo/apps/web/.next/standalone ./
 COPY --from=builder /repo/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /repo/apps/web/public ./apps/web/public
+COPY --from=builder /repo/apps/web/scripts ./apps/web/scripts
 
 EXPOSE 3000
 WORKDIR /app/apps/web
-CMD ["node", "server.js"]
+CMD ["node", "scripts/start-standalone.mjs"]

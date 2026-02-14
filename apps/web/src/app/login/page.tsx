@@ -135,6 +135,8 @@ function LoginForm() {
           <CardContent>
             <form
               className="space-y-5"
+              method="post"
+              action="/login"
               onSubmit={form.handleSubmit(handleSubmit)}
             >
               {/* Email Field */}

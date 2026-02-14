@@ -29,6 +29,9 @@ import {
     jobPostSchema,
     // Error
     apiErrorSchema,
+    // Platform
+    platformTenantDangerRequestSchema,
+    platformAnalyticsResponseSchema,
 } from '../index';
 
 describe('Contract Tests: Auth Schemas', () => {
@@ -307,5 +310,58 @@ describe('Contract Tests: Error Schemas', () => {
 
             expect(() => apiErrorSchema.parse(errorPayload)).not.toThrow();
         });
+    });
+});
+
+describe('Contract Tests: Platform Schemas', () => {
+    it('rejects short danger action reason', () => {
+        expect(() =>
+            platformTenantDangerRequestSchema.parse({
+                action: 'suspend',
+                confirmation_text: 'tenant-slug',
+                reason: 'short',
+            }),
+        ).toThrow();
+    });
+
+    it('accepts valid danger action payload', () => {
+        expect(() =>
+            platformTenantDangerRequestSchema.parse({
+                action: 'soft_delete',
+                confirmation_text: 'tenant-slug',
+                reason: 'Tenant lifecycle cleanup approved by platform ops',
+            }),
+        ).not.toThrow();
+    });
+
+    it('validates platform analytics payload with active users', () => {
+        expect(() =>
+            platformAnalyticsResponseSchema.parse({
+                totals: {
+                    tenants: 10,
+                    active_tenants: 8,
+                    suspended_tenants: 2,
+                    active_users: 42,
+                    sites: 24,
+                    offers: 100,
+                    contacts: 90,
+                    applications: 45,
+                },
+                plan_distribution: [
+                    { plan: 'demo', count: 3 },
+                    { plan: 'starter', count: 4 },
+                    { plan: 'pro', count: 3 },
+                ],
+                recent_tenant_activity: [
+                    {
+                        tenant_id: '123e4567-e89b-42d3-a456-426614174001',
+                        tenant_name: 'Tenant A',
+                        offers: 10,
+                        contacts: 9,
+                        applications: 3,
+                    },
+                ],
+            }),
+        ).not.toThrow();
     });
 });

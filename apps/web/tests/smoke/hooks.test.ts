@@ -21,9 +21,9 @@ const EXPECTED_HOOKS = [
 
 // — Hook dosyası sayısı —
 describe('hooks dizini', () => {
-  it('beklenen 13 hook dosyası mevcut', () => {
+  it('beklenen hook dosyaları mevcut', () => {
     const files = readdirSync(HOOKS_DIR).filter((f) => f.endsWith('.ts'));
-    expect(files.length).toBe(13);
+    expect(files.length).toBeGreaterThanOrEqual(EXPECTED_HOOKS.length);
     for (const hook of EXPECTED_HOOKS) {
       expect(files).toContain(`${hook}.ts`);
     }

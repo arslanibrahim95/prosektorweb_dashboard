@@ -1,6 +1,18 @@
 'use client';
 
-import { Bell, Search, LogOut, Settings, Menu, Sun, Moon, ChevronsUpDown, Globe, Check } from 'lucide-react';
+import {
+    Bell,
+    Search,
+    LogOut,
+    Settings,
+    Menu,
+    Sun,
+    Moon,
+    ChevronsUpDown,
+    Globe,
+    Check,
+    Building2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -40,6 +52,12 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
     const router = useRouter();
     const site = useSite();
     const { data: unreadCount = 0 } = useUnreadCount(site.currentSiteId);
+    const isSuperAdmin = auth.me?.role === 'super_admin';
+    const availableTenants = auth.availableTenants;
+    const currentTenantId = auth.me?.active_tenant_id ?? auth.activeTenantId;
+    const currentTenant =
+        availableTenants.find((item) => item.id === currentTenantId) ??
+        availableTenants.find((item) => item.id === auth.me?.tenant.id);
 
     const initials = user?.name
         ? user.name.split(' ').map(n => n[0]).join('').toUpperCase()
@@ -82,12 +100,46 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
 
                 {/* Right section */}
                 <div className="flex items-center gap-2 sm:gap-3">
-                    {/* Tenant name */}
-                    {tenant && (
+                    {/* Tenant context */}
+                    {isSuperAdmin ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="hidden md:flex items-center gap-1.5 h-7 text-xs">
+                                    <Building2 className="h-3 w-3" />
+                                    <span className="max-w-[160px] truncate">
+                                        {currentTenant?.name ?? tenant?.name ?? 'Tenant seçin'}
+                                    </span>
+                                    <ChevronsUpDown className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-72">
+                                <DropdownMenuLabel>Tenant Seçin</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {availableTenants.map((item) => (
+                                    <DropdownMenuItem
+                                        key={item.id}
+                                        onClick={() => auth.switchTenant(item.id)}
+                                        disabled={auth.isSwitchingTenant}
+                                        className="flex items-center justify-between gap-3"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="truncate font-medium">{item.name}</div>
+                                            <div className="text-[11px] text-muted-foreground">
+                                                {item.slug} · {item.plan} · {item.status}
+                                            </div>
+                                        </div>
+                                        {item.id === currentTenantId && (
+                                            <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                                        )}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : tenant ? (
                         <Badge variant="outline" className="hidden md:flex bg-primary/5 text-primary border-primary/20 font-medium">
                             {tenant.name}
                         </Badge>
-                    )}
+                    ) : null}
 
                     {/* Site Selector */}
                     {site.sites.length > 1 ? (
@@ -222,7 +274,7 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                                         {user?.name || 'Kullanıcı'}
                                     </span>
                                     <span className="block text-[var(--font-size-xs)] text-muted-foreground leading-tight">
-                                        {tenant?.name || ''}
+                                        {currentTenant?.name ?? tenant?.name ?? ''}
                                     </span>
                                 </div>
                             </Button>

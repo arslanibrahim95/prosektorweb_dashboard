@@ -3,6 +3,9 @@ import {
     ROLE_PERMISSIONS,
     ROLE_DISPLAY_NAMES,
     permissionsForRole,
+    isAdminRole,
+    isOwnerRole,
+    isSuperAdminRole,
 } from "@/server/auth/permissions";
 import { hasRole, hasPermission } from "@/server/auth";
 import type { UserRole, TenantRole } from "@prosektor/contracts";
@@ -161,7 +164,21 @@ describe("Kullanıcı Rolleri ve Yetkilendirme Sistemi", () => {
             expect(hasRole("editor", allowedRoles)).toBe(true);
             expect(hasRole("viewer", allowedRoles)).toBe(true);
             expect(hasRole("owner", allowedRoles)).toBe(false);
-            expect(hasRole("super_admin", allowedRoles)).toBe(false);
+            expect(hasRole("super_admin", allowedRoles)).toBe(true);
+        });
+
+        it("helper rol kontrolleri super_admin hiyerarşisini uygulamalı", () => {
+            expect(isSuperAdminRole("super_admin")).toBe(true);
+            expect(isSuperAdminRole("owner")).toBe(false);
+
+            expect(isOwnerRole("owner")).toBe(true);
+            expect(isOwnerRole("super_admin")).toBe(true);
+            expect(isOwnerRole("admin")).toBe(false);
+
+            expect(isAdminRole("admin")).toBe(true);
+            expect(isAdminRole("owner")).toBe(true);
+            expect(isAdminRole("super_admin")).toBe(true);
+            expect(isAdminRole("editor")).toBe(false);
         });
     });
 

@@ -8,6 +8,7 @@ export const meTenantSummarySchema = z.object({
   plan: z.enum(["demo", "starter", "pro"]),
   status: z.enum(["active", "suspended", "deleted"]),
 });
+export type MeTenantSummary = z.infer<typeof meTenantSummarySchema>;
 
 export const meResponseSchema = z.object({
   user: z.object({

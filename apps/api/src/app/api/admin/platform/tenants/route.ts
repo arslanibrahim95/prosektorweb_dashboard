@@ -3,6 +3,7 @@ import {
   platformListTenantsQuerySchema,
   platformListTenantsResponseSchema,
   platformTenantSummarySchema,
+  type UserRole,
 } from "@prosektor/contracts";
 import {
   asHeaders,
@@ -23,8 +24,8 @@ import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/r
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function assertSuperAdmin(role: string) {
-  if (!isSuperAdminRole(role as "super_admin")) {
+function assertSuperAdmin(role: UserRole) {
+  if (!isSuperAdminRole(role)) {
     throw new HttpError(403, {
       code: "FORBIDDEN",
       message: "Bu işlem yalnızca super_admin için yetkilidir.",
@@ -238,4 +239,3 @@ export async function POST(req: Request) {
     return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
-

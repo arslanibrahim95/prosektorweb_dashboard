@@ -22,7 +22,11 @@ import {
     HardDrive,
     ChevronLeft,
     ChevronRight,
+    Building2,
+    BarChart2,
+    SlidersHorizontal,
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/auth-provider';
 
 interface AdminNavItem {
     label: string;
@@ -100,6 +104,24 @@ const adminNavItems: AdminNavItem[] = [
     },
 ];
 
+const superAdminNavItems: AdminNavItem[] = [
+    {
+        label: 'Platform Tenantlar',
+        href: '/admin/platform/tenants',
+        icon: <Building2 className={NAV_ICON_SIZE} />,
+    },
+    {
+        label: 'Platform Analitik',
+        href: '/admin/platform/analytics',
+        icon: <BarChart2 className={NAV_ICON_SIZE} />,
+    },
+    {
+        label: 'Platform Ayarları',
+        href: '/admin/platform/settings',
+        icon: <SlidersHorizontal className={NAV_ICON_SIZE} />,
+    },
+];
+
 interface AdminSidebarProps {
     collapsed: boolean;
     setCollapsed: (collapsed: boolean) => void;
@@ -107,6 +129,9 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ collapsed, setCollapsed }: AdminSidebarProps) {
     const pathname = usePathname();
+    const auth = useAuth();
+    const isSuperAdmin = auth.me?.role === 'super_admin';
+    const items = isSuperAdmin ? [...adminNavItems, ...superAdminNavItems] : adminNavItems;
 
     return (
         <aside
@@ -142,7 +167,7 @@ export function AdminSidebar({ collapsed, setCollapsed }: AdminSidebarProps) {
                 {/* Navigation */}
                 <ScrollArea className="flex-1 px-2 py-4">
                     <nav className="space-y-1">
-                        {adminNavItems.map((item) => {
+                        {items.map((item) => {
                             const isActive = pathname === item.href;
                             return (
                                 <Link

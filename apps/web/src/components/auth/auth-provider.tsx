@@ -3,6 +3,7 @@
 import type { Session } from '@supabase/supabase-js';
 import type {
   MeResponse,
+  MeTenantSummary,
   SessionWarningState,
   TokenRefreshState,
 } from '@prosektor/contracts';
@@ -16,13 +17,14 @@ import React, {
   useCallback,
 } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
-import { api, setApiAccessTokenProvider } from '@/server/api';
+import { api, setApiAccessTokenProvider, setApiContextHeadersProvider } from '@/server/api';
 import {
   getRefreshService,
   type TokenRefreshService,
 } from '@/lib/auth/token-refresh';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+const ACTIVE_TENANT_STORAGE_KEY = 'prosektor.active_tenant_id';
 
 export interface AuthContextValue {
   // Existing
@@ -43,6 +45,10 @@ export interface AuthContextValue {
   sessionWarning: SessionWarningState;
   tokenRefreshState: TokenRefreshState;
   extendSession: () => Promise<void>;
+  activeTenantId: string | null;
+  availableTenants: MeTenantSummary[];
+  switchTenant: (tenantId: string) => void;
+  isSwitchingTenant: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -84,6 +90,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     lastRefreshAttempt: 0,
     retryCount: 0,
   });
+  const [activeTenantId, setActiveTenantId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY);
+  });
+  const [isSwitchingTenant, setIsSwitchingTenant] = useState(false);
+
+  const persistActiveTenantId = useCallback((tenantId: string | null) => {
+    if (typeof window === 'undefined') return;
+    if (tenantId) {
+      localStorage.setItem(ACTIVE_TENANT_STORAGE_KEY, tenantId);
+      return;
+    }
+    localStorage.removeItem(ACTIVE_TENANT_STORAGE_KEY);
+  }, []);
 
   const supabase = useMemo(() => {
     if (envError) return null;
@@ -100,13 +120,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setApiAccessTokenProvider(getAccessTokenSafely);
   }, []);
 
-  const refreshMe = async () => {
+  useEffect(() => {
+    setApiContextHeadersProvider(() => {
+      if (!activeTenantId) return null;
+      return { 'X-Tenant-Id': activeTenantId };
+    });
+  }, [activeTenantId]);
+
+  const refreshMe = useCallback(async () => {
     if (!supabase) return;
 
     const token = await getAccessTokenSafely();
     if (!token) {
       setMe(null);
       setStatus('unauthenticated');
+      setIsSwitchingTenant(false);
       return;
     }
 
@@ -114,12 +142,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await api.get<MeResponse>('/me', undefined, meResponseSchema);
       setMe(data);
       setStatus('authenticated');
+
+      const currentSelected = activeTenantId;
+      const selectedIsValid = currentSelected
+        ? data.available_tenants.some((tenant) => tenant.id === currentSelected)
+        : false;
+
+      if (!currentSelected || !selectedIsValid || data.active_tenant_id !== currentSelected) {
+        setActiveTenantId(data.active_tenant_id);
+        persistActiveTenantId(data.active_tenant_id);
+      }
     } catch {
       // Could be 401 (not signed in) or 403 (no tenant membership yet).
+      if (activeTenantId) {
+        setActiveTenantId(null);
+        persistActiveTenantId(null);
+      }
       setMe(null);
       setStatus('authenticated');
+    } finally {
+      setIsSwitchingTenant(false);
     }
-  };
+  }, [activeTenantId, persistActiveTenantId, supabase]);
+
+  const switchTenant = useCallback(
+    (tenantId: string) => {
+      if (!tenantId || tenantId === activeTenantId) return;
+      setIsSwitchingTenant(true);
+      setActiveTenantId(tenantId);
+      persistActiveTenantId(tenantId);
+    },
+    [activeTenantId, persistActiveTenantId],
+  );
 
   // Extend session - manually trigger token refresh
   const extendSession = useCallback(async () => {
@@ -151,8 +205,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setMe(null);
     setStatus('unauthenticated');
+    setActiveTenantId(null);
+    persistActiveTenantId(null);
     setTimeUntilExpiry(null);
     setSessionWarning({ show: false, level: 'none', timeUntilExpiry: 0 });
+    setIsSwitchingTenant(false);
 
     // Redirect to login
     if (typeof window !== 'undefined') {
@@ -184,6 +241,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(nextSession);
         setMe(null);
         setStatus(nextSession ? 'authenticated' : 'unauthenticated');
+        if (!nextSession) {
+          setActiveTenantId(null);
+          persistActiveTenantId(null);
+          setIsSwitchingTenant(false);
+        }
 
         // Update refresh service
         if (refreshService) {
@@ -203,18 +265,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshService.stopAutoRefresh();
       }
     };
-  }, [supabase, refreshService]);
+  }, [persistActiveTenantId, refreshService, supabase]);
 
   // Refresh /api/me whenever session changes.
   useEffect(() => {
     if (!supabase) return;
     if (!session) {
       setMe(null);
+      setIsSwitchingTenant(false);
       return;
     }
     void refreshMe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.access_token]);
+  }, [activeTenantId, refreshMe, session?.access_token, supabase]);
 
   // Update time until expiry periodically
   useEffect(() => {
@@ -273,8 +335,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setMe(null);
       setStatus('unauthenticated');
+      setActiveTenantId(null);
+      persistActiveTenantId(null);
       setTimeUntilExpiry(null);
       setSessionWarning({ show: false, level: 'none', timeUntilExpiry: 0 });
+      setIsSwitchingTenant(false);
 
       // Stop refresh service
       if (refreshService) {
@@ -286,6 +351,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionWarning,
     tokenRefreshState,
     extendSession,
+    activeTenantId: me?.active_tenant_id ?? activeTenantId,
+    availableTenants: me?.available_tenants ?? [],
+    switchTenant,
+    isSwitchingTenant,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -67,7 +67,7 @@ export default function AdminUsersPage() {
     const [page, setPage] = useState(1);
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
-    const [inviteRole, setInviteRole] = useState('member');
+    const [inviteRole, setInviteRole] = useState('viewer');
 
     const { data, isLoading, error } = useAdminUsers({
         search: searchTerm || undefined,
@@ -96,7 +96,7 @@ export default function AdminUsersPage() {
             toast.success('Kullanıcı davet edildi');
             setInviteDialogOpen(false);
             setInviteEmail('');
-            setInviteRole('member');
+            setInviteRole('viewer');
         } catch (err: any) {
             toast.error(err.message || 'Davet gönderilemedi');
         }
@@ -165,7 +165,7 @@ export default function AdminUsersPage() {
                         <SelectItem value="owner">Owner</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="editor">Editor</SelectItem>
-                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="viewer">Viewer</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -288,9 +288,9 @@ export default function AdminUsersPage() {
                                                     Admin Yap
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    onClick={() => handleRoleChange(user.id, 'member')}
+                                                    onClick={() => handleRoleChange(user.id, 'viewer')}
                                                 >
-                                                    Member Yap
+                                                    Viewer Yap
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
@@ -365,7 +365,7 @@ export default function AdminUsersPage() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="member">Member</SelectItem>
+                                    <SelectItem value="viewer">Viewer</SelectItem>
                                     <SelectItem value="editor">Editor</SelectItem>
                                     <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>

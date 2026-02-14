@@ -258,17 +258,22 @@ async function ensureSuperAdminMirrorMembership(
       originalError: error,
     });
   }
+
+  console.info("[super-admin-mirror-upsert]", {
+    userId,
+    tenantId,
+    role: "owner",
+  });
 }
 
 /**
  * Super admin için aktif tenantı çözümler.
  */
 async function resolveSuperAdminTenant(
-  req: Request,
   admin: SupabaseClient,
   userId: string,
+  requestedTenantId: string | null,
 ): Promise<{ activeTenant: TenantSummary; availableTenants: TenantSummary[] }> {
-  const requestedTenantId = parseRequestedTenantId(req);
   const availableTenants = await getAllTenants(admin);
 
   if (availableTenants.length === 0) {
@@ -289,8 +294,17 @@ async function resolveSuperAdminTenant(
     }
   } else {
     activeTenant =
+      availableTenants.find((tenant) => tenant.status === "active") ??
       availableTenants.find((tenant) => tenant.status !== "deleted") ??
       availableTenants[0];
+  }
+
+  if (requestedTenantId) {
+    console.info("[super-admin-tenant-switch]", {
+      userId,
+      requestedTenantId,
+      resolvedTenantId: activeTenant.id,
+    });
   }
 
   await ensureSuperAdminMirrorMembership(admin, userId, activeTenant.id);
@@ -317,7 +331,7 @@ export async function requireAuthContext(req: Request): Promise<AuthContext> {
   let role: UserRole;
 
   if (isSuperAdmin(user)) {
-    const resolved = await resolveSuperAdminTenant(req, admin, user.id);
+    const resolved = await resolveSuperAdminTenant(admin, user.id, requestedTenantId);
     tenant = resolved.activeTenant;
     availableTenants = resolved.availableTenants;
     role = "super_admin";

@@ -172,12 +172,43 @@ Paginated responses include:
                                 schema: {
                                     type: 'object',
                                     properties: {
-                                        id: { type: 'string', format: 'uuid' },
-                                        email: { type: 'string', format: 'email' },
-                                        name: { type: 'string' },
-                                        avatar_url: { type: 'string', format: 'uri' },
-                                        role: { type: 'string', enum: ['owner', 'admin', 'editor', 'viewer'] },
-                                        tenant_id: { type: 'string', format: 'uuid' }
+                                        user: {
+                                            type: 'object',
+                                            properties: {
+                                                id: { type: 'string', format: 'uuid' },
+                                                email: { type: 'string', format: 'email' },
+                                                name: { type: 'string' },
+                                                avatar_url: { type: 'string', format: 'uri' },
+                                            },
+                                        },
+                                        tenant: {
+                                            type: 'object',
+                                            properties: {
+                                                id: { type: 'string', format: 'uuid' },
+                                                name: { type: 'string' },
+                                                slug: { type: 'string' },
+                                                plan: { type: 'string', enum: ['demo', 'starter', 'pro'] },
+                                            },
+                                        },
+                                        active_tenant_id: { type: 'string', format: 'uuid' },
+                                        available_tenants: {
+                                            type: 'array',
+                                            items: {
+                                                type: 'object',
+                                                properties: {
+                                                    id: { type: 'string', format: 'uuid' },
+                                                    name: { type: 'string' },
+                                                    slug: { type: 'string' },
+                                                    plan: { type: 'string', enum: ['demo', 'starter', 'pro'] },
+                                                    status: { type: 'string', enum: ['active', 'suspended', 'deleted'] },
+                                                },
+                                            },
+                                        },
+                                        role: { type: 'string', enum: ['super_admin', 'owner', 'admin', 'editor', 'viewer'] },
+                                        permissions: {
+                                            type: 'array',
+                                            items: { type: 'string' },
+                                        },
                                     }
                                 }
                             }

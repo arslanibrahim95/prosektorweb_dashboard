@@ -8,22 +8,33 @@ import {
     mapPostgrestError,
     parseJson,
 } from "@/server/api/http";
+import { type UserRole } from "@prosektor/contracts";
 import { requireAuthContext } from "@/server/auth/context";
+import { isAdminRole, isOwnerRole } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function assertAdminRole(role: UserRole) {
+    if (!isAdminRole(role)) {
+        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
+    }
+}
+
+function assertOwnerRole(role: UserRole) {
+    if (!isOwnerRole(role)) {
+        throw new HttpError(403, { code: "FORBIDDEN", message: "Sadece workspace sahibi ayarları değiştirebilir" });
+    }
+}
+
 export async function GET(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
         const env = getServerEnv();
 
-        // Admin role check
-        if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "super_admin") {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role);
 
         const rateLimit = await enforceRateLimit(
             ctx.admin,
@@ -67,10 +78,7 @@ export async function PATCH(req: Request) {
         const ctx = await requireAuthContext(req);
         const body = await parseJson(req);
 
-        // Admin role check (only owner can update settings)
-        if (ctx.role !== "owner" && ctx.role !== "super_admin") {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Sadece workspace sahibi ayarları değiştirebilir" });
-        }
+        assertOwnerRole(ctx.role);
 
         if (!body || typeof body !== "object") {
             throw new HttpError(400, {

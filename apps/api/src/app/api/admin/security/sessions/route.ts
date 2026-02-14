@@ -7,12 +7,20 @@ import {
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
+import { type UserRole } from "@prosektor/contracts";
 import { requireAuthContext } from "@/server/auth/context";
+import { isAdminRole } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function assertAdminRole(role: UserRole) {
+    if (!isAdminRole(role)) {
+        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
+    }
+}
 
 function safeUserName(email?: string, meta?: Record<string, unknown> | null): string | undefined {
     const nameCandidate = meta?.name?.toString().trim();
@@ -25,10 +33,7 @@ export async function GET(req: Request) {
         const ctx = await requireAuthContext(req);
         const env = getServerEnv();
 
-        // Admin role check
-        if (ctx.role !== "owner" && ctx.role !== "admin" && ctx.role !== "super_admin") {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role);
 
         const rateLimit = await enforceRateLimit(
             ctx.admin,
