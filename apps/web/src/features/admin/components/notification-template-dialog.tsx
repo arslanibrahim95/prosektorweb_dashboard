@@ -36,13 +36,11 @@ import { Label } from '@/components/ui/label';
 
 const notificationTemplateSchema = z.object({
     name: z.string().min(2, 'Şablon adı en az 2 karakter olmalıdır'),
-    type: z.enum(['email', 'sms', 'push', 'in_app'], {
-        required_error: 'Tür seçimi zorunludur',
-    }),
+    type: z.enum(['email', 'sms', 'push', 'in_app']),
     trigger_event: z.string().min(1, 'Tetikleyici olay seçimi zorunludur'),
     subject: z.string().optional(),
     body: z.string().min(10, 'İçerik en az 10 karakter olmalıdır'),
-    is_active: z.boolean().default(true),
+    is_active: z.boolean(),
 });
 
 type NotificationTemplateFormValues = z.infer<typeof notificationTemplateSchema>;

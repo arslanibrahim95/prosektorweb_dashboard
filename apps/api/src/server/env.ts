@@ -13,6 +13,13 @@ export interface ServerEnv {
   dashboardExportRateLimit: number;
   dashboardExportRateWindowSec: number;
   dashboardSummaryCacheTtlSec: number;
+  // Public endpoint rate limits
+  publicContactRlLimit: number;
+  publicContactRlWindowSec: number;
+  publicOfferRlLimit: number;
+  publicOfferRlWindowSec: number;
+  publicHrApplyRlLimit: number;
+  publicHrApplyRlWindowSec: number;
 }
 
 let cachedEnv: ServerEnv | null = null;
@@ -86,6 +93,13 @@ export function getServerEnv(): ServerEnv {
     dashboardExportRateLimit: pickPositiveInt("DASHBOARD_EXPORT_RL_LIMIT", 3),
     dashboardExportRateWindowSec: pickPositiveInt("DASHBOARD_EXPORT_RL_WINDOW_SEC", 600),
     dashboardSummaryCacheTtlSec: pickPositiveInt("DASHBOARD_SUMMARY_CACHE_TTL_SEC", 20),
+    // Public endpoint rate limits
+    publicContactRlLimit: pickPositiveInt("PUBLIC_CONTACT_RL_LIMIT", 5),
+    publicContactRlWindowSec: pickPositiveInt("PUBLIC_CONTACT_RL_WINDOW_SEC", 60),
+    publicOfferRlLimit: pickPositiveInt("PUBLIC_OFFER_RL_LIMIT", 5),
+    publicOfferRlWindowSec: pickPositiveInt("PUBLIC_OFFER_RL_WINDOW_SEC", 60),
+    publicHrApplyRlLimit: pickPositiveInt("PUBLIC_HR_APPLY_RL_LIMIT", 3),
+    publicHrApplyRlWindowSec: pickPositiveInt("PUBLIC_HR_APPLY_RL_WINDOW_SEC", 300),
   };
 
   return cachedEnv;

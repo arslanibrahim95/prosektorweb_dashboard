@@ -40,12 +40,8 @@ const ipBlockSchema = z.object({
         .min(1, 'IP adresi zorunludur')
         .regex(ipv4Regex, 'Geçerli bir IPv4 adresi giriniz (örn: 192.168.1.1)'),
     reason: z.string().min(5, 'Neden en az 5 karakter olmalıdır'),
-    duration: z.enum(['1h', '24h', '7d', '30d', 'permanent'], {
-        required_error: 'Süre seçimi zorunludur',
-    }),
-    type: z.enum(['block', 'allow'], {
-        required_error: 'Tür seçimi zorunludur',
-    }),
+    duration: z.enum(['1h', '24h', '7d', '30d', 'permanent']),
+    type: z.enum(['block', 'allow']),
 });
 
 type IpBlockFormValues = z.infer<typeof ipBlockSchema>;

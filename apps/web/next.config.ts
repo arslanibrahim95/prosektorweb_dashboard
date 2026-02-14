@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 import path from "path";
 import { fileURLToPath } from "url";
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const apiOrigin = (process.env.API_ORIGIN ?? "http://localhost:3001").replace(/\/$/, "");
@@ -61,4 +64,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

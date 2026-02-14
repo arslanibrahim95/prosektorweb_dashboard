@@ -11,7 +11,7 @@ function makeQueryClient() {
             queries: {
                 staleTime: 30 * 1000, // 30 seconds
                 retry: 1,
-                refetchOnWindowFocus: false,
+                refetchOnWindowFocus: true,
             },
             mutations: {
                 onError: (error) => {

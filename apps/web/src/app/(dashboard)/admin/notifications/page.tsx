@@ -211,6 +211,13 @@ const statusIcons = {
     pending: Clock,
 };
 
+interface NotificationSettings {
+    enabled?: boolean;
+    email_notifications?: boolean;
+    slack_notifications?: boolean;
+    webhook_url?: string;
+}
+
 export default function NotificationsPage() {
     const [activeTab, setActiveTab] = useState('templates');
     const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
@@ -221,7 +228,7 @@ export default function NotificationsPage() {
     const updateNotifications = useUpdateAdminNotifications();
 
     // Email settings state
-    const [emailSettings, setEmailSettings] = useState({
+    const [emailSettings, setEmailSettings] = useState<Required<NotificationSettings>>({
         enabled: true,
         email_notifications: true,
         slack_notifications: false,
@@ -231,11 +238,12 @@ export default function NotificationsPage() {
     // Update local state when API data loads
     useState(() => {
         if (notificationSettings) {
+            const settings = notificationSettings as NotificationSettings;
             setEmailSettings({
-                enabled: notificationSettings.enabled ?? true,
-                email_notifications: notificationSettings.email_notifications ?? true,
-                slack_notifications: notificationSettings.slack_notifications ?? false,
-                webhook_url: notificationSettings.webhook_url ?? '',
+                enabled: settings.enabled ?? true,
+                email_notifications: settings.email_notifications ?? true,
+                slack_notifications: settings.slack_notifications ?? false,
+                webhook_url: settings.webhook_url ?? '',
             });
         }
     });

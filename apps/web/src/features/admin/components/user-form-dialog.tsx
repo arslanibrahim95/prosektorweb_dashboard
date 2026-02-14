@@ -35,9 +35,7 @@ import type { UserRole } from '@prosektor/contracts';
 const userFormSchema = z.object({
     name: z.string().min(2, 'Ad en az 2 karakter olmalıdır'),
     email: z.string().email('Geçerli bir e-posta adresi giriniz'),
-    role: z.enum(['super_admin', 'owner', 'admin', 'editor', 'viewer'] as const, {
-        required_error: 'Rol seçimi zorunludur',
-    }),
+    role: z.enum(['super_admin', 'owner', 'admin', 'editor', 'viewer'] as const),
     is_active: z.enum(['active', 'inactive'] as const),
 });
 

@@ -11,9 +11,16 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { getServerEnv } from "@/server/env";
-import { enforceRateLimit, getClientIp, hashIp, randomId, rateLimitKey } from "@/server/rate-limit";
+import { enforceRateLimit, getClientIp, hashIp, randomId, rateLimitKey, rateLimitHeaders } from "@/server/rate-limit";
 import { verifySiteToken } from "@/server/site-token";
 import { createAdminClient } from "@/server/supabase";
+import {
+  validateCVFile,
+  sanitizeFilename,
+  ALLOWED_CV_MIME_TYPES,
+  MAX_CV_FILE_SIZE
+} from "@/server/security/file-validation";
+import { ErrorCodes, ErrorCode } from "@/server/errors/error-codes";
 
 function asString(value: FormDataEntryValue | null): string | undefined {
   if (typeof value === "string") return value;
@@ -27,12 +34,6 @@ function parseCheckbox(value: FormDataEntryValue | null): boolean | undefined {
   if (s === "true" || s === "1" || s === "on" || s === "yes") return true;
   if (s === "false" || s === "0" || s === "off" || s === "no") return false;
   return undefined;
-}
-
-function sanitizeFilename(name: string): string {
-  const base = name.trim() || "cv";
-  const sanitized = base.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
-  return sanitized.length > 0 ? sanitized.slice(0, 80) : "cv";
 }
 
 export const runtime = "nodejs";
@@ -75,12 +76,34 @@ export async function POST(req: Request) {
     const cvParsed = cvFileSchema.safeParse(cvEntry);
     if (!cvParsed.success) {
       throw new HttpError(400, {
-        code: "VALIDATION_ERROR",
+        code: ErrorCodes.VALIDATION_ERROR,
         message: "Validation failed",
         details: { cv_file: cvParsed.error.issues.map((i) => i.message) },
       });
     }
     const cvFile = cvParsed.data;
+
+    // Convert file to buffer for comprehensive validation
+    const cvBuffer = await cvFile.arrayBuffer();
+
+    // Perform comprehensive security validation (magic bytes, file type, size)
+    const validationResult = await validateCVFile(cvFile, cvBuffer);
+    if (!validationResult.valid) {
+      // Determine specific error code based on validation failure
+      let errorCode: ErrorCode = ErrorCodes.VALIDATION_ERROR;
+      if (validationResult.error?.includes('file type')) {
+        errorCode = ErrorCodes.INVALID_FILE_TYPE;
+      } else if (validationResult.error?.includes('size')) {
+        errorCode = ErrorCodes.FILE_TOO_LARGE;
+      } else if (validationResult.error?.includes('content')) {
+        errorCode = ErrorCodes.INVALID_FILE_CONTENT;
+      }
+
+      throw new HttpError(errorCode === ErrorCodes.FILE_TOO_LARGE ? 413 : 400, {
+        code: errorCode,
+        message: validationResult.error || "File validation failed",
+      });
+    }
 
     const { site_id } = await verifySiteToken(fieldsParsed.data.site_token);
 
@@ -105,7 +128,12 @@ export async function POST(req: Request) {
 
     const ip = getClientIp(req);
     const ipHash = hashIp(ip);
-    await enforceRateLimit(admin, rateLimitKey("public_hr_apply", site.id, ipHash), 5, 3600);
+    const rateLimitResult = await enforceRateLimit(
+      admin,
+      rateLimitKey("public_hr_apply", site.id, ipHash),
+      env.publicHrApplyRlLimit,
+      env.publicHrApplyRlWindowSec
+    );
 
     const { data: jobPost, error: jobPostError } = await admin
       .from("job_posts")
@@ -123,7 +151,8 @@ export async function POST(req: Request) {
       cvFile.name,
     )}`;
 
-    const buffer = Buffer.from(await cvFile.arrayBuffer());
+    // Reuse the buffer from validation to avoid reading the file again
+    const buffer = Buffer.from(cvBuffer);
     const { error: uploadError } = await admin.storage
       .from(env.storageBucketPrivateCv)
       .upload(key, buffer, { contentType: cvFile.type, upsert: false });
@@ -151,7 +180,11 @@ export async function POST(req: Request) {
       throw mapPostgrestError(insertError);
     }
 
-    return jsonOk(publicSubmitSuccessSchema.parse({ id: inserted.id }));
+    return jsonOk(
+      publicSubmitSuccessSchema.parse({ id: inserted.id }),
+      200,
+      rateLimitHeaders(rateLimitResult)
+    );
   } catch (err) {
     return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }

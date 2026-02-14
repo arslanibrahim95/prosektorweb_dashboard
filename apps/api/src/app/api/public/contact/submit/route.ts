@@ -13,7 +13,8 @@ import {
 } from "@/server/api/http";
 import { createAdminClient } from "@/server/supabase";
 import { verifySiteToken } from "@/server/site-token";
-import { enforceRateLimit, getClientIp, hashIp, rateLimitKey } from "@/server/rate-limit";
+import { enforceRateLimit, getClientIp, hashIp, rateLimitKey, rateLimitHeaders } from "@/server/rate-limit";
+import { getServerEnv } from "@/server/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   try {
     const admin = createAdminClient();
+    const env = getServerEnv();
 
     const raw = await parseJson(req);
     if (
@@ -64,7 +66,12 @@ export async function POST(req: Request) {
 
     const ip = getClientIp(req);
     const ipHash = hashIp(ip);
-    await enforceRateLimit(admin, rateLimitKey("public_contact_submit", site.id, ipHash), 5, 3600);
+    const rateLimitResult = await enforceRateLimit(
+      admin,
+      rateLimitKey("public_contact_submit", site.id, ipHash),
+      env.publicContactRlLimit,
+      env.publicContactRlWindowSec
+    );
 
     const nowIso = new Date().toISOString();
 
@@ -86,7 +93,11 @@ export async function POST(req: Request) {
       .single();
     if (insertError) throw mapPostgrestError(insertError);
 
-    return jsonOk(publicSubmitSuccessSchema.parse({ id: inserted.id }));
+    return jsonOk(
+      publicSubmitSuccessSchema.parse({ id: inserted.id }),
+      200,
+      rateLimitHeaders(rateLimitResult)
+    );
   } catch (err) {
     return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }

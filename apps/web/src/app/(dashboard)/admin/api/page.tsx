@@ -254,6 +254,91 @@ export default function ApiManagementPage() {
                                     <Skeleton className="h-12 w-full" />
                                     <Skeleton className="h-12 w-full" />
                                 </div>
+                            ) : mockApiKeys.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="border-b">
+                                                <th className="pb-3 text-left text-sm font-medium">Anahtar Adı</th>
+                                                <th className="pb-3 text-left text-sm font-medium">API Anahtarı</th>
+                                                <th className="pb-3 text-left text-sm font-medium">İzinler</th>
+                                                <th className="pb-3 text-left text-sm font-medium">Oluşturulma</th>
+                                                <th className="pb-3 text-left text-sm font-medium">Son Kullanım</th>
+                                                <th className="pb-3 text-left text-sm font-medium">Oran Sınırı</th>
+                                                <th className="pb-3 text-left text-sm font-medium">Durum</th>
+                                                <th className="pb-3 text-right text-sm font-medium">İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {mockApiKeys.map((apiKey) => (
+                                                <tr key={apiKey.id} className="border-b last:border-0">
+                                                    <td className="py-4 text-sm font-medium">{apiKey.name}</td>
+                                                    <td className="py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <code className="rounded bg-muted px-2 py-1 text-xs font-mono">
+                                                                {apiKey.key.substring(0, 20)}...
+                                                            </code>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-7 w-7"
+                                                                onClick={() => handleCopyKey(apiKey.id, apiKey.key)}
+                                                            >
+                                                                {copiedKey === apiKey.id ? (
+                                                                    <Check className="h-3 w-3" />
+                                                                ) : (
+                                                                    <Copy className="h-3 w-3" />
+                                                                )}
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {getPermissionBadges(apiKey.permissions)}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 text-sm text-muted-foreground">
+                                                        {apiKey.createdAt}
+                                                    </td>
+                                                    <td className="py-4 text-sm text-muted-foreground">
+                                                        {apiKey.lastUsed}
+                                                    </td>
+                                                    <td className="py-4 text-sm text-muted-foreground">
+                                                        {apiKey.rateLimit}
+                                                    </td>
+                                                    <td className="py-4 text-sm italic">{getStatusBadge(apiKey.status)}</td>
+                                                    <td className="py-4 text-right">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <MoreVertical className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem>
+                                                                    <Copy className="mr-2 h-4 w-4" />
+                                                                    Kopyala
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem>
+                                                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                                                    Yenile
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem>
+                                                                    <Ban className="mr-2 h-4 w-4" />
+                                                                    İptal Et
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem className="text-destructive">
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Sil
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             ) : (
                                 <div className="p-8 text-center text-muted-foreground">
                                     <Key className="mx-auto h-12 w-12 mb-4 opacity-50" />
@@ -287,6 +372,90 @@ export default function ApiManagementPage() {
                                     <Skeleton className="h-12 w-full" />
                                     <Skeleton className="h-12 w-full" />
                                 </div>
+                            ) : mockWebhooks.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="border-b">
+                                                <th className="pb-3 text-left text-sm font-medium">URL</th>
+                                                <th className="pb-3 text-left text-sm font-medium">Olaylar</th>
+                                                <th className="pb-3 text-left text-sm font-medium">Durum</th>
+                                                <th className="pb-3 text-left text-sm font-medium">Son Tetikleme</th>
+                                                <th className="pb-3 text-left text-sm font-medium">Başarı Oranı</th>
+                                                <th className="pb-3 text-right text-sm font-medium">İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {mockWebhooks.map((webhook) => (
+                                                <tr key={webhook.id} className="border-b last:border-0">
+                                                    <td className="py-4">
+                                                        <div className="max-w-xs truncate text-sm font-medium">
+                                                            {webhook.url}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {webhook.events.map((event) => (
+                                                                <Badge key={event} variant="secondary" className="text-xs">
+                                                                    {eventLabels[event] || event}
+                                                                </Badge>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4">{getStatusBadge(webhook.status)}</td>
+                                                    <td className="py-4 text-sm text-muted-foreground">
+                                                        {webhook.lastTriggered}
+                                                    </td>
+                                                    <td className="py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="text-sm font-medium">
+                                                                {webhook.successRate.toFixed(1)}%
+                                                            </div>
+                                                            <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
+                                                                <div
+                                                                    className={`h-full ${webhook.successRate >= 90
+                                                                        ? "bg-green-500"
+                                                                        : webhook.successRate >= 70
+                                                                            ? "bg-yellow-500"
+                                                                            : "bg-red-500"
+                                                                        }`}
+                                                                    style={{ width: `${webhook.successRate}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 text-right">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <MoreVertical className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem>
+                                                                    <Edit className="mr-2 h-4 w-4" />
+                                                                    Düzenle
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem>
+                                                                    <TestTube className="mr-2 h-4 w-4" />
+                                                                    Test Et
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem>
+                                                                    <FileText className="mr-2 h-4 w-4" />
+                                                                    Logları Gör
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem className="text-destructive">
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Sil
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             ) : (
                                 <div className="p-8 text-center text-muted-foreground">
                                     <Webhook className="mx-auto h-12 w-12 mb-4 opacity-50" />
@@ -302,202 +471,5 @@ export default function ApiManagementPage() {
             <ApiKeyDialog open={apiKeyDialogOpen} onOpenChange={setApiKeyDialogOpen} />
             <WebhookDialog open={webhookDialogOpen} onOpenChange={setWebhookDialogOpen} />
         </div>
-    );
-}
-=======
-                        <CardContent>
-                            {isLoading ? (
-                                <div className="space-y-4">
-                                    <Skeleton className="h-12 w-full" />
-                                    <Skeleton className="h-12 w-full" />
-                                    <Skeleton className="h-12 w-full" />
-                                </div>
-                            ) : (
-                                <div className="p-8 text-center text-muted-foreground">
-                                    <Key className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                                    <p>Henüz API anahtarı oluşturulmadı</p>
-                                    <p className="text-sm mt-2">Yeni API anahtarı oluşturmak için yukarıdaki butonu kullanın</p>
-                                </div>
-                            )}
->>>>>>> REPLACE
-<tr key={apiKey.id} className="border-b last:border-0">
-    <td className="py-4 text-sm font-medium">{apiKey.name}</td>
-    <td className="py-4">
-        <div className="flex items-center gap-2">
-            <code className="rounded bg-muted px-2 py-1 text-xs font-mono">
-                {apiKey.key.substring(0, 20)}...
-            </code>
-            <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => handleCopyKey(apiKey.id, apiKey.key)}
-            >
-                {copiedKey === apiKey.id ? (
-                    <Check className="h-3 w-3" />
-                ) : (
-                    <Copy className="h-3 w-3" />
-                )}
-            </Button>
-        </div>
-    </td>
-    <td className="py-4">
-        <div className="flex flex-wrap gap-1">
-            {getPermissionBadges(apiKey.permissions)}
-        </div>
-    </td>
-    <td className="py-4 text-sm text-muted-foreground">
-        {apiKey.createdAt}
-    </td>
-    <td className="py-4 text-sm text-muted-foreground">
-        {apiKey.lastUsed}
-    </td>
-    <td className="py-4 text-sm text-muted-foreground">
-        {apiKey.rateLimit}
-    </td>
-    <td className="py-4">{getStatusBadge(apiKey.status)}</td>
-    <td className="py-4 text-right">
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Kopyala
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Yenile
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                    <Ban className="mr-2 h-4 w-4" />
-                    İptal Et
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Sil
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    </td>
-</tr>
-                                        ))}
-                                    </tbody >
-                                </table >
-                            </div >
-                        </CardContent >
-                    </Card >
-                </TabsContent >
-
-    <TabsContent value="webhooks" className="space-y-4">
-        <div className="flex justify-end">
-            <Button onClick={() => setWebhookDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Yeni Webhook
-            </Button>
-        </div>
-
-        <Card>
-            <CardHeader>
-                <CardTitle>Webhook'lar</CardTitle>
-                <CardDescription>
-                    Olay bildirimleri için webhook'ları yapılandırın
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b">
-                                <th className="pb-3 text-left text-sm font-medium">URL</th>
-                                <th className="pb-3 text-left text-sm font-medium">Olaylar</th>
-                                <th className="pb-3 text-left text-sm font-medium">Durum</th>
-                                <th className="pb-3 text-left text-sm font-medium">Son Tetikleme</th>
-                                <th className="pb-3 text-left text-sm font-medium">Başarı Oranı</th>
-                                <th className="pb-3 text-right text-sm font-medium">İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {mockWebhooks.map((webhook) => (
-                                <tr key={webhook.id} className="border-b last:border-0">
-                                    <td className="py-4">
-                                        <div className="max-w-xs truncate text-sm font-medium">
-                                            {webhook.url}
-                                        </div>
-                                    </td>
-                                    <td className="py-4">
-                                        <div className="flex flex-wrap gap-1">
-                                            {webhook.events.map((event) => (
-                                                <Badge key={event} variant="secondary" className="text-xs">
-                                                    {eventLabels[event] || event}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className="py-4">{getStatusBadge(webhook.status)}</td>
-                                    <td className="py-4 text-sm text-muted-foreground">
-                                        {webhook.lastTriggered}
-                                    </td>
-                                    <td className="py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="text-sm font-medium">
-                                                {webhook.successRate.toFixed(1)}%
-                                            </div>
-                                            <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
-                                                <div
-                                                    className={`h-full ${webhook.successRate >= 90
-                                                        ? "bg-green-500"
-                                                        : webhook.successRate >= 70
-                                                            ? "bg-yellow-500"
-                                                            : "bg-red-500"
-                                                        }`}
-                                                    style={{ width: `${webhook.successRate}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Düzenle
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem>
-                                                    <TestTube className="mr-2 h-4 w-4" />
-                                                    Test Et
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem>
-                                                    <FileText className="mr-2 h-4 w-4" />
-                                                    Logları Gör
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Sil
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </CardContent>
-        </Card>
-    </TabsContent>
-            </Tabs >
-
-            <ApiKeyDialog open={apiKeyDialogOpen} onOpenChange={setApiKeyDialogOpen} />
-            <WebhookDialog open={webhookDialogOpen} onOpenChange={setWebhookDialogOpen} />
-        </div >
     );
 }

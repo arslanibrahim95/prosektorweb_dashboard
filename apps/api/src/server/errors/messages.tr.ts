@@ -28,6 +28,9 @@ export const errorMessages: Record<ErrorCode, string> = {
     INVALID_REQUEST_BODY: 'Geçersiz veri gönderimi. Lütfen formu kontrol edin.',
     INVALID_QUERY_PARAMS: 'Arama parametreleri geçersiz.',
     INVALID_UUID: 'Geçersiz kaynak referansı.',
+    INVALID_FILE_TYPE: 'Geçersiz dosya türü. Sadece PDF, DOC ve DOCX dosyaları kabul edilir.',
+    FILE_TOO_LARGE: 'Dosya boyutu çok büyük. Maksimum 5MB yükleyebilirsiniz.',
+    INVALID_FILE_CONTENT: 'Dosya içeriği geçersiz veya bozuk. Lütfen geçerli bir dosya yükleyin.',
 
     // === Not Found ===
     NOT_FOUND: 'Aradığınız kaynak bulunamadı.',
@@ -79,6 +82,9 @@ const englishErrorMessages: Partial<Record<ErrorCode, string>> = {
     CUSTOM_JWT_EXPIRED: 'Your session has expired.',
     INVALID_CREDENTIALS: 'Invalid email or password.',
     VALIDATION_ERROR: 'The information you entered contains errors. Please check.',
+    INVALID_FILE_TYPE: 'Invalid file type. Only PDF, DOC, and DOCX files are allowed.',
+    FILE_TOO_LARGE: 'File size is too large. Maximum 5MB allowed.',
+    INVALID_FILE_CONTENT: 'File content is invalid or corrupted. Please upload a valid file.',
     NOT_FOUND: 'The requested resource was not found.',
     INTERNAL_ERROR: 'An error occurred. Please try again later.',
     RATE_LIMITED: 'Too many requests. Please wait.',

@@ -1,0 +1,136 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        "group:monorepos",
+        "group:recommended",
+        ":semanticCommits"
+    ],
+    "labels": [
+        "dependencies"
+    ],
+    "rangeStrategy": "bump",
+    "packageRules": [
+        {
+            "description": "Group all React-related packages",
+            "matchPackagePatterns": [
+                "^react",
+                "^@types/react"
+            ],
+            "groupName": "react",
+            "schedule": [
+                "before 9am on monday"
+            ]
+        },
+        {
+            "description": "Group all Next.js packages",
+            "matchPackagePatterns": [
+                "^next",
+                "^eslint-config-next"
+            ],
+            "groupName": "nextjs",
+            "schedule": [
+                "before 9am on monday"
+            ]
+        },
+        {
+            "description": "Group all Supabase packages",
+            "matchPackagePatterns": [
+                "^@supabase"
+            ],
+            "groupName": "supabase",
+            "schedule": [
+                "before 9am on monday"
+            ]
+        },
+        {
+            "description": "Group all TanStack packages",
+            "matchPackagePatterns": [
+                "^@tanstack"
+            ],
+            "groupName": "tanstack",
+            "schedule": [
+                "before 9am on monday"
+            ]
+        },
+        {
+            "description": "Group all testing packages",
+            "matchPackagePatterns": [
+                "^vitest",
+                "^@playwright",
+                "^@testing"
+            ],
+            "groupName": "testing",
+            "schedule": [
+                "before 9am on monday"
+            ]
+        },
+        {
+            "description": "Group all Radix UI packages",
+            "matchPackagePatterns": [
+                "^radix-ui",
+                "^@radix-ui"
+            ],
+            "groupName": "radix-ui",
+            "schedule": [
+                "before 9am on monday"
+            ]
+        },
+        {
+            "description": "Group all linting/formatting packages",
+            "matchPackagePatterns": [
+                "^eslint",
+                "^prettier",
+                "^@typescript-eslint"
+            ],
+            "groupName": "linting",
+            "schedule": [
+                "before 9am on monday"
+            ]
+        },
+        {
+            "description": "Auto-merge patch updates that pass CI",
+            "matchUpdateTypes": [
+                "patch"
+            ],
+            "automerge": true,
+            "automergeType": "pr",
+            "platformAutomerge": true
+        },
+        {
+            "description": "Minor updates - weekly schedule",
+            "matchUpdateTypes": [
+                "minor"
+            ],
+            "schedule": [
+                "before 9am on monday"
+            ]
+        },
+        {
+            "description": "Major updates - monthly, require manual review",
+            "matchUpdateTypes": [
+                "major"
+            ],
+            "schedule": [
+                "before 9am on the first day of the month"
+            ],
+            "automerge": false,
+            "labels": [
+                "dependencies",
+                "major-update"
+            ]
+        }
+    ],
+    "vulnerabilityAlerts": {
+        "enabled": true,
+        "labels": [
+            "security"
+        ],
+        "schedule": [
+            "at any time"
+        ]
+    },
+    "prConcurrentLimit": 5,
+    "prHourlyLimit": 2,
+    "timezone": "Europe/Istanbul"
+}

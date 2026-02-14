@@ -1,47 +1,7 @@
-import { jobApplicationSchema, markReadRequestSchema } from "@prosektor/contracts";
-import {
-  asErrorBody,
-  asStatus,
-  HttpError,
-  jsonError,
-  jsonOk,
-  mapPostgrestError,
-  parseJson,
-  zodErrorToDetails,
-} from "@/server/api/http";
-import { requireAuthContext } from "@/server/auth/context";
+import { createMarkReadHandler } from "@/server/inbox/mark-read-handler";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
-  try {
-    const ctx = await requireAuthContext(req);
-    const { id } = await ctxRoute.params;
-    const body = await parseJson(req);
-
-    const parsed = markReadRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new HttpError(400, {
-        code: "VALIDATION_ERROR",
-        message: "Validation failed",
-        details: zodErrorToDetails(parsed.error),
-      });
-    }
-
-    const { data, error } = await ctx.supabase
-      .from("job_applications")
-      .update({ is_read: parsed.data.is_read })
-      .eq("tenant_id", ctx.tenant.id)
-      .eq("id", id)
-      .select("*, job_post:job_posts(id,title)")
-      .maybeSingle();
-
-    if (error) throw mapPostgrestError(error);
-    if (!data) throw new HttpError(404, { code: "NOT_FOUND", message: "Not found" });
-
-    return jsonOk(jobApplicationSchema.parse(data));
-  } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
-  }
-}
+// Standardized to POST (was PATCH) to match other inbox routes.
+export const POST = createMarkReadHandler("job_applications");
