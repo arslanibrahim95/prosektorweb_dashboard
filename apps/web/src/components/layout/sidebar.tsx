@@ -256,7 +256,7 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
 
     // Check if user has admin or owner role
     const userRole = auth.me?.role;
-    const isAdmin = userRole === 'owner' || userRole === 'admin';
+    const isAdmin = userRole === 'owner' || userRole === 'admin' || userRole === 'super_admin';
 
     return (
         <TooltipProvider>
