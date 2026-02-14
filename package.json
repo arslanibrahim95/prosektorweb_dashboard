@@ -1,0 +1,30 @@
+{
+  "name": "prosektorweb_dashboard",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter web --filter api dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "build": "pnpm -r --filter web --filter api build",
+    "lint": "pnpm -r --filter web --filter api lint",
+    "test:contracts": "pnpm --filter @prosektor/contracts test",
+    "test:api": "pnpm --filter api test",
+    "test:db": "pnpm --filter @prosektorweb/testing test:db",
+    "test:web": "pnpm --filter web test",
+    "test:e2e": "pnpm --filter web test:e2e",
+    "security:audit": "pnpm audit --audit-level=moderate",
+    "security:all": "pnpm security:audit",
+    "hygiene:repo": "pnpm -r lint && pnpm -r --filter web --filter api build",
+    "test:strict": "pnpm run test:api && pnpm run test:web",
+    "hygiene:git": "pnpm run hygiene:repo && pnpm run test:strict"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.27.3"
+    }
+  }
+}

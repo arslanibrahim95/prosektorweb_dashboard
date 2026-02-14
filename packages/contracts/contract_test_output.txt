@@ -1,0 +1,53 @@
+
+> @prosektor/contracts@0.0.0 test /Users/root9581/Desktop/prosektorweb_dashboard/packages/contracts
+> vitest run "tests/contract.test.ts"
+
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/root9581/Desktop/prosektorweb_dashboard/packages/contracts[39m
+
+ [31m❯[39m tests/contract.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 5[2mms[22m[39m
+     [32m✓[39m should have correct contract version[32m 1[2mms[22m[39m
+       [32m✓[39m should validate success envelope[32m 1[2mms[22m[39m
+[31m       [31m×[31m should validate error envelope[39m[32m 2[2mms[22m[39m
+       [32m✓[39m should validate publish webhook body[32m 1[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/contract.test.ts[2m > [22mContract Definitions[2m > [22mAPI Envelopes[2m > [22mshould validate error envelope
+[31m[1mZodError[22m: [
+  {
+    "code": "invalid_key",
+    "origin": "record",
+    "issues": [
+      {
+        "expected": "array",
+        "code": "invalid_type",
+        "path": [],
+        "message": "Invalid input: expected array, received string"
+      }
+    ],
+    "path": [
+      "error",
+      "details",
+      "field"
+    ],
+    "message": "Invalid key in record"
+  }
+][39m
+[36m [2m❯[22m tests/contract.test.ts:[2m40:43[22m[39m
+    [90m 38| [39m            }[33m;[39m
+    [90m 39| [39m
+    [90m 40| [39m            expect(apiErrorResponseSchema.parse(validError)).toEqual(v…
+    [90m   | [39m                                          [31m^[39m
+    [90m 41| [39m        })[33m;[39m
+    [90m 42| [39m    })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 22:21:10
+[2m   Duration [22m 190ms[2m (transform 67ms, setup 0ms, import 100ms, tests 5ms, environment 0ms)[22m
+
+ ELIFECYCLE  Test failed. See above for more details.

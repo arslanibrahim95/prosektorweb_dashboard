@@ -1,0 +1,43 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * 1"
+
+jobs:
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency audit
+        run: pnpm audit --audit-level=moderate
+
+      - name: Secret scan (gitleaks)
+        run: docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:latest detect --no-banner --redact
+
+      - name: SAST (semgrep)
+        run: docker run --rm -v "$PWD:/src" -w /src returntocorp/semgrep:latest semgrep scan --config p/ci --error --exclude node_modules --exclude .next --exclude dist --exclude build --exclude out --timeout 120 --max-target-bytes 2000000

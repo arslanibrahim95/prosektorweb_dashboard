@@ -1,0 +1,61 @@
+
+> api@0.1.0 test /Users/root9581/Desktop/prosektorweb_dashboard/apps/api
+> vitest run "tests/webhooks/publish.test.ts"
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v1.6.1 /Users/root9581/Desktop/prosektorweb_dashboard/apps/api
+
+stderr | tests/webhooks/publish.test.ts > sendPublishWebhook > should send correct payload and headers
+[Webhook] Invalid payload ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "site",
+      "id"
+    ],
+    "message": "Invalid UUID"
+  }
+]
+    at new ZodError (file:///Users/root9581/Desktop/prosektorweb_dashboard/node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/core.js:39:39)
+    at Module.<anonymous> (file:///Users/root9581/Desktop/prosektorweb_dashboard/node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/core/parse.js:40:20)
+    at _.inst.safeParse (file:///Users/root9581/Desktop/prosektorweb_dashboard/node_modules/.pnpm/zod@4.3.6/node_modules/zod/v4/classic/schemas.js:40:46)
+    at Module.sendPublishWebhook (/Users/root9581/Desktop/prosektorweb_dashboard/apps/api/src/server/webhooks/publish.ts:28:45)
+    at /Users/root9581/Desktop/prosektorweb_dashboard/apps/api/tests/webhooks/publish.test.ts:34:15
+    at file:///Users/root9581/Desktop/prosektorweb_dashboard/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:135:14
+    at file:///Users/root9581/Desktop/prosektorweb_dashboard/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:60:26
+    at runTest (file:///Users/root9581/Desktop/prosektorweb_dashboard/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:781:17)
+    at runSuite (file:///Users/root9581/Desktop/prosektorweb_dashboard/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:909:15)
+    at runSuite (file:///Users/root9581/Desktop/prosektorweb_dashboard/node_modules/.pnpm/@vitest+runner@1.6.1/node_modules/@vitest/runner/dist/index.js:909:15)
+
+ ❯ tests/webhooks/publish.test.ts  (2 tests | 1 failed) 10ms
+   ❯ tests/webhooks/publish.test.ts > sendPublishWebhook > should send correct payload and headers
+     → Invalid webhook payload constructed
+stdout | tests/webhooks/publish.test.ts > sendPublishWebhook > should generate correct HMAC signature
+[Webhook] Successfully sent webhook for site test-slug (trace: test-trace-id)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/webhooks/publish.test.ts > sendPublishWebhook > should send correct payload and headers
+Error: Invalid webhook payload constructed
+ ❯ Module.sendPublishWebhook src/server/webhooks/publish.ts:31:15
+     29|     if (!parsed.success) {
+     30|         console.error("[Webhook] Invalid payload", parsed.error);
+     31|         throw new Error("Invalid webhook payload constructed");
+       |               ^
+     32|     }
+     33| 
+ ❯ tests/webhooks/publish.test.ts:34:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  22:22:42
+   Duration  309ms (transform 69ms, setup 0ms, collect 114ms, tests 10ms, environment 0ms, prepare 47ms)
+
+ ELIFECYCLE  Test failed. See above for more details.

@@ -1,0 +1,62 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      SUPABASE_URL: ${SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      # SECURITY: Separate secrets for different purposes
+      SITE_TOKEN_SECRET: ${SITE_TOKEN_SECRET}
+      CUSTOM_JWT_SECRET: ${CUSTOM_JWT_SECRET}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-5}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      DASHBOARD_READ_RL_LIMIT: ${DASHBOARD_READ_RL_LIMIT:-120}
+      DASHBOARD_READ_RL_WINDOW_SEC: ${DASHBOARD_READ_RL_WINDOW_SEC:-60}
+      DASHBOARD_SEARCH_RL_LIMIT: ${DASHBOARD_SEARCH_RL_LIMIT:-30}
+      DASHBOARD_SEARCH_RL_WINDOW_SEC: ${DASHBOARD_SEARCH_RL_WINDOW_SEC:-60}
+      DASHBOARD_EXPORT_RL_LIMIT: ${DASHBOARD_EXPORT_RL_LIMIT:-3}
+      DASHBOARD_EXPORT_RL_WINDOW_SEC: ${DASHBOARD_EXPORT_RL_WINDOW_SEC:-600}
+      DASHBOARD_SUMMARY_CACHE_TTL_SEC: ${DASHBOARD_SUMMARY_CACHE_TTL_SEC:-20}
+      # Public endpoint rate limits
+      PUBLIC_CONTACT_RL_LIMIT: ${PUBLIC_CONTACT_RL_LIMIT:-5}
+      PUBLIC_CONTACT_RL_WINDOW_SEC: ${PUBLIC_CONTACT_RL_WINDOW_SEC:-60}
+      PUBLIC_OFFER_RL_LIMIT: ${PUBLIC_OFFER_RL_LIMIT:-5}
+      PUBLIC_OFFER_RL_WINDOW_SEC: ${PUBLIC_OFFER_RL_WINDOW_SEC:-60}
+      PUBLIC_HR_APPLY_RL_LIMIT: ${PUBLIC_HR_APPLY_RL_LIMIT:-3}
+      PUBLIC_HR_APPLY_RL_WINDOW_SEC: ${PUBLIC_HR_APPLY_RL_WINDOW_SEC:-300}
+      STORAGE_BUCKET_PRIVATE_CV: ${STORAGE_BUCKET_PRIVATE_CV:-private-cv}
+      STORAGE_BUCKET_PUBLIC_MEDIA: ${STORAGE_BUCKET_PUBLIC_MEDIA:-public-media}
+    expose:
+      - "3001"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    environment:
+      NODE_ENV: production
+      # Optional: if you hit the web container directly on :3000 (without nginx),
+      # /api rewrites can forward to the api container.
+      API_ORIGIN: http://api:3001
+    expose:
+      - "3000"
+    depends_on:
+      - api
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web
+      - api

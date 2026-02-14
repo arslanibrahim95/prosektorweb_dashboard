@@ -1,0 +1,23 @@
+{
+    "name": "@prosektorweb/testing",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./fixtures": "./fixtures/index.ts",
+        "./fixtures/seed": "./fixtures/seed.ts",
+        "./fixtures/payloads": "./fixtures/payloads.ts"
+    },
+    "scripts": {
+        "test": "vitest run",
+        "test:db": "vitest run db/",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.39.0"
+    },
+    "devDependencies": {
+        "vitest": "^1.0.0"
+    }
+}

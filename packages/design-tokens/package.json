@@ -1,0 +1,23 @@
+{
+    "name": "@prosektorweb/design-tokens",
+    "version": "1.0.0",
+    "description": "Design tokens and Tailwind preset for ProsektorWeb Dashboard",
+    "main": "index.js",
+    "exports": {
+        ".": "./index.js",
+        "./tokens.css": "./tokens.css",
+        "./theme.css": "./theme.css",
+        "./tailwind-preset": "./tailwind-preset.js"
+    },
+    "files": [
+        "index.js",
+        "tokens.css",
+        "tailwind-preset.js"
+    ],
+    "keywords": [
+        "design-tokens",
+        "tailwind",
+        "prosektorweb"
+    ],
+    "license": "MIT"
+}
