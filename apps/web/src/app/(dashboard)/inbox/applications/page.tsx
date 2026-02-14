@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useTransition } from 'react';
 import type { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -96,6 +96,7 @@ function ApplicationsInboxContent() {
   });
   const markAsReadMutation = useMarkAsRead('applications', site.currentSiteId);
   const bulkMarkAsReadMutation = useBulkMarkAsRead('applications', site.currentSiteId);
+  const [isPending, startTransition] = useTransition();
 
   const jobApplications = useMemo(() => data?.items ?? [], [data?.items]);
   const total = data?.total ?? 0;
@@ -211,7 +212,15 @@ function ApplicationsInboxContent() {
       {
         id: 'email',
         header: 'Email',
-        cell: (application) => <span>{application.email}</span>,
+        cell: (application) => (
+          <a
+            href={`mailto:${application.email}`}
+            className="text-primary hover:underline"
+            aria-label={`${application.email} adresine email gönder`}
+          >
+            {application.email}
+          </a>
+        ),
       },
       {
         id: 'cv',
@@ -220,6 +229,7 @@ function ApplicationsInboxContent() {
           <Button
             variant="ghost"
             size="sm"
+            aria-label={`${application.full_name} adlı kişinin CV'sini indir`}
             onClick={(e) => {
               e.stopPropagation();
               void openCv(application.id);
@@ -292,7 +302,7 @@ function ApplicationsInboxContent() {
       <InboxTable
         columns={columns}
         data={jobApplications}
-        isLoading={isLoading}
+        isLoading={isLoading || isPending}
         emptyState={{
           icon: <Briefcase className="h-12 w-12" />,
           title: 'Henüz iş başvurusu yok',
@@ -333,19 +343,21 @@ function ApplicationsInboxContent() {
 
             <div className="space-y-4">
               <div className="flex items-center gap-3 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
+                <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <a
                   href={`mailto:${application.email}`}
                   className="text-primary hover:underline"
+                  aria-label={`${application.email} adresine email gönder`}
                 >
                   {application.email}
                 </a>
               </div>
               <div className="flex items-center gap-3 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
+                <Phone className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <a
                   href={`tel:${application.phone}`}
                   className="text-primary hover:underline"
+                  aria-label={`${application.phone} numarayı ara`}
                 >
                   {application.phone}
                 </a>
@@ -377,13 +389,14 @@ function ApplicationsInboxContent() {
               <Button className="flex-1" asChild>
                 <a
                   href={`mailto:${application.email}?subject=Re: ${application.job_post?.title ?? 'Basvuru'} Başvurusu`}
+                  aria-label={`${application.full_name} adlı kişiye email gönder`}
                 >
                   <Mail className="mr-2 h-4 w-4" />
                   Email Gönder
                 </a>
               </Button>
               <Button variant="outline" className="flex-1" asChild>
-                <a href={`tel:${application.phone}`}>
+                <a href={`tel:${application.phone}`} aria-label={`${application.phone} numarayı ara`}>
                   <Phone className="mr-2 h-4 w-4" />
                   Ara
                 </a>
