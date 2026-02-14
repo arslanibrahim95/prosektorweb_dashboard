@@ -10,3 +10,10 @@ export function setApiAccessTokenProvider(
 ) {
   api.setAccessTokenProvider(provider);
 }
+
+export function setApiContextHeadersProvider(
+  provider:
+    (() => Promise<Record<string, string> | null> | Record<string, string> | null) | null
+) {
+  api.setContextHeadersProvider(provider);
+}

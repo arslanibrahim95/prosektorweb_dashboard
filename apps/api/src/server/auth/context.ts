@@ -1,5 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import type { UserRole } from "@prosektor/contracts";
+import { uuidSchema, type UserRole } from "@prosektor/contracts";
 import { permissionsForRole } from "./permissions";
 import {
   createAdminClient,
@@ -7,6 +7,18 @@ import {
   getBearerToken,
 } from "../supabase";
 import { createError } from "../errors";
+import {
+  ensureSuperAdminBootstrapForUser,
+  ensureSuperAdminStartupSync,
+} from "./super-admin-sync";
+
+interface TenantSummary {
+  id: string;
+  name: string;
+  slug: string;
+  plan: "demo" | "starter" | "pro";
+  status: "active" | "suspended" | "deleted";
+}
 
 export interface AuthContext {
   supabase: SupabaseClient;
@@ -24,26 +36,24 @@ export interface AuthContext {
     name: string;
     slug: string;
     plan: "demo" | "starter" | "pro";
+    status: "active" | "suspended" | "deleted";
   };
+  activeTenantId: string;
+  availableTenants: TenantSummary[];
   role: UserRole;
   permissions: string[];
 }
 
 /**
  * Kullanıcının super admin olup olmadığını kontrol eder.
- * Super admin rolü app_metadata veya user_metadata'da tanımlanabilir.
+ * Super admin rolü yalnızca app_metadata kaynağından okunur.
  */
 function isSuperAdmin(user: { app_metadata?: unknown; user_metadata?: unknown }): boolean {
   const appMeta = (user.app_metadata ?? {}) as Record<string, unknown>;
-  const userMeta = (user.user_metadata ?? {}) as Record<string, unknown>;
 
   // Check app_metadata (secure) first
   if (appMeta.role === "super_admin") return true;
   if (Array.isArray(appMeta.roles) && appMeta.roles.includes("super_admin")) return true;
-
-  // Check user_metadata (in case it was set there manually via dashboard)
-  if (userMeta.role === "super_admin") return true;
-  if (Array.isArray(userMeta.roles) && userMeta.roles.includes("super_admin")) return true;
 
   return false;
 }
@@ -91,6 +101,27 @@ function createAuthClient(req: Request): SupabaseClient {
   return createUserClientFromBearer(bearer);
 }
 
+function parseRequestedTenantId(req: Request): string | null {
+  const raw =
+    req.headers.get("x-tenant-id") ??
+    req.headers.get("X-Tenant-Id") ??
+    null;
+  if (!raw) return null;
+
+  const candidate = raw.trim();
+  if (!candidate) return null;
+
+  const parsed = uuidSchema.safeParse(candidate);
+  if (!parsed.success) {
+    throw createError({
+      code: "VALIDATION_ERROR",
+      message: "X-Tenant-Id geçerli bir UUID olmalıdır.",
+    });
+  }
+
+  return parsed.data;
+}
+
 /**
  * Kullanıcıyı doğrular ve Supabase'den alır.
  */
@@ -108,48 +139,46 @@ async function validateAndGetUser(supabase: SupabaseClient): Promise<User> {
 }
 
 /**
- * Tenant membership bilgisini getirir.
+ * Tenant membership bilgilerini getirir.
  */
-async function getTenantMembership(
+async function getTenantMemberships(
   supabase: SupabaseClient,
   userId: string
-): Promise<{ tenant_id: string; role: string }> {
-  const { data: member, error: memberError } = await supabase
+): Promise<Array<{ tenant_id: string; role: string; created_at: string }>> {
+  const { data, error } = await supabase
     .from("tenant_members")
-    .select("tenant_id, role")
+    .select("tenant_id, role, created_at")
     .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: true });
 
-  if (memberError) {
+  if (error) {
     throw createError({
       code: 'DATABASE_ERROR',
       message: 'Tenant membership sorgulanırken hata oluştu.',
-      originalError: memberError,
+      originalError: error,
     });
   }
 
-  if (!member) {
+  if (!data || data.length === 0) {
     throw createError({
       code: 'NO_TENANT',
       message: 'Bu hesaba bağlı bir workspace bulunmuyor.',
     });
   }
 
-  return member;
+  return data;
 }
 
 /**
- * Tenant detaylarını getirir.
+ * Tek tenant detayını getirir.
  */
-async function getTenantDetails(
+async function getTenantById(
   supabase: SupabaseClient,
   tenantId: string
-): Promise<{ id: string; name: string; slug: string; plan: "demo" | "starter" | "pro" }> {
+): Promise<TenantSummary> {
   const { data: tenant, error: tenantError } = await supabase
     .from("tenants")
-    .select("id, name, slug, plan")
+    .select("id, name, slug, plan, status")
     .eq("id", tenantId)
     .single();
 
@@ -164,12 +193,109 @@ async function getTenantDetails(
   return tenant;
 }
 
+async function getTenantsByIds(
+  supabase: SupabaseClient,
+  tenantIds: string[],
+): Promise<TenantSummary[]> {
+  if (tenantIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("tenants")
+    .select("id, name, slug, plan, status")
+    .in("id", tenantIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw createError({
+      code: "DATABASE_ERROR",
+      message: "Tenant listesi yüklenemedi.",
+      originalError: error,
+    });
+  }
+
+  return (data ?? []) as TenantSummary[];
+}
+
+async function getAllTenants(admin: SupabaseClient): Promise<TenantSummary[]> {
+  const { data, error } = await admin
+    .from("tenants")
+    .select("id, name, slug, plan, status")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw createError({
+      code: "DATABASE_ERROR",
+      message: "Tenant listesi yüklenemedi.",
+      originalError: error,
+    });
+  }
+
+  return (data ?? []) as TenantSummary[];
+}
+
+async function ensureSuperAdminMirrorMembership(
+  admin: SupabaseClient,
+  userId: string,
+  tenantId: string,
+): Promise<void> {
+  const { error } = await admin
+    .from("tenant_members")
+    .upsert(
+      {
+        tenant_id: tenantId,
+        user_id: userId,
+        role: "owner",
+      },
+      {
+        onConflict: "tenant_id,user_id",
+      },
+    );
+
+  if (error) {
+    throw createError({
+      code: "DATABASE_ERROR",
+      message: "Super admin tenant mirror güncellenemedi.",
+      originalError: error,
+    });
+  }
+}
+
 /**
- * Kullanıcı rolünü çözümler.
- * Super admin rolü öncelikli olarak kontrol edilir.
+ * Super admin için aktif tenantı çözümler.
  */
-function resolveUserRole(user: User, membershipRole: string): UserRole {
-  return isSuperAdmin(user) ? "super_admin" : (membershipRole as UserRole);
+async function resolveSuperAdminTenant(
+  req: Request,
+  admin: SupabaseClient,
+  userId: string,
+): Promise<{ activeTenant: TenantSummary; availableTenants: TenantSummary[] }> {
+  const requestedTenantId = parseRequestedTenantId(req);
+  const availableTenants = await getAllTenants(admin);
+
+  if (availableTenants.length === 0) {
+    throw createError({
+      code: "NO_TENANT",
+      message: "Sistemde erişilebilir tenant bulunamadı.",
+    });
+  }
+
+  let activeTenant: TenantSummary | undefined;
+  if (requestedTenantId) {
+    activeTenant = availableTenants.find((tenant) => tenant.id === requestedTenantId);
+    if (!activeTenant) {
+      throw createError({
+        code: "FORBIDDEN",
+        message: "İstenen tenant erişilebilir değil.",
+      });
+    }
+  } else {
+    activeTenant =
+      availableTenants.find((tenant) => tenant.status !== "deleted") ??
+      availableTenants[0];
+  }
+
+  await ensureSuperAdminMirrorMembership(admin, userId, activeTenant.id);
+
+  return { activeTenant, availableTenants };
 }
 
 /**
@@ -178,15 +304,46 @@ function resolveUserRole(user: User, membershipRole: string): UserRole {
 export async function requireAuthContext(req: Request): Promise<AuthContext> {
   const supabase = createAuthClient(req);
   const admin = createAdminClient();
+  await ensureSuperAdminStartupSync(admin);
 
-  const user = await validateAndGetUser(supabase);
+  const rawUser = await validateAndGetUser(supabase);
+  const user = await ensureSuperAdminBootstrapForUser(admin, rawUser);
   const email = extractUserEmail(user);
   const name = extractUserName(user, email);
+  const requestedTenantId = parseRequestedTenantId(req);
 
-  const membership = await getTenantMembership(supabase, user.id);
-  const tenant = await getTenantDetails(supabase, membership.tenant_id);
+  let tenant: TenantSummary;
+  let availableTenants: TenantSummary[];
+  let role: UserRole;
 
-  const role = resolveUserRole(user, membership.role);
+  if (isSuperAdmin(user)) {
+    const resolved = await resolveSuperAdminTenant(req, admin, user.id);
+    tenant = resolved.activeTenant;
+    availableTenants = resolved.availableTenants;
+    role = "super_admin";
+  } else {
+    const memberships = await getTenantMemberships(supabase, user.id);
+    const membershipByTenant = new Map(
+      memberships.map((membership) => [membership.tenant_id, membership]),
+    );
+
+    const selectedMembership = requestedTenantId
+      ? membershipByTenant.get(requestedTenantId)
+      : memberships[0];
+
+    if (!selectedMembership) {
+      throw createError({
+        code: "FORBIDDEN",
+        message: "Bu tenant için erişim yetkiniz yok.",
+      });
+    }
+
+    const tenantIds = Array.from(new Set(memberships.map((membership) => membership.tenant_id)));
+    availableTenants = await getTenantsByIds(supabase, tenantIds);
+    tenant = await getTenantById(supabase, selectedMembership.tenant_id);
+    role = selectedMembership.role as UserRole;
+  }
+
   const permissions = permissionsForRole(role);
 
   return {
@@ -201,6 +358,8 @@ export async function requireAuthContext(req: Request): Promise<AuthContext> {
       user_metadata: user.user_metadata,
     },
     tenant,
+    activeTenantId: tenant.id,
+    availableTenants,
     role,
     permissions,
   };

@@ -1,6 +1,14 @@
 import { z } from "zod";
 import { userRoleSchema, uuidSchema } from "./common";
 
+export const meTenantSummarySchema = z.object({
+  id: uuidSchema,
+  name: z.string().min(1),
+  slug: z.string().min(1),
+  plan: z.enum(["demo", "starter", "pro"]),
+  status: z.enum(["active", "suspended", "deleted"]),
+});
+
 export const meResponseSchema = z.object({
   user: z.object({
     id: uuidSchema,
@@ -14,6 +22,8 @@ export const meResponseSchema = z.object({
     slug: z.string().min(1),
     plan: z.enum(["demo", "starter", "pro"]),
   }),
+  active_tenant_id: uuidSchema,
+  available_tenants: z.array(meTenantSummarySchema),
   role: userRoleSchema,
   permissions: z.array(z.string()),
 });

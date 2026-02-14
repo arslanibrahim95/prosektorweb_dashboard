@@ -83,6 +83,8 @@ export class ApiError extends Error {
 export class ApiClient {
     private baseUrl: string;
     private accessTokenProvider: (() => Promise<string | null> | string | null) | null = null;
+    private contextHeadersProvider:
+        (() => Promise<Record<string, string> | null> | Record<string, string> | null) | null = null;
 
     constructor(baseUrl: string = '/api') {
         this.baseUrl = baseUrl;
@@ -90,6 +92,13 @@ export class ApiClient {
 
     setAccessTokenProvider(provider: (() => Promise<string | null> | string | null) | null) {
         this.accessTokenProvider = provider;
+    }
+
+    setContextHeadersProvider(
+        provider:
+            (() => Promise<Record<string, string> | null> | Record<string, string> | null) | null
+    ) {
+        this.contextHeadersProvider = provider;
     }
 
     async request<T>(
@@ -111,6 +120,15 @@ export class ApiClient {
         const maybeToken = this.accessTokenProvider ? await this.accessTokenProvider() : null;
         if (maybeToken) {
             headers.Authorization = `Bearer ${maybeToken}`;
+        }
+
+        const contextHeaders = this.contextHeadersProvider
+            ? await this.contextHeadersProvider()
+            : null;
+        if (contextHeaders) {
+            Object.entries(contextHeaders).forEach(([key, value]) => {
+                headers[key] = value;
+            });
         }
 
         const response = await fetch(url, {

@@ -84,7 +84,7 @@ export function useApplications(
         queryKey: inboxKeys.applicationsList(siteId ?? '', { ...filters, page }),
         queryFn: () =>
             api.get(
-                '/inbox/applications',
+                '/inbox/hr-applications',
                 {
                     site_id: siteId,
                     page,

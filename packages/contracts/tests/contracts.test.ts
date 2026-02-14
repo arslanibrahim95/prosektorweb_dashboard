@@ -47,6 +47,16 @@ describe('Contract Tests: Auth Schemas', () => {
                     slug: 'test-tenant',
                     plan: 'pro',
                 },
+                active_tenant_id: '123e4567-e89b-42d3-a456-426614174001',
+                available_tenants: [
+                    {
+                        id: '123e4567-e89b-42d3-a456-426614174001',
+                        name: 'Test Tenant',
+                        slug: 'test-tenant',
+                        plan: 'pro',
+                        status: 'active',
+                    },
+                ],
                 role: 'admin',
                 permissions: ['site.edit', 'inbox.view'],
             };
@@ -58,6 +68,8 @@ describe('Contract Tests: Auth Schemas', () => {
             const invalidPayload = {
                 user: { id: '123e4567-e89b-42d3-a456-426614174000', email: 'test@prosektorweb.com', name: 'Test' },
                 tenant: { id: '123e4567-e89b-42d3-a456-426614174001', name: 'Tenant', slug: 'slug', plan: 'pro' },
+                active_tenant_id: '123e4567-e89b-42d3-a456-426614174001',
+                available_tenants: [],
                 role: 'invalid_role',
                 permissions: [],
             };

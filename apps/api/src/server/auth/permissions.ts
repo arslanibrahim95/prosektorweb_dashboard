@@ -82,6 +82,18 @@ export function permissionsForRole(role: UserRole): string[] {
   return ROLE_PERMISSIONS[role] ?? [];
 }
 
+export function isSuperAdminRole(role: UserRole): boolean {
+  return role === "super_admin";
+}
+
+export function isOwnerRole(role: UserRole): boolean {
+  return role === "owner" || isSuperAdminRole(role);
+}
+
+export function isAdminRole(role: UserRole): boolean {
+  return role === "admin" || isOwnerRole(role);
+}
+
 /**
  * Check if user has a specific permission
  * Supports wildcard patterns like "inbox:*" or "users:read"

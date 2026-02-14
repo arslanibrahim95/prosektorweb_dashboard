@@ -15,3 +15,6 @@ export * from "./legal-texts";
 export * from "./sites";
 export * from "./contract-defs";
 export * from "./seo";
+export * from "./platform-tenants";
+export * from "./platform-settings";
+export * from "./platform-analytics";
