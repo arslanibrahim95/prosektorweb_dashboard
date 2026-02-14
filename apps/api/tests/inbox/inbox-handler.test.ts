@@ -76,7 +76,7 @@ describe("createInboxHandler", () => {
                 searchFields: ["name"],
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
-                additionalFilters: (query, params, ctx) => query,
+                additionalFilters: (query, _params, _ctx) => query,
                 itemSchema: z.object({ id: z.string() }),
                 responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
             };
@@ -95,7 +95,7 @@ describe("createInboxHandler", () => {
                 searchFields: ["name"],
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
-                additionalCacheKeyParts: (params) => ["extra", "parts"],
+                additionalCacheKeyParts: (_params) => ["extra", "parts"],
                 itemSchema: z.object({ id: z.string() }),
                 responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
             };

@@ -52,7 +52,13 @@ function ProgressRing({ percent, size = 48 }: { percent: number; size?: number }
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (percent / 100) * circumference;
   return (
-    <svg width={size} height={size} className="transform -rotate-90">
+    <svg
+      width={size}
+      height={size}
+      className="transform -rotate-90"
+      role="img"
+      aria-label={`İlerleme: ${percent}% tamamlandı`}
+    >
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -73,6 +79,7 @@ function ProgressRing({ percent, size = 48 }: { percent: number; size?: number }
         strokeDasharray={circumference}
         strokeDashoffset={offset}
         className="text-primary transition-all duration-700 ease-out"
+        aria-hidden="true"
       />
     </svg>
   );

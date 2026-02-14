@@ -25,8 +25,9 @@
 -- - Unread count queries: ~10-100x faster (index-only scans)
 -- - Job applications by post: ~5-20x faster (eliminates sequential scans)
 -- - Overall inbox listing: ~2-5x faster (better index selectivity)
-
-BEGIN;
+--
+-- Note: CREATE INDEX CONCURRENTLY cannot run inside a transaction block.
+-- This migration must be run outside of a transaction.
 
 -- ---------------------------------------------------------------------------
 -- Partial indexes for unread filtering
@@ -117,5 +118,3 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_job_applications_status_covering
 --    AND (full_name ILIKE '%search%' OR email ILIKE '%search%')
 --    -> Uses: GIN trigram indexes from migration 0006
 --    -> Then filters with composite index for ordering
-
-COMMIT;

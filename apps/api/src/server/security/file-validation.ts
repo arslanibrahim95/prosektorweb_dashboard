@@ -177,7 +177,7 @@ export function sanitizeFilename(filename: string): string {
     }
 
     // Sanitize extension (remove any non-alphanumeric except the dot)
-    let sanitizedExtension = extension.replace(/[^a-zA-Z0-9.]/g, '');
+    const sanitizedExtension = extension.replace(/[^a-zA-Z0-9.]/g, '');
 
     // Combine name and extension
     let result = sanitizedName + sanitizedExtension;

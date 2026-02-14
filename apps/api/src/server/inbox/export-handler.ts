@@ -54,6 +54,7 @@ export interface ExportHandlerConfig<TQuery extends BaseExportQuery = BaseExport
     headers: string[];
 
     /** Maps DB row to CSV row values */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rowMapper: (item: any) => (string | number | boolean | null | object)[];
 
     /** Filename prefix (e.g., 'contact', 'offers', 'applications') */
@@ -69,12 +70,14 @@ export interface ExportHandlerConfig<TQuery extends BaseExportQuery = BaseExport
     querySchema: z.ZodType<TQuery>;
 
     /** Zod schema for validating response items */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     itemSchema: z.ZodType<any>;
 
     /**
      * Optional function to apply additional filters to the query
      * Useful for routes like applications that need job_post_id filtering
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     additionalFilters?: (query: any, params: TQuery, ctx: AuthContext) => any;
 }
 
@@ -106,6 +109,7 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
             const qp = url.searchParams;
 
             // 2. Parse and validate query parameters
+            // Explicitly pick known parameters to avoid unexpected params
             const parsed = querySchema.safeParse({
                 site_id: qp.get("site_id") ?? undefined,
                 page: qp.get("page") ?? undefined,
@@ -115,8 +119,8 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
                 date_from: qp.get("date_from") ?? undefined,
                 date_to: qp.get("date_to") ?? undefined,
                 format: qp.get("format") ?? undefined,
-                // Additional fields will be picked up by extended schemas
-                ...(Object.fromEntries(qp.entries())),
+                // Additional fields for extended schemas (e.g., applications export)
+                job_post_id: qp.get("job_post_id") ?? undefined,
             });
 
             if (!parsed.success) {

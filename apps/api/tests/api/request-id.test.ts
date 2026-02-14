@@ -160,9 +160,11 @@ describe("Request ID utilities", () => {
 });
 
 describe("Request Logger", () => {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     let consoleInfoSpy: any;
     let consoleWarnSpy: any;
     let consoleErrorSpy: any;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     beforeEach(() => {
         consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => { });

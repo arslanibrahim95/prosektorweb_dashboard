@@ -29,6 +29,21 @@ const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
   { value: '90d', label: '90 Gün' },
 ];
 
+// Moved outside component for performance
+const borderColorMap: Record<string, string> = {
+  'text-blue-500': 'border-l-blue-500',
+  'text-emerald-500': 'border-l-emerald-500',
+  'text-amber-500': 'border-l-amber-500',
+  'text-violet-500': 'border-l-violet-500',
+};
+
+const gradientMap: Record<string, string> = {
+  'text-blue-500': 'bg-gradient-to-br from-blue-500/5 to-transparent',
+  'text-emerald-500': 'bg-gradient-to-br from-emerald-500/5 to-transparent',
+  'text-amber-500': 'bg-gradient-to-br from-amber-500/5 to-transparent',
+  'text-violet-500': 'bg-gradient-to-br from-violet-500/5 to-transparent',
+};
+
 function TrendBadge({ pct }: { pct: number }) {
   if (pct > 0) {
     return (
@@ -140,6 +155,7 @@ export default function AnalyticsPage() {
             <button
               key={p.value}
               onClick={() => setPeriod(p.value)}
+              aria-pressed={period === p.value}
               className={cn(
                 'px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200',
                 period === p.value
@@ -166,18 +182,6 @@ export default function AnalyticsPage() {
             </Card>
           ))
           : kpiCards.map((kpi) => {
-            const borderColorMap: Record<string, string> = {
-              'text-blue-500': 'border-l-blue-500',
-              'text-emerald-500': 'border-l-emerald-500',
-              'text-amber-500': 'border-l-amber-500',
-              'text-violet-500': 'border-l-violet-500',
-            };
-            const gradientMap: Record<string, string> = {
-              'text-blue-500': 'bg-gradient-to-br from-blue-500/5 to-transparent',
-              'text-emerald-500': 'bg-gradient-to-br from-emerald-500/5 to-transparent',
-              'text-amber-500': 'bg-gradient-to-br from-amber-500/5 to-transparent',
-              'text-violet-500': 'bg-gradient-to-br from-violet-500/5 to-transparent',
-            };
             return (
               <Card
                 key={kpi.title}
@@ -185,6 +189,8 @@ export default function AnalyticsPage() {
                   'glass border-border/50 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200 border-l-4 relative overflow-hidden',
                   borderColorMap[kpi.color],
                 )}
+                role="article"
+                aria-label={`${kpi.title}: ${kpi.value} (${kpi.change}% değişim)`}
               >
                 <div className={cn('absolute inset-0 pointer-events-none', gradientMap[kpi.color])} />
                 <CardContent className="pt-6 relative">
@@ -261,7 +267,11 @@ export default function AnalyticsPage() {
                       className="group flex flex-col items-center flex-1 min-w-[8px] relative"
                     >
                       {/* Tooltip */}
-                      <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center z-10">
+                      <div
+                        className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center z-10"
+                        role="tooltip"
+                        aria-live="polite"
+                      >
                         <div className="bg-popover border border-border/50 text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
                           <div className="font-medium mb-1">{point.date}</div>
                           <div className="flex items-center gap-1.5">
@@ -282,6 +292,8 @@ export default function AnalyticsPage() {
                       <div
                         className="w-full rounded-t-md flex flex-col-reverse transition-all duration-500 ease-out hover:opacity-80"
                         style={{ height: `${barH}%` }}
+                        role="img"
+                        aria-label={`${point.date}: ${point.offers} teklif, ${point.contacts} iletişim, ${point.applications} başvuru`}
                       >
                         {appH > 0 && (
                           <div

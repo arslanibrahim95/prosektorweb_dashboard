@@ -56,6 +56,7 @@ export interface InboxHandlerConfig<TQuery extends BaseInboxQuery = BaseInboxQue
      * Optional function to apply additional filters to the query
      * Useful for routes like hr-applications that need job_post_id filtering
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     additionalFilters?: (query: any, params: TQuery, ctx: AuthContext) => any;
 
     /**
@@ -67,12 +68,40 @@ export interface InboxHandlerConfig<TQuery extends BaseInboxQuery = BaseInboxQue
     /**
      * Zod schema for validating and parsing response items
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     itemSchema: z.ZodType<any>;
 
     /**
      * Zod schema for validating the complete response
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     responseSchema: z.ZodType<any>;
+}
+
+/**
+ * Applies common inbox filters to a Supabase query
+ * Extracted to avoid duplication between data and count queries
+ */
+function applyInboxFilters<TQuery extends BaseInboxQuery>(
+    query: unknown,
+    params: TQuery,
+    searchFields: string[],
+    additionalFilters?: (q: unknown, p: TQuery, ctx: AuthContext) => unknown,
+    ctx?: AuthContext
+): unknown {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q = query as any;
+    if (params.status === "read") q = q.eq("is_read", true);
+    if (params.status === "unread") q = q.eq("is_read", false);
+    if (params.date_from) q = q.gte("created_at", params.date_from);
+    if (params.date_to) q = q.lte("created_at", params.date_to);
+    if (params.search) {
+        q = q.or(buildSafeIlikeOr(searchFields, params.search));
+    }
+    if (additionalFilters && ctx) {
+        q = additionalFilters(q, params, ctx);
+    }
+    return q;
 }
 
 /**
@@ -105,6 +134,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
             const qp = url.searchParams;
 
             // 2. Parse and validate query parameters
+            // Explicitly pick known parameters to avoid unexpected params
             const parsed = querySchema.safeParse({
                 site_id: qp.get("site_id"),
                 page: qp.get("page") ?? undefined,
@@ -113,8 +143,8 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                 status: qp.get("status") ?? undefined,
                 date_from: qp.get("date_from") ?? undefined,
                 date_to: qp.get("date_to") ?? undefined,
-                // Additional fields will be picked up by extended schemas
-                ...(Object.fromEntries(qp.entries())),
+                // Additional fields for extended schemas (e.g., hr-applications)
+                job_post_id: qp.get("job_post_id") ?? undefined,
             });
 
             if (!parsed.success) {
@@ -141,8 +171,8 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
             // 4. Calculate pagination
             const { from, to } = calculatePaginationRange(parsed.data.page, parsed.data.limit);
 
-            // 5. Build data query
-            let dataQuery = ctx.supabase
+            // 5. Build data query with common filters
+            const baseDataQuery = ctx.supabase
                 .from(tableName)
                 .select(selectFields)
                 .eq("tenant_id", ctx.tenant.id)
@@ -150,25 +180,16 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                 .order(orderBy, { ascending: orderDirection === "asc" })
                 .range(from, to);
 
-            // 6. Apply status filter
-            if (parsed.data.status === "read") dataQuery = dataQuery.eq("is_read", true);
-            if (parsed.data.status === "unread") dataQuery = dataQuery.eq("is_read", false);
+            // 6. Apply common filters (status, date range, search, additional)
+            const dataQuery = applyInboxFilters(
+                baseDataQuery,
+                parsed.data,
+                searchFields,
+                additionalFilters,
+                ctx
+            );
 
-            // 7. Apply date range filters
-            if (parsed.data.date_from) dataQuery = dataQuery.gte("created_at", parsed.data.date_from);
-            if (parsed.data.date_to) dataQuery = dataQuery.lte("created_at", parsed.data.date_to);
-
-            // 8. Apply search filter
-            if (parsed.data.search) {
-                dataQuery = dataQuery.or(buildSafeIlikeOr(searchFields, parsed.data.search));
-            }
-
-            // 9. Apply additional filters (e.g., job_post_id for hr-applications)
-            if (additionalFilters) {
-                dataQuery = additionalFilters(dataQuery, parsed.data, ctx);
-            }
-
-            // 10. Execute data query
+            // 7. Execute data query
             const { data, error } = await dataQuery;
             if (error) {
                 throw mapPostgrestError(error);
@@ -193,30 +214,26 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
 
             const countCacheKey = cacheKeyParts.join("|");
 
-            // 12. Get cached or fetch total count
+            // 9. Get cached or fetch total count
             const total = await getOrSetCachedValue<number>(
                 countCacheKey,
                 INBOX_COUNT_CACHE_TTL_SEC,
                 async () => {
-                    let countQuery = ctx.supabase
+                    const baseCountQuery = ctx.supabase
                         .from(tableName)
                         .select("id", { count: "exact", head: true })
                         .eq("tenant_id", ctx.tenant.id)
                         .eq("site_id", parsed.data.site_id);
 
-                    // Apply same filters to count query
-                    if (parsed.data.status === "read") countQuery = countQuery.eq("is_read", true);
-                    if (parsed.data.status === "unread") countQuery = countQuery.eq("is_read", false);
-                    if (parsed.data.date_from) countQuery = countQuery.gte("created_at", parsed.data.date_from);
-                    if (parsed.data.date_to) countQuery = countQuery.lte("created_at", parsed.data.date_to);
-                    if (parsed.data.search) {
-                        countQuery = countQuery.or(buildSafeIlikeOr(searchFields, parsed.data.search));
-                    }
-
-                    // Apply additional filters to count query
-                    if (additionalFilters) {
-                        countQuery = additionalFilters(countQuery, parsed.data, ctx);
-                    }
+                    // Apply same filters using shared helper
+                    const countQuery = applyInboxFilters(
+                        baseCountQuery,
+                        parsed.data,
+                        searchFields,
+                        additionalFilters,
+                        ctx
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    ) as any;
 
                     const { error: countError, count } = await countQuery;
                     if (countError) {

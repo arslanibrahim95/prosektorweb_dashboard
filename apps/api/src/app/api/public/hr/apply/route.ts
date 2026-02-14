@@ -17,8 +17,6 @@ import { createAdminClient } from "@/server/supabase";
 import {
   validateCVFile,
   sanitizeFilename,
-  ALLOWED_CV_MIME_TYPES,
-  MAX_CV_FILE_SIZE
 } from "@/server/security/file-validation";
 import { ErrorCodes, ErrorCode } from "@/server/errors/error-codes";
 
