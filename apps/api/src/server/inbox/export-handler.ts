@@ -144,7 +144,9 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
             const to = from + parsed.data.limit - 1;
 
             // 5. Build query
-            let query = ctx.supabase
+            // Use admin client for super_admin to bypass RLS
+            const dbClient = ctx.role === 'super_admin' ? ctx.admin : ctx.supabase;
+            let query = dbClient
                 .from(tableName)
                 .select(selectFields)
                 .eq("tenant_id", ctx.tenant.id)

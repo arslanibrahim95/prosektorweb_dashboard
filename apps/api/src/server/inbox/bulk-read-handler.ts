@@ -35,7 +35,10 @@ export function createBulkReadHandler(tableName: string) {
                 });
             }
 
-            const { data, error } = await ctx.supabase
+            // Use admin client for super_admin to bypass RLS
+            const dbClient = ctx.role === 'super_admin' ? ctx.admin : ctx.supabase;
+
+            const { data, error } = await dbClient
                 .from(tableName)
                 .update({ is_read: true })
                 .eq("tenant_id", ctx.tenant.id)

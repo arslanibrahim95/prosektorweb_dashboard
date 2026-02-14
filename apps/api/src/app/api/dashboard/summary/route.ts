@@ -51,23 +51,26 @@ export async function GET(req: Request) {
 
     const cacheKey = ["dashboard-summary", ctx.tenant.id, parsed.data.site_id].join("|");
     const payload = await getOrSetCachedValue(cacheKey, env.dashboardSummaryCacheTtlSec, async () => {
+      // Use admin client for super_admin to bypass RLS
+      const dbClient = ctx.role === 'super_admin' ? ctx.admin : ctx.supabase;
+
       const [offerCountRes, contactCountRes, appCountRes, activeJobCountRes] = await Promise.all([
-        ctx.supabase
+        dbClient
           .from("offer_requests")
           .select("id", { count: "exact", head: true })
           .eq("tenant_id", ctx.tenant.id)
           .eq("site_id", parsed.data.site_id),
-        ctx.supabase
+        dbClient
           .from("contact_messages")
           .select("id", { count: "exact", head: true })
           .eq("tenant_id", ctx.tenant.id)
           .eq("site_id", parsed.data.site_id),
-        ctx.supabase
+        dbClient
           .from("job_applications")
           .select("id", { count: "exact", head: true })
           .eq("tenant_id", ctx.tenant.id)
           .eq("site_id", parsed.data.site_id),
-        ctx.supabase
+        dbClient
           .from("job_posts")
           .select("id", { count: "exact", head: true })
           .eq("tenant_id", ctx.tenant.id)
@@ -82,28 +85,28 @@ export async function GET(req: Request) {
       if (activeJobCountRes.error) throw mapPostgrestError(activeJobCountRes.error);
 
       const [offerRecentRes, contactRecentRes, appRecentRes, primaryDomainRes] = await Promise.all([
-        ctx.supabase
+        dbClient
           .from("offer_requests")
           .select("id,full_name,created_at")
           .eq("tenant_id", ctx.tenant.id)
           .eq("site_id", parsed.data.site_id)
           .order("created_at", { ascending: false })
           .range(0, RECENT_PER_SOURCE - 1),
-        ctx.supabase
+        dbClient
           .from("contact_messages")
           .select("id,full_name,created_at")
           .eq("tenant_id", ctx.tenant.id)
           .eq("site_id", parsed.data.site_id)
           .order("created_at", { ascending: false })
           .range(0, RECENT_PER_SOURCE - 1),
-        ctx.supabase
+        dbClient
           .from("job_applications")
           .select("id,full_name,created_at,job_post:job_posts(title)")
           .eq("tenant_id", ctx.tenant.id)
           .eq("site_id", parsed.data.site_id)
           .order("created_at", { ascending: false })
           .range(0, RECENT_PER_SOURCE - 1),
-        ctx.supabase
+        dbClient
           .from("domains")
           .select("status,ssl_status")
           .eq("tenant_id", ctx.tenant.id)

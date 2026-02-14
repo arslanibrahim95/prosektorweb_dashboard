@@ -19,6 +19,7 @@ const hstsHeaders =
     : [];
 
 const nextConfig: NextConfig = {
+  trailingSlash: false,
   output: "standalone",
   outputFileTracingRoot: repoRoot,
   transpilePackages: ["@prosektor/contracts"],
