@@ -172,7 +172,9 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
             const { from, to } = calculatePaginationRange(parsed.data.page, parsed.data.limit);
 
             // 5. Build data query with common filters
-            const baseDataQuery = ctx.supabase
+            // Use admin client for super_admin to bypass RLS
+            const dbClient = ctx.role === 'super_admin' ? ctx.admin : ctx.supabase;
+            const baseDataQuery = dbClient
                 .from(tableName)
                 .select(selectFields)
                 .eq("tenant_id", ctx.tenant.id)
@@ -187,7 +189,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                 searchFields,
                 additionalFilters,
                 ctx
-            );
+            ) as any;
 
             // 7. Execute data query
             const { data, error } = await dataQuery;
@@ -219,7 +221,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                 countCacheKey,
                 INBOX_COUNT_CACHE_TTL_SEC,
                 async () => {
-                    const baseCountQuery = ctx.supabase
+                    const baseCountQuery = dbClient
                         .from(tableName)
                         .select("id", { count: "exact", head: true })
                         .eq("tenant_id", ctx.tenant.id)
@@ -245,7 +247,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
 
             // 13. Parse and validate response
             const response = responseSchema.parse({
-                items: (data ?? []).map((item) => itemSchema.parse(item)),
+                items: (data ?? []).map((item: any) => itemSchema.parse(item)),
                 total,
             });
 
