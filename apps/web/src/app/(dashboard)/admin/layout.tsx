@@ -19,7 +19,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
     return (
         <RoleGuard
-            allowedRoles={['owner', 'admin']}
+            allowedRoles={['owner', 'admin', 'super_admin']}
             userRole={userRole ?? 'viewer'}
             fallback={<UnauthorizedScreen />}
         >

@@ -17,6 +17,7 @@ import {
   type SignResult,
 } from './custom-jwt';
 import { createError } from '../errors';
+import { permissionsForRole } from './permissions';
 import {
   createAdminClient,
   createUserClientFromBearer,
@@ -184,87 +185,6 @@ async function getTenantDetails(
 }
 
 /**
- * Permissions için role helper
- */
-function permissionsForRole(role: string): string[] {
-  const permissions: Record<string, string[]> = {
-    super_admin: ['*'],
-    owner: [
-      'tenants:read',
-      'sites:*',
-      'pages:*',
-      'builder:*',
-      'menus:*',
-      'media:*',
-      'domains:*',
-      'seo:*',
-      'publish:*',
-      'modules:*',
-      'inbox:*',
-      'users:*',
-      'billing:*',
-      'notifications:*',
-      'legal:*',
-      'analytics:read',
-      'audit:read',
-    ],
-    admin: [
-      'tenants:read',
-      'sites:*',
-      'pages:*',
-      'builder:*',
-      'menus:*',
-      'media:*',
-      'domains:create,read,update',
-      'seo:*',
-      'publish:*',
-      'modules:*',
-      'inbox:*',
-      'users:create,read,update',
-      'notifications:*',
-      'legal:*',
-      'analytics:read',
-      'audit:read',
-    ],
-    editor: [
-      'tenants:read',
-      'sites:read',
-      'pages:*',
-      'builder:*',
-      'menus:*',
-      'media:*',
-      'domains:read',
-      'seo:*',
-      'publish:staging',
-      'modules:read',
-      'inbox:read',
-      'users:read',
-      'notifications:read',
-      'legal:read,update',
-      'analytics:read',
-    ],
-    viewer: [
-      'tenants:read',
-      'sites:read',
-      'pages:read',
-      'builder:read',
-      'menus:read',
-      'media:read',
-      'domains:read',
-      'seo:read',
-      'publish:read',
-      'modules:read',
-      'users:read',
-      'notifications:read',
-      'legal:read',
-      'analytics:read',
-    ],
-  };
-
-  return permissions[role] ?? [];
-}
-
-/**
  * Custom JWT ile authentication yapar.
  */
 async function authenticateWithCustomJWT(token: string): Promise<DualAuthResult> {
@@ -336,7 +256,7 @@ async function authenticateWithSupabase(token: string): Promise<DualAuthResult> 
   const membership = await getTenantMembership(supabase, user.id);
   const tenant = await getTenantDetails(supabase, membership.tenant_id);
 
-  const role = membership.role;
+  const role = membership.role as UserRole;
   const permissions = permissionsForRole(role);
 
   return {
@@ -409,7 +329,7 @@ export async function createCustomTokenFromSupabase(
   const admin = createAdminClient();
   const membership = await getTenantMembership(admin, user.id);
   const tenant = await getTenantDetails(admin, membership.tenant_id);
-  const permissions = permissionsForRole(membership.role);
+  const permissions = permissionsForRole(membership.role as UserRole);
 
   // Custom payload oluştur
   const userInfo: UserInfo = {
