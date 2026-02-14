@@ -15,6 +15,7 @@ import {
 } from "@/server/api/http";
 import { getOrSetCachedValue } from "@/server/cache";
 import { requireAuthContext } from "@/server/auth/context";
+import { hasPermission } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
@@ -161,9 +162,9 @@ export async function GET(req: Request) {
         active_job_posts_count: activeJobCountRes.count ?? 0,
         primary_domain_status: primaryDomainRes.data
           ? {
-              status: primaryDomainRes.data.status,
-              ssl_status: primaryDomainRes.data.ssl_status,
-            }
+            status: primaryDomainRes.data.status,
+            ssl_status: primaryDomainRes.data.ssl_status,
+          }
           : null,
         recent_activity: recentActivity,
       });

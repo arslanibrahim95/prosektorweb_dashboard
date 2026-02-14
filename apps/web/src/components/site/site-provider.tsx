@@ -2,7 +2,7 @@
 
 import type { Site } from '@prosektor/contracts';
 import { listSitesResponseSchema } from '@prosektor/contracts';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '@/server/api';
 import { useAuth } from '@/components/auth/auth-provider';
 
@@ -22,17 +22,21 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [currentSiteId, setCurrentSiteId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!auth.session) return;
     setIsLoading(true);
     try {
       const response = await api.get('/sites', undefined, listSitesResponseSchema);
       setSites(response.items);
-      setCurrentSiteId((prev) => prev ?? response.items[0]?.id ?? null);
+      setCurrentSiteId((prev) => {
+        if (!response.items.length) return null;
+        if (prev && response.items.some((site) => site.id === prev)) return prev;
+        return response.items[0].id;
+      });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [auth.session]);
 
   useEffect(() => {
     if (!auth.session) {
@@ -41,8 +45,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.session?.access_token]);
+  }, [auth.session, refresh]);
 
   const value: SiteContextValue = useMemo(
     () => ({
@@ -52,7 +55,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       refresh,
     }),
-    [sites, currentSiteId, isLoading],
+    [sites, currentSiteId, isLoading, refresh],
   );
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;
@@ -63,4 +66,3 @@ export function useSite(): SiteContextValue {
   if (!ctx) throw new Error('useSite must be used within <SiteProvider>');
   return ctx;
 }
-

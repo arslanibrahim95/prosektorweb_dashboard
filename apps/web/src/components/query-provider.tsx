@@ -10,7 +10,21 @@ function makeQueryClient() {
         defaultOptions: {
             queries: {
                 staleTime: 30 * 1000, // 30 seconds
-                retry: 1,
+                retry: (failureCount, error) => {
+                    const status =
+                        typeof error === 'object' &&
+                        error !== null &&
+                        'status' in error &&
+                        typeof (error as { status?: unknown }).status === 'number'
+                            ? (error as { status: number }).status
+                            : null;
+
+                    if (status === 401 || status === 403) {
+                        return false;
+                    }
+
+                    return failureCount < 1;
+                },
                 refetchOnWindowFocus: false,
             },
             mutations: {

@@ -82,6 +82,27 @@ export function permissionsForRole(role: UserRole): string[] {
   return ROLE_PERMISSIONS[role] ?? [];
 }
 
+/**
+ * Check if user has a specific permission
+ * Supports wildcard patterns like "inbox:*" or "users:read"
+ */
+export function hasPermission(userPermissions: string[], requiredPermission: string): boolean {
+  for (const permission of userPermissions) {
+    // Wildcard match (e.g., "inbox:*" matches "inbox:read", "inbox:write")
+    if (permission === '*') return true;
+
+    if (permission.endsWith(':*')) {
+      const prefix = permission.slice(0, -1); // Remove trailing *
+      if (requiredPermission.startsWith(prefix)) return true;
+    }
+
+    // Exact match
+    if (permission === requiredPermission) return true;
+  }
+
+  return false;
+}
+
 export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   super_admin: "Super Admin",
   owner: "Owner",

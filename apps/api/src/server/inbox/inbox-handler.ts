@@ -19,6 +19,7 @@ import { buildSafeIlikeOr } from "@/server/api/postgrest-search";
 import { calculatePaginationRange } from "@/server/api/pagination";
 import { getOrSetCachedValue } from "@/server/cache";
 import { requireAuthContext } from "@/server/auth/context";
+import { hasPermission } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import { INBOX_COUNT_CACHE_TTL_SEC } from "./constants";
@@ -129,6 +130,15 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
         try {
             // 1. Auth check
             const ctx = await requireAuthContext(req);
+
+            // 2. Permission check - inbox:read required for all inbox endpoints
+            if (!hasPermission(ctx.permissions, 'inbox:read')) {
+                throw new HttpError(403, {
+                    code: 'FORBIDDEN',
+                    message: 'Bu işlem için yetkiniz yok.',
+                });
+            }
+
             const env = getServerEnv();
             const url = new URL(req.url);
             const qp = url.searchParams;

@@ -6,7 +6,31 @@ import createNextIntlPlugin from 'next-intl/plugin';
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const apiOrigin = (process.env.API_ORIGIN ?? "http://localhost:3001").replace(/\/$/, "");
+const isProduction = process.env.NODE_ENV === "production";
+
+function resolveApiOrigin(rawOrigin: string | undefined): string | null {
+  const candidate = rawOrigin?.trim();
+  if (!candidate) return null;
+
+  try {
+    const parsed = new URL(candidate);
+    const isLoopbackHost = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]).has(parsed.hostname);
+
+    if (isProduction && isLoopbackHost) {
+      console.warn(
+        `[next.config] Ignoring loopback API_ORIGIN in production: ${parsed.origin}`,
+      );
+      return null;
+    }
+
+    return parsed.origin;
+  } catch {
+    console.warn(`[next.config] Ignoring invalid API_ORIGIN: ${candidate}`);
+    return null;
+  }
+}
+
+const apiOrigin = resolveApiOrigin(process.env.API_ORIGIN) ?? (isProduction ? null : "http://localhost:3001");
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -43,12 +67,14 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${apiOrigin}/api/:path*`,
-      },
-    ];
+    if (!apiOrigin) {
+      return [];
+    }
+
+    return [{
+      source: "/api/:path*",
+      destination: `${apiOrigin}/api/:path*`,
+    }];
   },
   async headers() {
     return [
