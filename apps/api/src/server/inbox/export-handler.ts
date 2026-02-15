@@ -21,6 +21,7 @@ import { requireAuthContext } from "@/server/auth/context";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import type { AuthContext } from "@/server/auth/context";
+import { parseInboxQueryParams } from "./query-params";
 
 /**
  * Base export query schema - can be extended by specific routes
@@ -106,30 +107,10 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
             const ctx = await requireAuthContext(req);
             const env = getServerEnv();
             const url = new URL(req.url);
-            const qp = url.searchParams;
 
-            // 2. Parse and validate query parameters
-            // Explicitly pick known parameters to avoid unexpected params
-            const parsed = querySchema.safeParse({
-                site_id: qp.get("site_id") ?? undefined,
-                page: qp.get("page") ?? undefined,
-                limit: qp.get("limit") ?? undefined,
-                search: qp.get("search") ?? undefined,
-                status: qp.get("status") ?? undefined,
-                date_from: qp.get("date_from") ?? undefined,
-                date_to: qp.get("date_to") ?? undefined,
-                format: qp.get("format") ?? undefined,
-                // Additional fields for extended schemas (e.g., applications export)
-                job_post_id: qp.get("job_post_id") ?? undefined,
-            });
-
-            if (!parsed.success) {
-                throw new HttpError(400, {
-                    code: "VALIDATION_ERROR",
-                    message: "Validation failed",
-                    details: zodErrorToDetails(parsed.error),
-                });
-            }
+            // 2. Parse and validate query parameters using centralized parser
+            // This preserves strict behavior: unknown params are rejected, not stripped
+            const parsed = parseInboxQueryParams(url.searchParams, querySchema);
 
             // 3. Rate limiting
             const rateLimit = await enforceRateLimit(
@@ -140,8 +121,8 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
             );
 
             // 4. Calculate pagination
-            const from = (parsed.data.page - 1) * parsed.data.limit;
-            const to = from + parsed.data.limit - 1;
+            const from = (parsed.page - 1) * parsed.limit;
+            const to = from + parsed.limit - 1;
 
             // 5. Build query
             // Use admin client for super_admin to bypass RLS
@@ -150,26 +131,26 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
                 .from(tableName)
                 .select(selectFields)
                 .eq("tenant_id", ctx.tenant.id)
-                .eq("site_id", parsed.data.site_id)
+                .eq("site_id", parsed.site_id)
                 .order("created_at", { ascending: false })
                 .range(from, to);
 
             // 6. Apply status filter
-            if (parsed.data.status === "read") query = query.eq("is_read", true);
-            if (parsed.data.status === "unread") query = query.eq("is_read", false);
+            if (parsed.status === "read") query = query.eq("is_read", true);
+            if (parsed.status === "unread") query = query.eq("is_read", false);
 
             // 7. Apply date range filters
-            if (parsed.data.date_from) query = query.gte("created_at", parsed.data.date_from);
-            if (parsed.data.date_to) query = query.lte("created_at", parsed.data.date_to);
+            if (parsed.date_from) query = query.gte("created_at", parsed.date_from);
+            if (parsed.date_to) query = query.lte("created_at", parsed.date_to);
 
             // 8. Apply search filter
-            if (parsed.data.search) {
-                query = query.or(buildSafeIlikeOr(searchFields, parsed.data.search));
+            if (parsed.search) {
+                query = query.or(buildSafeIlikeOr(searchFields, parsed.search));
             }
 
             // 9. Apply additional filters (e.g., job_post_id for applications)
             if (additionalFilters) {
-                query = additionalFilters(query, parsed.data, ctx);
+                query = additionalFilters(query, parsed, ctx);
             }
 
             // 10. Execute query
@@ -183,7 +164,7 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
             // 12. Generate CSV
             const csv = toCsv(headers, rows);
             const today = new Date().toISOString().slice(0, 10);
-            const filename = `${filenamePrefix}_${parsed.data.site_id}_${today}.csv`;
+            const filename = `${filenamePrefix}_${parsed.site_id}_${today}.csv`;
 
             // 13. Return CSV response
             return new NextResponse(csv, {

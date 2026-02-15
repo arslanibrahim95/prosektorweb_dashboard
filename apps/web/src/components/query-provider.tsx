@@ -13,16 +13,25 @@ function makeQueryClient() {
                 retry: (failureCount, error) => {
                     const status =
                         typeof error === 'object' &&
-                        error !== null &&
-                        'status' in error &&
-                        typeof (error as { status?: unknown }).status === 'number'
+                            error !== null &&
+                            'status' in error &&
+                            typeof (error as { status?: unknown }).status === 'number'
                             ? (error as { status: number }).status
                             : null;
 
+                    // Don't retry authentication errors
                     if (status === 401 || status === 403) {
                         return false;
                     }
 
+                    // Don't retry client errors (4xx) - these are validation/client errors
+                    // that won't be fixed by retrying (e.g., 400 Bad Request, 404 Not Found)
+                    if (status !== null && status >= 400 && status < 500) {
+                        return false;
+                    }
+
+                    // Retry only for server errors (5xx) or network errors
+                    // Network errors have status === null
                     return failureCount < 1;
                 },
                 refetchOnWindowFocus: false,

@@ -24,6 +24,7 @@ import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import { INBOX_COUNT_CACHE_TTL_SEC } from "./constants";
 import type { BaseInboxQuery } from "./base-schema";
+import { parseInboxQueryParams } from "./query-params";
 
 /**
  * Configuration for inbox handler factory
@@ -141,32 +142,13 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
 
             const env = getServerEnv();
             const url = new URL(req.url);
-            const qp = url.searchParams;
 
-            // 2. Parse and validate query parameters
-            // Explicitly pick known parameters to avoid unexpected params
-            const parsed = querySchema.safeParse({
-                site_id: qp.get("site_id"),
-                page: qp.get("page") ?? undefined,
-                limit: qp.get("limit") ?? undefined,
-                search: qp.get("search") ?? undefined,
-                status: qp.get("status") ?? undefined,
-                date_from: qp.get("date_from") ?? undefined,
-                date_to: qp.get("date_to") ?? undefined,
-                // Additional fields for extended schemas (e.g., hr-applications)
-                job_post_id: qp.get("job_post_id") ?? undefined,
-            });
-
-            if (!parsed.success) {
-                throw new HttpError(400, {
-                    code: "VALIDATION_ERROR",
-                    message: "Validation failed",
-                    details: zodErrorToDetails(parsed.error),
-                });
-            }
+            // 2. Parse and validate query parameters using centralized parser
+            // This preserves strict behavior: unknown params are rejected, not stripped
+            const parsed = parseInboxQueryParams(url.searchParams, querySchema);
 
             // 3. Rate limiting
-            const hasSearch = typeof parsed.data.search === "string";
+            const hasSearch = typeof parsed.search === "string";
             const rateLimit = await enforceRateLimit(
                 ctx.admin,
                 rateLimitAuthKey(
@@ -179,7 +161,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
             );
 
             // 4. Calculate pagination
-            const { from, to } = calculatePaginationRange(parsed.data.page, parsed.data.limit);
+            const { from, to } = calculatePaginationRange(parsed.page, parsed.limit);
 
             // 5. Build data query with common filters
             // Use admin client for super_admin to bypass RLS
@@ -188,14 +170,14 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                 .from(tableName)
                 .select(selectFields)
                 .eq("tenant_id", ctx.tenant.id)
-                .eq("site_id", parsed.data.site_id)
+                .eq("site_id", parsed.site_id)
                 .order(orderBy, { ascending: orderDirection === "asc" })
                 .range(from, to);
 
             // 6. Apply common filters (status, date range, search, additional)
             const dataQuery = applyInboxFilters(
                 baseDataQuery,
-                parsed.data,
+                parsed,
                 searchFields,
                 additionalFilters,
                 ctx
@@ -212,16 +194,16 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                 "inbox-count",
                 cacheKeyPrefix,
                 ctx.tenant.id,
-                parsed.data.site_id,
-                parsed.data.status ?? "",
-                parsed.data.date_from ?? "",
-                parsed.data.date_to ?? "",
-                parsed.data.search ?? "",
+                parsed.site_id,
+                parsed.status ?? "",
+                parsed.date_from ?? "",
+                parsed.date_to ?? "",
+                parsed.search ?? "",
             ];
 
             // Add additional cache key parts if provided
             if (additionalCacheKeyParts) {
-                cacheKeyParts.push(...additionalCacheKeyParts(parsed.data));
+                cacheKeyParts.push(...additionalCacheKeyParts(parsed));
             }
 
             const countCacheKey = cacheKeyParts.join("|");
@@ -235,12 +217,12 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                         .from(tableName)
                         .select("id", { count: "exact", head: true })
                         .eq("tenant_id", ctx.tenant.id)
-                        .eq("site_id", parsed.data.site_id);
+                        .eq("site_id", parsed.site_id);
 
                     // Apply same filters using shared helper
                     const countQuery = applyInboxFilters(
                         baseCountQuery,
-                        parsed.data,
+                        parsed,
                         searchFields,
                         additionalFilters,
                         ctx

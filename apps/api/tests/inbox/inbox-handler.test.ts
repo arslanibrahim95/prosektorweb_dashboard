@@ -8,6 +8,8 @@ import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { createInboxHandler, type InboxHandlerConfig } from "@/server/inbox/inbox-handler";
 import { baseInboxQuerySchema } from "@/server/inbox/base-schema";
+import { parseInboxQueryParams } from "@/server/inbox/query-params";
+import { HttpError } from "@/server/api/http";
 
 describe("createInboxHandler", () => {
     describe("config validation", () => {
@@ -305,6 +307,70 @@ describe("createInboxHandler", () => {
 
             const handler = createInboxHandler(config);
             expect(handler).toBeDefined();
+        });
+    });
+
+    describe("REGRESSION: query param parsing (job_post_id bug fix)", () => {
+        const validUuid = "550e8400-e29b-41d4-a716-446655440000";
+
+        /**
+         * This test verifies the fix for the regression where job_post_id was always
+         * injected into the parse payload even for base schemas that don't define it.
+         * 
+         * The old code was:
+         *   querySchema.safeParse({ ..., job_post_id: qp.get("job_post_id") ?? undefined })
+         * 
+         * This caused Zod strict parsing to fail because baseInboxQuerySchema doesn't
+         * have job_post_id defined, and strict mode rejects unknown keys.
+         * 
+         * The fix uses parseInboxQueryParams which only passes params that exist in the URL.
+         */
+
+        it("should NOT inject synthetic job_post_id for base schema", () => {
+            // Create a mock URLSearchParams with only site_id
+            // This simulates what happens when offers/contact endpoints receive requests
+            const mockSearchParams = new URLSearchParams({
+                site_id: validUuid,
+            });
+
+            // Test that the parser doesn't fail - if it tries to inject job_post_id,
+            // the strict baseInboxQuerySchema would reject it
+            // This should NOT throw - if it does, the bug is present
+            const result = parseInboxQueryParams(mockSearchParams, baseInboxQuerySchema);
+
+            expect(result.site_id).toBe(validUuid);
+            expect(result.job_post_id).toBeUndefined();
+        });
+
+        it("should parse base schema params correctly without job_post_id", () => {
+            
+
+            const mockSearchParams = new URLSearchParams({
+                site_id: validUuid,
+                page: "1",
+                limit: "10",
+                status: "unread",
+            });
+
+            const result = parseInboxQueryParams(mockSearchParams, baseInboxQuerySchema);
+
+            expect(result.site_id).toBe(validUuid);
+            expect(result.page).toBe(1);
+            expect(result.limit).toBe(10);
+            expect(result.status).toBe("unread");
+        });
+
+        it("should reject unknown params with strict error", () => {
+            
+            
+
+            const mockSearchParams = new URLSearchParams({
+                site_id: validUuid,
+                unknown_param: "should_fail",
+            });
+
+            // Should throw HttpError 400 for unknown param
+            expect(() => parseInboxQueryParams(mockSearchParams, baseInboxQuerySchema)).toThrow(HttpError);
         });
     });
 });
