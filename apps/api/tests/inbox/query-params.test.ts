@@ -59,20 +59,18 @@ describe("parseInboxQueryParams", () => {
             const result = parseInboxQueryParams(searchParams, baseInboxQuerySchema);
 
             expect(result.site_id).toBe(validUuid);
-            expect(result.page).toBe(1); // default
-            expect(result.limit).toBe(50); // default
+            expect(result.page).toBe(1);
+            expect(result.limit).toBe(50);
         });
     });
 
     describe("strict unknown key rejection", () => {
         it("should reject unknown job_post_id with base schema (strict mode)", () => {
-            // This is the regression case: base schema (offers/contact) should NOT accept job_post_id
             const searchParams = new URLSearchParams({
                 site_id: validUuid,
                 job_post_id: "some-uuid",
             });
 
-            // Should throw HttpError with 400 status
             expect(() => parseInboxQueryParams(searchParams, baseInboxQuerySchema)).toThrow(HttpError);
         });
 
@@ -82,7 +80,6 @@ describe("parseInboxQueryParams", () => {
                 foo: "bar",
             });
 
-            // Should throw HttpError with 400 status
             expect(() => parseInboxQueryParams(searchParams, baseInboxQuerySchema)).toThrow(HttpError);
         });
 
@@ -98,7 +95,6 @@ describe("parseInboxQueryParams", () => {
     });
 
     describe("extended schema with job_post_id", () => {
-        // Create an extended schema that includes job_post_id
         const extendedInboxQuerySchema = baseInboxQuerySchema.extend({
             job_post_id: z.string().uuid(),
         });
@@ -116,14 +112,13 @@ describe("parseInboxQueryParams", () => {
             expect(result.job_post_id).toBe(jobPostId);
         });
 
-        it("should reject base schema when job_post_id is in URL but schema doesn't support it", () => {
+        it("should reject base schema when job_post_id is in URL but schema does not support it", () => {
             const jobPostId = "550e8400-e29b-41d4-a716-446655440001";
             const searchParams = new URLSearchParams({
                 site_id: validUuid,
                 job_post_id: jobPostId,
             });
 
-            // This should fail because base schema doesn't have job_post_id
             expect(() => parseInboxQueryParams(searchParams, baseInboxQuerySchema)).toThrow(HttpError);
         });
     });
@@ -157,7 +152,7 @@ describe("parseInboxQueryParams", () => {
         it("should throw HttpError 400 for invalid page value", () => {
             const searchParams = new URLSearchParams({
                 site_id: validUuid,
-                page: "0", // page must be >= 1
+                page: "0",
             });
 
             expect(() => parseInboxQueryParams(searchParams, baseInboxQuerySchema)).toThrow(HttpError);

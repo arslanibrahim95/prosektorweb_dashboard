@@ -339,11 +339,12 @@ describe("createInboxHandler", () => {
             const result = parseInboxQueryParams(mockSearchParams, baseInboxQuerySchema);
 
             expect(result.site_id).toBe(validUuid);
-            expect(result.job_post_id).toBeUndefined();
+            // job_post_id should not exist on base schema - using any to bypass strict type check
+            expect((result as any).job_post_id).toBeUndefined();
         });
 
         it("should parse base schema params correctly without job_post_id", () => {
-            
+
 
             const mockSearchParams = new URLSearchParams({
                 site_id: validUuid,
@@ -361,8 +362,8 @@ describe("createInboxHandler", () => {
         });
 
         it("should reject unknown params with strict error", () => {
-            
-            
+
+
 
             const mockSearchParams = new URLSearchParams({
                 site_id: validUuid,
