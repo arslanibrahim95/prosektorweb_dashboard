@@ -18,6 +18,7 @@ import {
 } from "@/server/api/http";
 import { buildSafeIlikeOr, safeSearchParamSchema } from "@/server/api/postgrest-search";
 import { requireAuthContext } from "@/server/auth/context";
+import { hasPermission } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import type { AuthContext } from "@/server/auth/context";
@@ -105,6 +106,15 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
         try {
             // 1. Auth check
             const ctx = await requireAuthContext(req);
+
+            // 2. Permission check - inbox:read required for all inbox endpoints
+            if (!hasPermission(ctx.permissions, 'inbox:read')) {
+                throw new HttpError(403, {
+                    code: 'FORBIDDEN',
+                    message: 'Bu işlem için yetkiniz yok.',
+                });
+            }
+
             const env = getServerEnv();
             const url = new URL(req.url);
 

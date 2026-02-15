@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useId } from 'react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
     Table,
     TableBody,
@@ -63,15 +64,29 @@ interface UsersResponse {
 
 export default function AdminUsersPage() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [roleFilter, setRoleFilter] = useState<string>('');
+    const [roleFilter, setRoleFilter] = useState<string>('all');
     const [page, setPage] = useState(1);
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('viewer');
 
+    const handleSearchChange = (value: string) => {
+        setSearchTerm(value);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handleRoleFilterChange = (value: string) => {
+        setRoleFilter(value);
+        setPage(1); // Reset to first page on filter change
+    };
+
+    // Debounce search and filter to prevent excessive API calls
+    const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+    const debouncedRoleFilter = useDebouncedValue(roleFilter, 300);
+
     const { data, isLoading, error } = useAdminUsers({
-        search: searchTerm || undefined,
-        role: roleFilter || undefined,
+        search: debouncedSearchTerm || undefined,
+        role: debouncedRoleFilter === 'all' ? undefined : debouncedRoleFilter,
         page,
         limit: 20,
     });
@@ -153,15 +168,15 @@ export default function AdminUsersPage() {
                         placeholder="İsim veya e-posta ara..."
                         className="pl-9"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => handleSearchChange(e.target.value)}
                     />
                 </div>
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Tüm Roller" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">Tüm Roller</SelectItem>
+                        <SelectItem value="all">Tüm Roller</SelectItem>
                         <SelectItem value="owner">Owner</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="editor">Editor</SelectItem>
@@ -229,9 +244,12 @@ export default function AdminUsersPage() {
                                                 <AvatarImage
                                                     src={
                                                         user.avatar_url ||
-                                                        `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`
+                                                        `https://api.dicebear.com/9.x/avataaars/png?seed=${encodeURIComponent(user.email || user.id)}`
                                                     }
                                                     alt={user.name || user.email}
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                    }}
                                                 />
                                                 <AvatarFallback>
                                                     {(user.name || user.email || 'U')
@@ -342,7 +360,7 @@ export default function AdminUsersPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Yeni Kullanıcı Davet Et</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription id={useId()}>
                             Sisteme yeni bir kullanıcı davet edin. Kullanıcıya e-posta ile davet
                             gönderilecektir.
                         </DialogDescription>
