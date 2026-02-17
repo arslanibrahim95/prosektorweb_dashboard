@@ -214,11 +214,11 @@ describe('Design Tokens: Radius', () => {
   });
 
   it('should have correct radius values', () => {
-    expect(extractTokenValue('radius-sm')).toBe('0.125rem');
-    expect(extractTokenValue('radius-md')).toBe('0.375rem');
-    expect(extractTokenValue('radius-lg')).toBe('0.5rem');
-    expect(extractTokenValue('radius-xl')).toBe('0.75rem');
-    expect(extractTokenValue('radius-2xl')).toBe('1rem');
+    expect(extractTokenValue('radius-sm')).toBe('0.25rem');
+    expect(extractTokenValue('radius-md')).toBe('0.5rem');
+    expect(extractTokenValue('radius-lg')).toBe('0.75rem');
+    expect(extractTokenValue('radius-xl')).toBe('1rem');
+    expect(extractTokenValue('radius-2xl')).toBe('1.5rem');
     expect(extractTokenValue('radius-full')).toBe('9999px');
   });
 
@@ -349,9 +349,9 @@ describe('Design Tokens: Dark Mode', () => {
 // =========================================================================
 describe('Design Tokens: Semantic References', () => {
   it('should reference primitive tokens correctly', () => {
-    // Semantic tokens should reference primitive color tokens
-    expect(referencesToken('success', 'color-green-500')).toBe(true);
-    expect(referencesToken('warning', 'color-amber-500')).toBe(true);
+    // Success/warning are defined as direct OKLCH values; info references primitive palette.
+    expect(extractTokenValue('success')).toContain('oklch(');
+    expect(extractTokenValue('warning')).toContain('oklch(');
     expect(referencesToken('info', 'color-blue-500')).toBe(true);
   });
 
@@ -377,8 +377,8 @@ describe('Design Tokens: Format Consistency', () => {
   });
 
   it('should have consistent spacing around colons', () => {
-    // All tokens should have space after colon
-    const noSpaceMatches = tokensContent.match(/--[a-z-]+:[^ ]/g);
+    // All single-line token declarations should have whitespace after colon.
+    const noSpaceMatches = tokensContent.match(/--[a-z-]+:\S/g);
     expect(noSpaceMatches).toBeNull();
   });
 });

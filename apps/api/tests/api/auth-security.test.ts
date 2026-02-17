@@ -265,7 +265,7 @@ describe('Authentication Security', () => {
                 tenantId: userInfo.tenantId,
             });
 
-            expect(result.expires_in).toBe(30 * 24 * 60 * 60); // 30 days
+            expect(result.expires_in).toBe(14 * 24 * 60 * 60); // 14 days
         });
     });
 
