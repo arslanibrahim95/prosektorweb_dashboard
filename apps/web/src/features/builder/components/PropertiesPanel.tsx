@@ -87,7 +87,7 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
 
         case 'select':
             return (
-                <Select value={value || ''} onValueChange={onChange}>
+                <Select value={value} onValueChange={onChange}>
                     <SelectTrigger>
                         <SelectValue placeholder="Seçin..." />
                     </SelectTrigger>

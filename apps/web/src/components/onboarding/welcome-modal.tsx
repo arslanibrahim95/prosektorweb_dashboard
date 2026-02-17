@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
+
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Layout, CheckSquare, Rocket } from 'lucide-react';
@@ -79,6 +82,8 @@ export function WelcomeModal() {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent showCloseButton={false} className="sm:max-w-md p-0 overflow-hidden">
+        <DialogTitle className="sr-only">ProsektorWeb Hoş Geldiniz</DialogTitle>
+        <DialogDescription className="sr-only">Başlangıç rehberi</DialogDescription>
         {/* Gradient header */}
         <div className={cn('py-10 flex flex-col items-center gap-4', step.gradient)}>
           <div className="h-16 w-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">

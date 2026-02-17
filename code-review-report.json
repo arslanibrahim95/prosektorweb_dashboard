@@ -1,0 +1,557 @@
+{
+    "summary": {
+        "totalIssues": 26,
+        "severityBreakdown": {
+            "CRITICAL": 5,
+            "HIGH": 4,
+            "MEDIUM": 10,
+            "LOW": 7
+        },
+        "categoryBreakdown": {
+            "SECURITY": 12,
+            "PERFORMANCE": 4,
+            "CODE_QUALITY": 5,
+            "EDGE_CASE": 3,
+            "INFRASTRUCTURE": 2
+        },
+        "topRecommendations": [
+            "P0: In-memory cache çözümünü Redis'e taşı - serverless ortamda güvenilir çalışmıyor",
+            "P0: Rate limiting için kullanılan RPC fonksiyonunun atomik olduğunu doğrula",
+            "P0: Tenant membership validation'ı güçlendir - race condition riski var",
+            "P0: Tüm API endpoint'lerine permission kontrolü ekle",
+            "P1: Middleware'deki sync blocking call'ları optimize et"
+        ]
+    },
+    "issues": [
+        {
+            "id": "CRITICAL-SECURITY-001",
+            "severity": "CRITICAL",
+            "category": "SECURITY",
+            "filePath": "apps/api/src/server/cache.ts",
+            "lineNumbers": "1-79",
+            "title": "In-Memory Cache Güvensizliği - Serverless Ortamda Unreliable",
+            "description": "Node.js'in Map sınıfı kullanılarak oluşturulan in-memory cache, Vercel gibi serverless ortamlarda ciddi sorunlara yol açar. Her cold start'ta cache sıfırlanır ve birden fazla instance varsa cache'ler birbirinden bağımsız çalışır. Bu kod, rate limiting için kullanılıyor ve bu nedenle aynı IP için limit aşımı farklı instance'larda farklı davranabilir.",
+            "codeSnippet": "export const cacheStore = new Map<string, CacheEntry<unknown>>();\nexport const MAX_CACHE_ENTRIES = 2000;\n\nexport async function getOrSetCachedValue<T>(\n  key: string,\n  ttlSeconds: number,\n  loader: () => Promise<T>,\n): Promise<T> {\n  const cached = getCachedValue<T>(key);\n  if (cached !== undefined) return cached;\n\n  const loaded = await loader();\n  setCachedValue(key, loaded, ttlSeconds);\n  return loaded;\n}",
+            "impact": "Rate limiting tamamen güvenilmez hale gelir. Aynı kullanıcı farklı instance'larda farklı rate limit davranışı görür. Cold start'larda cache sıfırlanır, bu da anlık yüksek DB yüküne yol açar.",
+            "attackScenario": "Bir saldırgan, farklı IP'lerden değil, aynı IP'nin farklı instance'lara istek atarak rate limit'i atlatabilir. Veya cold start sonrası tüm kullanıcılar aynı anda DB'ye istek atarak DOS saldırısı düzenleyebilir.",
+            "edgeCases": [
+                "Cold start sonrası tüm cache sıfırlanır",
+                "Multi-instance deployment'da cache sync sorunu",
+                "Memory limit aşımı durumunda entry silme",
+                "TTL dolduktan sonra anlık cache miss storm"
+            ],
+            "recommendedFix": "Redis veya Supabase Edge Functions için uygun bir çözüm kullanılmalı:\n\n// Önerilen çözüm (Redis):\nimport Redis from 'ioredis';\n\nconst redis = new Redis(process.env.REDIS_URL);\n\nexport async function getOrSetCachedValue<T>(\n  key: string,\n  ttlSeconds: number,\n  loader: () => Promise<T>,\n): Promise<T> {\n  const cached = await redis.get(key);\n  if (cached) {\n    return JSON.parse(cached) as T;\n  }\n\n  const loaded = await loader();\n  await redis.setex(key, ttlSeconds, JSON.stringify(loaded));\n  return loaded;\n}",
+            "priority": "P0",
+            "effortEstimate": "MEDIUM"
+        },
+        {
+            "id": "CRITICAL-SECURITY-002",
+            "severity": "CRITICAL",
+            "category": "SECURITY",
+            "filePath": "apps/api/src/server/rate-limit.ts",
+            "lineNumbers": "94-130",
+            "title": "Rate Limiting Data Race Condition Riski",
+            "description": "Database-based rate limiting kullanılıyor, ancak RPC fonksiyonunun atomik olup olmadığı doğrulanmamış. Aynı anda birden fazla istek geldiğinde limit aşılabilir. Ayrıca limit ve window parametreleri için validation eksik.",
+            "codeSnippet": "export async function enforceRateLimit(\n  admin: SupabaseClient,\n  key: string,\n  limit: number = 5,\n  windowSeconds: number = 3600,\n): Promise<RateLimitResult> {\n  const { data, error } = await admin.rpc(\"check_rate_limit\", {\n    _key: key,\n    _limit: limit,\n    _window_seconds: windowSeconds,\n  });\n\n  if (error) throw mapPostgrestError(error);\n  // ...\n}",
+            "impact": "Rate limiting tamamen atlatılabilir. Saldırgan aynı anda birden fazla istek göndererek limit'i aşabilir. Bu, API abuse ve DOS saldırılarına kapı açar.",
+            "attackScenario": "Saldırgan 5 istek göndermek yerine 10 eşzamanlı istek gönderirse ve RPC fonksiyonu atomik değilse, tümü başarılı olabilir. Bu, brute force saldırılarını kolaylaştırır.",
+            "edgeCases": [
+                "windowSeconds = 0 veya negatif değer",
+                "limit = 0 değeri",
+                "Çok büyük limit değeri (integer overflow)",
+                "Eşzamanlı isteklerde race condition"
+            ],
+            "recommendedFix": "Önce parametreleri validate et ve RPC fonksiyonunun atomik olduğundan emin ol:\n\nfunction validateRateLimitParams(limit: number, windowSeconds: number): void {\n  if (!Number.isFinite(limit) || limit <= 0 || limit > 10000) {\n    throw new Error('Invalid rate limit value');\n  }\n  if (!Number.isFinite(windowSeconds) || windowSeconds <= 0 || windowSeconds > 86400) {\n    throw new Error('Invalid window seconds');\n  }\n}\n\nexport async function enforceRateLimit(\n  admin: SupabaseClient,\n  key: string,\n  limit: number = 5,\n  windowSeconds: number = 3600,\n): Promise<RateLimitResult> {\n  validateRateLimitParams(limit, windowSeconds);\n  // ... mevcut kod\n}\n\n// SQL tarafında da atomik işlem kullanılmalı (SELECT FOR UPDATE veya advisory lock)",
+            "priority": "P0",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "CRITICAL-SECURITY-003",
+            "severity": "CRITICAL",
+            "category": "SECURITY",
+            "filePath": "apps/api/src/server/auth/context.ts",
+            "lineNumbers": "318-380",
+            "title": "Tenant Switch Race Condition - Yetkisiz Erişim Riski",
+            "description": "Kullanıcının bir tenant'a erişim hakkı veritabanından silindiği an, eski token ile hala istek atabilir. membershipByTenant daha önce cache'lenmiş olabilir ve güncel olmayabilir. Token içindeki tenant_id ile veritabanındaki tenant_id farklı olabilir.",
+            "codeSnippet": "const selectedMembership = requestedTenantId\n  ? membershipByTenant.get(requestedTenantId)\n  : memberships[0];\n\nif (!selectedMembership) {\n  throw createError({\n    code: \"FORBIDDEN\",\n    message: \"Bu tenant için erişim yetkiniz yok.\",\n  });\n}",
+            "impact": "Kullanıcının erişim hakkı kaldırıldıktan sonra bile tenant'a erişmeye devam edebilir. Bu, veri sızıntısı ve yetki yükseltme saldırılarına yol açabilir.",
+            "attackScenario": "1. Kullanıcı Tenant A ve B'ye erişim hakkına sahip\n2. Tenant B'den yetkisi admin tarafından alınır\n3. Kullanıcı eski token'ı ile Tenant B için istek atar\n4. Kod hala izin verebilir çünkü membership cache'lenmiş olabilir veya token geçerli",
+            "edgeCases": [
+                "Token içindeki tenant_id veritabanında artık mevcut değil",
+                "User tenant membership silindi ama token hala geçerli",
+                "Cross-tenant erişim kontrolü atlatılabilir",
+                "Super admin için membership kontrolü bypass ediliyor"
+            ],
+            "recommendedFix": "Her istek için veritabanından güncel membership kontrolü yap:\n\nasync function validateTenantAccess(\n  supabase: SupabaseClient,\n  userId: string,\n  requestedTenantId: string\n): Promise<{ valid: boolean; membership: { tenant_id: string; role: string } | null }> {\n  const { data: membership, error } = await supabase\n    .from('tenant_members')\n    .select('tenant_id, role')\n    .eq('user_id', userId)\n    .eq('tenant_id', requestedTenantId)\n    .single();\n\n  if (error || !membership) {\n    return { valid: false, membership: null };\n  }\n\n  return { valid: true, membership };\n}\n\nexport async function requireAuthContext(req: Request): Promise<AuthContext> {\n  // ... mevcut kod\n  \n  // Tenant erişimini her zaman doğrula\n  if (requestedTenantId) {\n    const accessCheck = await validateTenantAccess(\n      supabase,\n      user.id,\n      requestedTenantId\n    );\n    if (!accessCheck.valid) {\n      throw createError({\n        code: 'FORBIDDEN',\n        message: 'Bu tenant için erişim yetkiniz yok.',\n      });\n    }\n  }\n}",
+            "priority": "P0",
+            "effortEstimate": "MEDIUM"
+        },
+        {
+            "id": "CRITICAL-SECURITY-004",
+            "severity": "CRITICAL",
+            "category": "SECURITY",
+            "filePath": "apps/api/src/server/auth.ts",
+            "lineNumbers": "8-21",
+            "title": "Client-Side Auth State Synchronization Eksikliği",
+            "description": "Server-side cachedMe kullanılıyor, ancak birden fazla tab açıldığında state sync sorunu yaşanır. Token yenilendiğinde cache invalidation yapılmıyor. Cross-tab communication yok.",
+            "codeSnippet": "// === Auth Context (Client-side cache) ===\nlet cachedMe: MeResponse | null = null;\n\nexport async function getMe(): Promise<MeResponse> {\n    if (cachedMe) return cachedMe;\n\n    const response = await api.get<MeResponse>('/me', undefined, meResponseSchema);\n    cachedMe = response;\n    return response;\n}",
+            "impact": "Kullanıcı bir tabloda logout olsa bile diğer tablolarda authenticated görünmeye devam eder. Eski cached data ile API istekleri atılabilir. Güvenlik açığı oluşur.",
+            "attackScenario": "1. Kullanıcı Tab 1'de logout olur\n2. Tab 2'de hala cachedMe değeri var\n3. Tab 2 üzerinden yetkili işlemler yapılabilir\n4. Session süresi doldu ama cache'de eski token var",
+            "edgeCases": [
+                "Token refresh oldu ama cache hala eski data içeriyor",
+                "session.expires_at geçti ama state hala authenticated",
+                "Bir tabluda logout olundu, diğer tabloda kaldı",
+                "Token yenileme sırasında cache invalidation yok"
+            ],
+            "recommendedFix": "Cross-tab communication ve cache invalidation ekle:\n\n// BroadcastChannel ile cross-tab sync\nconst authChannel = new BroadcastChannel('prosektor_auth');\n\nexport async function getMe(): Promise<MeResponse> {\n  const response = await api.get<MeResponse>('/me', undefined, meResponseSchema);\n  cachedMe = response;\n  \n  // Tüm tablara değişikliği bildir\n  authChannel.postMessage({ type: 'AUTH_UPDATED', data: response });\n  return response;\n}\n\nexport function clearAuthCache(): void {\n  cachedMe = null;\n  authChannel.postMessage({ type: 'AUTH_CLEARED' });\n}\n\n// Tab listener\nauthChannel.onmessage = (event) => {\n  if (event.data.type === 'AUTH_CLEARED') {\n    cachedMe = null;\n    // Redirect to login\n  }\n};",
+            "priority": "P0",
+            "effortEstimate": "MEDIUM"
+        },
+        {
+            "id": "CRITICAL-SECURITY-005",
+            "severity": "CRITICAL",
+            "category": "SECURITY",
+            "filePath": "apps/web/middleware.ts",
+            "lineNumbers": "171-189",
+            "title": "Client-Side Session Timeout Logic Güvensizliği",
+            "description": "Session timeout kontrolü client-side (Date.now()) yapılıyor. Bu, server time'dan farklı olabilir ve client saati manipüle edilebilir. Timezone farklılıkları da göz önüne alınmıyor.",
+            "codeSnippet": "// SECURITY: Check session expiration with buffer time\n// Add 30 second buffer to prevent race conditions\nif (session.expires_at) {\n  const expiresAt = session.expires_at * 1000;\n  const now = Date.now();\n  const bufferMs = 30 * 1000; // 30 seconds\n\n  if (now >= (expiresAt - bufferMs)) {\n    // Session expired or about to expire - redirect to login\n    console.info('[Middleware] Session expired or expiring soon:', {\n      path: pathname,\n      expiresAt: new Date(expiresAt).toISOString(),\n    });\n    const loginUrl = new URL('/login', req.url);\n    loginUrl.searchParams.set('redirect', pathname);\n    loginUrl.searchParams.set('reason', 'session_expired');\n    return NextResponse.redirect(loginUrl);\n  }\n}",
+            "impact": "Kullanıcı client saatini değiştirerek session'ı uzatabilir. Saldırgan manipüle edilmiş bir browser kullanarak session timeout'ı atlatabilir.",
+            "attackScenario": "1. Kullanıcı browser saatini 1 saat ileri alır\n2. Session hala geçerli görünür\n3. Timeout kontrolü Date.now() kullandığı için gerçek expire kontrol edilemez\n4. Session süresiz uzatılabilir",
+            "edgeCases": [
+                "Client saati manipüle edilebilir",
+                "Server ve client timezone farklı olabilir",
+                "DST (Daylight Saving Time) değişiklikleri",
+                "Date.now() güvenilir değil"
+            ],
+            "recommendedFix": "Server-side session validation yap:\n\nexport async function middleware(req: NextRequest) {\n  // ...\n  const { data: { session }, error } = await supabase.auth.getSession();\n  \n  // Session'ı server-side kontrol et\n  if (session) {\n    // expires_at yerine expires_at'ı server-side doğrula\n    const expiresAt = session.expires_at;\n    if (expiresAt && Date.now() / 1000 >= expiresAt) {\n      // Session gerçekten expire olmuş\n      // Redirect to login\n    }\n  }\n}",
+            "priority": "P0",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "HIGH-SECURITY-006",
+            "severity": "HIGH",
+            "category": "SECURITY",
+            "filePath": "apps/api/src/app/api/hr/job-posts/route.ts",
+            "lineNumbers": "63-98",
+            "title": "IDOR Vulnerability Potansiyeli - Site ID Kontrolü Eksik",
+            "description": "site_id kullanıcıdan gelen parsed.data.site_id kullanılıyor. Kod, kullanıcının bu site_id'ye erişim hakkına sahip olup olmadığını kontrol etmiyor. Başka tenant'ın sitesine post eklenebilir.",
+            "codeSnippet": "const { data, error } = await ctx.supabase\n  .from(\"job_posts\")\n  .insert({\n    tenant_id: ctx.tenant.id,  // Güvenli\n    site_id: parsed.data.site_id,  // ⚠️ Kullanıcıdan geliyor!\n    title: parsed.data.title,\n    slug: parsed.data.slug,\n    // ...\n  })",
+            "impact": "Kullanıcı başka tenant'ın sitesine job post ekleyebilir. Veri izolasyonu ihlal edilir. Tenant-isolation bypass.",
+            "attackScenario": "1. Kullanıcı Tenant A'nın sitesine erişim hakkına sahip\n2. Tenant B'nin site_id'sini tahmin eder (UUID formatında)\n3. Tenant A'nın token'ı ile Tenant B'ye job post ekler\n4. Veritabanında karışıklık - yanlış tenant'a ait veri",
+            "edgeCases": [
+                "site_id geçerli UUID formatında ama başka tenant'a ait",
+                "site_id silinmiş siteye ait",
+                "site_id mevcut ama kullanıcının erişimi yok",
+                "Tenant ID ve site ID eşleşmiyor"
+            ],
+            "recommendedFix": "Site erişim kontrolü ekle:\n\nconst parsed = createJobPostRequestSchema.safeParse(body);\nif (!parsed.success) {\n  throw new HttpError(400, {\n    code: \"VALIDATION_ERROR\",\n    message: \"Validation failed\",\n    details: zodErrorToDetails(parsed.error),\n  });\n}\n\n// Site erişim kontrolü\neffectiveSiteId = parsed.data.site_id;\n\n// Tenant'ın bu siteye erişimi olduğunu doğrula\nconst { data: siteAccess, error: siteAccessError } = await ctx.supabase\n  .from('sites')\n  .select('id')\n  .eq('id', effectiveSiteId)\n  .eq('tenant_id', ctx.tenant.id)\n  .single();\n\nif (siteAccessError || !siteAccess) {\n  throw new HttpError(403, { \n    code: 'FORBIDDEN', \n    message: 'Bu siteye erişim yetkiniz yok.' \n  });\n}",
+            "priority": "P0",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "HIGH-SECURITY-007",
+            "severity": "HIGH",
+            "category": "SECURITY",
+            "filePath": "apps/api/src/app/api/hr/job-posts/route.ts",
+            "lineNumbers": "22-61",
+            "title": "Missing Permission Check - Endpoint Korumasız",
+            "description": "GET ve POST endpoint'lerinde permission kontrolü yok. requireAuthContext sadece authentication yapıyor, authorization (permission) kontrolü yapmıyor. Her authenticated kullanıcı job posts oluşturabilir.",
+            "codeSnippet": "export async function GET(req: Request) {\n  try {\n    const ctx = await requireAuthContext(req);\n    // Permission kontrolü YOK!\n    const url = new URL(req.url);\n    // Doğrudan sorgu çalışıyor\n}",
+            "impact": "Her authenticated kullanıcı job posts oluşturabilir, listeleyebilir. Editor veya viewer rolündeki kullanıcılar bile admin işlemleri yapabilir.",
+            "attackScenario": "1. Viewer rolünde bir kullanıcı giriş yapar\n2. /api/hr/job-posts endpoint'ine POST isteği atar\n3. Permission kontrolü olmadığı için job post oluşturulur\n4. Veri bütünlüğü bozulur",
+            "edgeCases": [
+                "Viewer rolü job post oluşturabilir",
+                "Editor rolü başka kullanıcının post'larını silebilir",
+                "Token olan herkes endpoint'e erişebilir"
+            ],
+            "recommendedFix": "Permission kontrolü ekle:\n\nimport { hasPermission } from '@/server/auth/permissions';\n\nexport async function GET(req: Request) {\n  try {\n    const ctx = await requireAuthContext(req);\n    \n    // Permission kontrolü\neffectivePermission = 'modules:read';\nif (!hasPermission(ctx.permissions, effectivePermission)) {\n  throw new HttpError(403, {\n    code: 'FORBIDDEN',\n    message: 'Bu işlem için yetkiniz yok.',\n  });\n}\n    // ...\n}",
+            "priority": "P0",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "HIGH-SECURITY-008",
+            "severity": "HIGH",
+            "category": "SECURITY",
+            "filePath": "apps/api/src/server/auth/context.ts",
+            "lineNumbers": "236-267",
+            "title": "Super Admin Mirror Membership Race Condition",
+            "description": "ensureSuperAdminMirrorMembership her super admin isteğinde çalışır - gereksiz DB yükü. Rollback mekanizması yok. Hata durumunda kullanıcıya anlamlı mesaj yok.",
+            "codeSnippet": "async function ensureSuperAdminMirrorMembership(\n  admin: SupabaseClient,\n  userId: string,\n  tenantId: string,\n): Promise<void> {\n  const { error } = await admin\n    .from(\"tenant_members\")\n    .upsert(\n      {\n        tenant_id: tenantId,\n        user_id: userId,\n        role: \"owner\",\n      },\n      {\n        onConflict: \"tenant_id,user_id\",\n      },\n    );\n\n  if (error) {\n    throw createError({\n      code: \"DATABASE_ERROR\",\n      message: \"Super admin tenant mirror güncellenemedi.\",\n      originalError: error,\n    });\n  }\n}",
+            "impact": "Her istekte gereksiz DB yazılır. Upsert conflict'leri artar. Performans düşer.",
+            "attackScenario": "1. Super admin her istekte upsert yapar\n2. Yüksek trafikli sistemde DB load artar\n3. Conflict retry maliyeti oluşur",
+            "edgeCases": [
+                "Her istekte gereksiz upsert",
+                "Upsert conflict sayısı artar",
+                "DB connection pool tükenebilir"
+            ],
+            "recommendedFix": "Önce membership var mı kontrol et, yoksa upsert yap:\n\nasync function ensureSuperAdminMirrorMembership(\n  admin: SupabaseClient,\n  userId: string,\n  tenantId: string,\n): Promise<void> {\n  // Önce mevcut membership kontrol et\n  const { data: existing } = await admin\n    .from('tenant_members')\n    .select('role')\n    .eq('tenant_id', tenantId)\n    .eq('user_id', userId)\n    .single();\n\n  // Zaten owner ise upsert yapma\n  if (existing?.role === 'owner') {\n    return;\n  }\n\n  // Upsert sadece gerekliyse\n  const { error } = await admin\n    .from('tenant_members')\n    .upsert({...}, { onConflict: 'tenant_id,user_id' });\n\n  if (error) {\n    throw createError({...});\n  }\n}",
+            "priority": "P1",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "HIGH-SECURITY-009",
+            "severity": "HIGH",
+            "category": "SECURITY",
+            "filePath": "apps/api/src/app/api/public/hr/apply/route.ts",
+            "lineNumbers": "175-179",
+            "title": "File Upload Cleanup Risk - Orphaned Files",
+            "description": "DB insert başarısız olduğunda storage remove yapılmaya çalışılıyor, ancak 'best-effort' = hata yutulabilir. Network timeout sonrası retry = duplicate upload. Storage remove rate limit'e takılırsa ne olacağı handle edilmiyor.",
+            "codeSnippet": "if (insertError) {\n  // Best-effort cleanup to avoid orphaned objects.\n  await admin.storage.from(env.storageBucketPrivateCv).remove([key]);\n  throw mapPostgrestError(insertError);\n}",
+            "impact": "Dosya upload oldu ama DB insert başarısız = orphan file kalır. Storage maliyeti artar. Zamanla bucket şişer.",
+            "attackScenario": "1. Kullanıcı CV upload eder\n2. DB insert timeout olur\n3. Cleanup başarısız olur (network hatası)\n4. Dosya storage'da kalır ama DB'de reference yok\n5. Bucket şişer, maliyet artar",
+            "edgeCases": [
+                "Storage remove timeout olursa",
+                "Storage rate limit'e takılırsa",
+                "Network hatası sonrası retry",
+                "Partial upload durumları"
+            ],
+            "recommendedFix": "Robust cleanup mekanizması:\n\nasync function cleanupOnError(\n  admin: SupabaseClient,\n  bucketName: string,\n  filePath: string,\n  maxRetries: number = 3\n): Promise<void> {\n  for (let i = 0; i < maxRetries; i++) {\n    try {\n      await admin.storage.from(bucketName).remove([filePath]);\n      return;\n    } catch (error) {\n      if (i === maxRetries - 1) {\n        console.error('[Cleanup] Failed after retries:', error);\n        // Log for manual cleanup\n        await logOrphanedFile(filePath);\n      }\n      await new Promise(r => setTimeout(r, 1000 * (i + 1)));\n    }\n  }\n}\n\n// Kullanımı:\nif (insertError) {\n  await cleanupOnError(admin, env.storageBucketPrivateCv, key);\n  throw mapPostgrestError(insertError);\n}",
+            "priority": "P1",
+            "effortEstimate": "MEDIUM"
+        },
+        {
+            "id": "MEDIUM-CODE_QUALITY-010",
+            "severity": "MEDIUM",
+            "category": "CODE_QUALITY",
+            "filePath": "apps/api/src/server/errors/error-service.ts",
+            "lineNumbers": "122-129",
+            "title": "Generic Error Exposure - Sensitive Bilgi Sızıntısı Riski",
+            "description": "error.message doğrudan kullanıcıya döndürülüyor. Bu, database connection string, internal file paths, stack traces gibi sensitive bilgileri içerebilir.",
+            "codeSnippet": "export function asErrorBody(error: unknown): ErrorBody {\n  if (error instanceof HttpError) return error.body;\n\n  return {\n    code: \"INTERNAL_ERROR\",\n    message: error instanceof Error ? error.message : translateError(\"INTERNAL_ERROR\", \"tr\"),\n  };\n}",
+            "impact": "Hata mesajlarında sensitive bilgiler sızabilir. Saldırgan sistem hakkında bilgi toplayabilir.",
+            "attackScenario": "1. DB bağlantısı başarısız olur\n2. Connection string hata mesajında döner\n3. Saldırgan bu bilgiyle sistem hakkında bilgi toplar",
+            "edgeCases": [
+                "Database connection errors",
+                "File path exposures",
+                "Stack trace leaks",
+                "Internal variable dumps"
+            ],
+            "recommendedFix": "Error mesajını sanitize et:\n\nfunction sanitizeErrorMessage(message: string): string {\n  // Sensitive patterns\n  const sensitivePatterns = [\n    /password/i,\n    /secret/i,\n    /key/i,\n    /connection.*string/i,\n    /\\/\\/.*\\:.*\\@/, // URL with credentials\n    /stack.*trace/i,\n  ];\n\n  for (const pattern of sensitivePatterns) {\n    if (pattern.test(message)) {\n      return translateError('INTERNAL_ERROR', 'tr');\n    }\n  }\n\n  return message;\n}\n\nexport function asErrorBody(error: unknown): ErrorBody {\n  if (error instanceof HttpError) return error.body;\n\n  const message = error instanceof Error ? error.message : '';\n  return {\n    code: \"INTERNAL_ERROR\",\n    message: sanitizeErrorMessage(message),\n  };\n}",
+            "priority": "P1",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "MEDIUM-CODE_QUALITY-011",
+            "severity": "MEDIUM",
+            "category": "CODE_QUALITY",
+            "filePath": "apps/api/src/server/cache.ts",
+            "lineNumbers": "55-66",
+            "title": "Uncaught Promise Rejections - Infinite Loop Riski",
+            "description": "loader() reject ederse hata yukarı fırlatılır. Ancak cache write başarısız olursa (memory pressure), loader() tekrar çalışır. Bu, infinite loop'a yol açabilir.",
+            "codeSnippet": "export async function getOrSetCachedValue<T>(\n  key: string,\n  ttlSeconds: number,\n  loader: () => Promise<T>,\n): Promise<T> {\n  const cached = getCachedValue<T>(key);\n  if (cached !== undefined) return cached;\n\n  const loaded = await loader();  // ⚠️ Reject yutulabilir\n  setCachedValue(key, loaded, ttlSeconds);\n  return loaded;\n}",
+            "impact": "Cache write başarısız olduğunda sürekli loader çalışır. Bu, aşırı DB yüküne ve potansiyel DOS'a yol açar.",
+            "attackScenario": "1. Cache dolu\n2. loader() çalışır\n3. setCachedValue başarısız olur (memory pressure)\n4. Bir sonraki istekte loader tekrar çalışır\n5. Sonsuz döngü oluşur",
+            "edgeCases": [
+                "Cache write başarısız olursa",
+                "Memory pressure altında",
+                "loader() sürekli hata verirse"
+            ],
+            "recommendedFix": "Cache write hatasını handle et ve fallback yap:\n\nlet consecutiveFailures = 0;\nconst MAX_FAILURES = 3;\n\nexport async function getOrSetCachedValue<T>(\n  key: string,\n  ttlSeconds: number,\n  loader: () => Promise<T>,\n): Promise<T> {\n  const cached = getCachedValue<T>(key);\n  if (cached !== undefined) {\n    consecutiveFailures = 0;\n    return cached;\n  }\n\n  try {\n    const loaded = await loader();\n    \n    try {\n      setCachedValue(key, loaded, ttlSeconds);\n      consecutiveFailures = 0;\n    } catch (cacheError) {\n      console.warn('[Cache] Write failed:', cacheError);\n      consecutiveFailures++;\n      \n      if (consecutiveFailures >= MAX_FAILURES) {\n        throw new Error('Cache consistently failing');\n      }\n    }\n    \n    return loaded;\n  } catch (loaderError) {\n    // Cache başarısızsa loader'dan gelen hatayı fırlat\n    throw loaderError;\n  }\n}",
+            "priority": "P1",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "MEDIUM-CODE_QUALITY-012",
+            "severity": "MEDIUM",
+            "category": "CODE_QUALITY",
+            "filePath": "apps/api/src/server/auth/permissions.ts",
+            "lineNumbers": "101-116",
+            "title": "Zod Validation Edge Cases - Null/Undefined Kontrolü Eksik",
+            "description": "hasPermission fonksiyonu null veya undefined geldiğinde crash olabilir. requiredPermission veya permission null eleman içerirse sorun oluşur.",
+            "codeSnippet": "export function hasPermission(userPermissions: string[], requiredPermission: string): boolean {\n  for (const permission of userPermissions) {\n    if (permission === '*') return true;\n    \n    if (permission.endsWith(':*')) {\n      const prefix = permission.slice(0, -1);\n      if (requiredPermission.startsWith(prefix)) return true;\n    }\n    \n    if (permission === requiredPermission) return true;\n  }\n  return false;\n}",
+            "impact": "Null veya undefined değer geldiğinde kod crash olur. Bu, 500 hatasına yol açar ve kullanıcı deneyimini bozar.",
+            "attackScenario": "1. Kullanıcı rolü veritabanından silinir\n2. permissions array'i null olur\n3. forEach çalışırken crash\n4. 500 hatası",
+            "edgeCases": [
+                "requiredPermission null gelirse",
+                "requiredPermission undefined gelirse",
+                "userPermissions null gelirse",
+                "userPermissions undefined gelirse",
+                "permission null eleman içerirse"
+            ],
+            "recommendedFix": "Null kontrolleri ekle:\n\nexport function hasPermission(\n  userPermissions: string[] | null | undefined,\n  requiredPermission: string | null | undefined\n): boolean {\n  if (!userPermissions || !requiredPermission) {\n    return false;\n  }\n\n  if (typeof requiredPermission !== 'string') {\n    return false;\n  }\n\n  for (const permission of userPermissions) {\n    if (!permission || typeof permission !== 'string') {\n      continue;\n    }\n    \n    if (permission === '*') return true;\n    \n    if (permission.endsWith(':*')) {\n      const prefix = permission.slice(0, -1);\n      if (requiredPermission.startsWith(prefix)) return true;\n    }\n    \n    if (permission === requiredPermission) return true;\n  }\n  \n  return false;\n}",
+            "priority": "P1",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "MEDIUM-PERFORMANCE-013",
+            "severity": "MEDIUM",
+            "category": "PERFORMANCE",
+            "filePath": "apps/web/middleware.ts",
+            "lineNumbers": "93-231",
+            "title": "Middleware Sync Blocking - Her İstekte Supabase Call",
+            "description": "Her protected route isteğinde Supabase auth.getSession() blocking call yapılıyor. Bu, serverless cold start'ta çok yavaşlar. 10 concurrent istek = 10 Supabase connection.",
+            "codeSnippet": "export async function middleware(req: NextRequest) {\n  // Protected paths - check authentication\n  if (isProtectedPath(pathname)) {\n    try {\n      const supabase = await getSupabaseClient(req);\n      // ...\n      const { data: { session }, error } = await supabase.auth.getSession();\n      // Blocking call!\n}",
+            "impact": "Her istekte ek network latency. Cold start'ta 2-5 saniye ek gecikme. Yüksek trafikte DB connection pool tükenebilir.",
+            "attackScenario": "1. 100 eşzamanlı istek gelir\n2. Her istek Supabase'e çağrı yapar\n3. Connection pool dolar\n4. Sistem yavaşlar veya hata verir",
+            "edgeCases": [
+                "Cold start sonrası ilk istek",
+                "Yüksek concurrency durumları",
+                "Supabase unavailable olursa",
+                "Network latency yüksekse"
+            ],
+            "recommendedFix": "Token'ı cookie'den oku ve client-side validate et:\n\nexport async function middleware(req: NextRequest) {\n  // Cookie'den token'ı al\n  const token = req.cookies.get('sb-access-token')?.value;\n  \n  if (token) {\n    // JWT expiry kontrolü client-side\n    try {\n      const payload = JSON.parse(\n        Buffer.from(token.split('.')[1], 'base64').toString()\n      );\n      \n      if (payload.exp * 1000 < Date.now() - 30000) {\n        // Session yakında expire\n        // Redirect to login\n      }\n      \n      // Sadece gerekirse Supabase'e git\n      return NextResponse.next();\n    } catch {\n      // Invalid token\n    }\n  }\n  \n  // Supabase kontrolü sadece gerekliyse\n}",
+            "priority": "P1",
+            "effortEstimate": "MEDIUM"
+        },
+        {
+            "id": "MEDIUM-PERFORMANCE-014",
+            "severity": "MEDIUM",
+            "category": "PERFORMANCE",
+            "filePath": "apps/api/src/server/auth/context.ts",
+            "lineNumbers": "355-357",
+            "title": "N+1 Query Problem - Ayrı Sorgular",
+            "description": "getTenantsByIds ve getTenantById ayrı ayrı sorgular çalıştırıyor. Birleştirilebilir ama tek sorgu yapılmıyor.",
+            "codeSnippet": "const tenantIds = Array.from(\n  new Set(memberships.map((membership) => membership.tenant_id))\n);\navailableTenants = await getTenantsByIds(supabase, tenantIds);\ntenant = await getTenantById(supabase, selectedMembership.tenant_id);",
+            "impact": " Gereksiz database round-trip. Performans düşer, özellikle çoklu tenant varsa.",
+            "attackScenario": "1. Kullanıcının 5 tenant'a erişimi var\n6. Her istekte 6 ayrı sorgu çalışır\n3. DB load artar",
+            "edgeCases": [
+                "Çoklu tenant durumları",
+                "Yüksek concurrency",
+                "Database latency yüksekse"
+            ],
+            "recommendedFix": "Tek sorguda birleştir:\n\nconst tenantIds = Array.from(\n  new Set([...memberships.map(m => m.tenant_id), selectedMembership.tenant_id])\n);\n\nconst { data: allTenants } = await supabase\n  .from('tenants')\n  .select('id, name, slug, plan, status')\n  .in('id', tenantIds);\n\nconst tenantMap = new Map(allTenants.map(t => [t.id, t]));\navailableTenants = tenantIds.map(id => tenantMap.get(id)).filter(Boolean);\ntenant = tenantMap.get(selectedMembership.tenant_id);",
+            "priority": "P2",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "MEDIUM-PERFORMANCE-015",
+            "severity": "MEDIUM",
+            "category": "PERFORMANCE",
+            "filePath": "apps/api/src/server/inbox/inbox-handler.ts",
+            "lineNumbers": "211-238",
+            "title": "Cache Stampede Risk - Thundering Herd Problem",
+            "description": "Cache miss olduğunda tüm istekler aynı anda DB'ye gider. TTL süresi dolduğunda tüm istekler aynı anda cache miss yaşar.",
+            "codeSnippet": "const total = await getOrSetCachedValue<number>(\n  countCacheKey,\n  INBOX_COUNT_CACHE_TTL_SEC,\n  async () => {\n    const baseCountQuery = dbClient\n      .from(tableName)\n      .select('id', { count: 'exact', head: true })\n      .eq('tenant_id', ctx.tenant.id)\n      .eq('site_id', parsed.site_id);\n    // ...\n  }\n);",
+            "impact": "Cache expiration sonrası anlık DB yükü artışı. Bu, sistemi yavaşlatabilir veya çökertrebilir.",
+            "attackScenario": "1. Cache TTL 20 saniye\n2. TTL dolunca 100 istek aynı anda gelir\n3. Hepsi DB'ye gider\n4. DB aşırı yüklenir",
+            "edgeCases": [
+                "Cache miss storm",
+                "TTL expiration anı",
+                "Yüksek concurrency"
+            ],
+            "recommendedFix": "Randomized jitter ve cache lock ekle:\n\nfunction getJitteredTTL(baseTTL: number): number {\n  const jitter = Math.random() * 0.2 * baseTTL; // 0-20% jitter\n  return Math.floor(baseTTL + jitter);\n}\n\n// Cache lock için\nconst cacheLocks = new Map<string, Promise<any>>();\n\nexport async function getOrSetCachedValue<T>(\n  key: string,\n  ttlSeconds: number,\n  loader: () => Promise<T>,\n): Promise<T> {\n  const cached = getCachedValue<T>(key);\n  if (cached !== undefined) return cached;\n\n  // Check if another request is already loading\n  if (cacheLocks.has(key)) {\n    return cacheLocks.get(key) as Promise<T>;\n  }\n\n  const loadPromise = loader().then(async (value) => {\n    setCachedValue(key, value, getJitteredTTL(ttlSeconds));\n    cacheLocks.delete(key);\n    return value;\n  }).catch((err) => {\n    cacheLocks.delete(key);\n    throw err;\n  });\n\n  cacheLocks.set(key, loadPromise);\n  return loadPromise;\n}",
+            "priority": "P2",
+            "effortEstimate": "MEDIUM"
+        },
+        {
+            "id": "MEDIUM-PERFORMANCE-016",
+            "severity": "MEDIUM",
+            "category": "PERFORMANCE",
+            "filePath": "apps/api/src/server/inbox/export-handler.ts",
+            "lineNumbers": "134-146",
+            "title": "Inefficient CSV Export - Pagination ile Büyük Export",
+            "description": "Export için pagination kullanılıyor. 1000'lerce satır export etmek istendiğinde çok yavaş. Çok sayıda sorgu çalışır, memory pressure oluşur.",
+            "codeSnippet": "const from = (parsed.page - 1) * parsed.limit;\nconst to = from + parsed.limit - 1;\n\nlet query = dbClient\n  .from(tableName)\n  // ...\n  .range(from, to);",
+            "impact": "Büyük export'lar çok yavaş. Timeout hataları. Memory yetersizliği.",
+            "attackScenario": "1. Kullanıcı 10,000 satır export etmek ister\n2. Pagination ile 10 sorgu çalışır\n3. Her sorgu sonucu memory'de tutulur\n4. Timeout veya memory hatası",
+            "edgeCases": [
+                "Çok büyük dataset export",
+                "Memory yetersizliği",
+                "Network timeout"
+            ],
+            "recommendedFix": "Streaming veya background job kullan:\n\n// Streaming export (PostgreSQL cursor)\nasync function* exportInBatches(\n  db: SupabaseClient,\n  tableName: string,\n  queryBuilder: QueryBuilder,\n) {\n  let offset = 0;\n  const batchSize = 1000;\n  \n  while (true) {\n    const { data } = await queryBuilder\n      .range(offset, offset + batchSize);\n    \n    if (!data?.length) break;\n    \n    yield data;\n    offset += batchSize;\n    \n    // Memory cleanup\n    if (global.gc) global.gc();\n  }\n}\n\n// Veya background job'a taşı:\n// 1. User istek atar\n// 2. Job queue'ya eklenir\n// 3. Background worker CSV oluşturur\n// 4. User'a email veya download link gönderilir",
+            "priority": "P2",
+            "effortEstimate": "LARGE"
+        },
+        {
+            "id": "MEDIUM-EDGE_CASE-017",
+            "severity": "MEDIUM",
+            "category": "EDGE_CASE",
+            "filePath": "apps/api/src/app/api/public/hr/apply/route.ts",
+            "lineNumbers": "147",
+            "title": "Date/Time Handling - Server Timezone Kullanımı",
+            "description": "Server timezone kullanılıyor. Client timezone farklı olabilir. DST (Daylight Saving Time) durumları handle edilmiyor.",
+            "codeSnippet": "const nowIso = new Date().toISOString();",
+            "impact": "Tarih/saat karşılaştırmaları yanlış olabilir. Client ve server farklı saat dilimlerinde.",
+            "attackScenario": "1. Client Istanbul timezone (UTC+3)\n2. Server UTC timezone\n3. Client 23:00'de form doldurur\n4. Server 20:00 olarak kaydeder\n5. Validation logic yanlış çalışabilir",
+            "edgeCases": [
+                "DST değişiklikleri",
+                "Cross-timezone kullanım",
+                "Tarih sıralama hataları"
+            ],
+            "recommendedFix": "UTC kullan veya client timezone'ı explicit al:\n\n// UTC kullan\nconst nowIso = new Date().toUTCString();\n\n// Veya client timezone'ı header'dan al:\nconst clientTimezone = req.headers.get('x-client-timezone');\nif (clientTimezone) {\n  // Client timezone'a göre işle\n}",
+            "priority": "P2",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "MEDIUM-EDGE_CASE-018",
+            "severity": "MEDIUM",
+            "category": "EDGE_CASE",
+            "filePath": "apps/api/src/server/security/file-validation.ts",
+            "lineNumbers": "146-197",
+            "title": "Unicode ve Encoding - Türkçe Karakter Sorunu",
+            "description": "Filename sanitization sadece ASCII destekliyor. Türkçe karakterler (ş, ç, ı, ö, ü, ğ) '_' ile değiştiriliyor.",
+            "codeSnippet": "export function sanitizeFilename(filename: string): string {\n  let sanitizedName = name.replace(/[^a-zA-Z0-9._-]+/g, '_');",
+            "impact": "Türkçe kullanıcılar için kötü deneyim. Dosya isimleri anlamsız hale gelir.",
+            "attackScenario": "1. Kullanıcı 'Ahmet_Öztürk_CV.pdf' yükler\n2. Dosya adı 'Ahmet_zrtk_CV.pdf' olur\n3. Kullanıcı dosyasını bulamaz",
+            "edgeCases": [
+                "Türkçe karakterler",
+                "Diğer non-ASCII diller",
+                "Emoji içeren dosya adları"
+            ],
+            "recommendedFix": "Unicode-aware sanitization:\n\nfunction sanitizeFilename(filename: string): string {\n  // Unicode category'leri koru\n  const sanitizedName = name\n    .normalize('NFKC')\n    .replace(/[\\p{Cc}\\p{Cf}\\p{Cs}]/gu, '_')  // Control characters\n    .replace(/[|\\\\/:*?\"<>]/g, '_')  // Windows forbidden\n    .replace(/\\.+/g, '.')  // Multiple dots\n    .replace(/^\\.+/, '');  // Leading dots\n\n  // Uzunluk limiti\n  if (sanitizedName.length > 80) {\n    const ext = path.extname(sanitizedName);\n    const base = path.basename(sanitizedName, ext);\n    return base.slice(0, 80 - ext.length) + ext;\n  }\n\n  return sanitizedName || 'file';\n}",
+            "priority": "P2",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "LOW-CODE_QUALITY-019",
+            "severity": "LOW",
+            "category": "CODE_QUALITY",
+            "filePath": "apps/web/src/components/ui/data-table.tsx",
+            "lineNumbers": "96",
+            "title": "Empty State Message - Dil Uyumsuzluğu",
+            "description": "Default emptyMessage değeri 'No results.' İngilizce. Türkçe bir uygulamada bu uygun değil.",
+            "codeSnippet": "emptyMessage = \"No results.\"",
+            "impact": "Türkçe bir uygulamada İngilizce mesaj. Kullanıcı deneyimi olumsuz etkilenir.",
+            "attackScenario": "1. Türkçe kullanıcı dashboard'u kullanır\n2. Tablo boş olduğunda 'No results.' görür\n3. Profesyonellik kaybolur",
+            "edgeCases": [
+                "Boş tablolar",
+                "Filtre sonucu sıfır sonuç"
+            ],
+            "recommendedFix": "i18n sistemi kullan:\n\n// messages/tr.json\n{\n  \"dataTable\": {\n    \"emptyMessage\": \"Sonuç bulunamadı.\",\n    \"loadingMessage\": \"Yükleniyor...\"\n  }\n}\n\n// Kullanımı\nemptyMessage={t('dataTable.emptyMessage')}",
+            "priority": "P2",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "LOW-INFRASTRUCTURE-020",
+            "severity": "LOW",
+            "category": "INFRASTRUCTURE",
+            "filePath": "apps/api/src/server/webhooks/publish.ts",
+            "lineNumbers": "58-62",
+            "title": "Webhook Security - Timestamp Expiration Kontrolü Eksik",
+            "description": "HMAC signature var ve timestamp var, ancak timestamp'in geçerliliği kontrol edilmiyor. Keyfi timestamp değerleri kabul ediliyor.",
+            "codeSnippet": "const timestamp = Date.now().toString();\nconst bodyString = JSON.stringify(fullPayload);\nconst signature = createHmac(\"sha256\", WEBHOOK_SECRET)\n    .update(`${timestamp}.${bodyString}`)\n    .digest(\"hex\");",
+            "impact": "Replay saldırıları mümkün. Aynı istek tekrar gönderilebilir.",
+            "attackScenario": "1. Saldırgan geçerli bir webhook isteğini yakalar\n2. Aynı isteği tekrar gönderir\n3. Signature geçerli olduğu için kabul edilir\n4. İşlem tekrar edilir",
+            "edgeCases": [
+                "Replay attacks",
+                "Man-in-the-middle",
+                "Timestamp manipulation"
+            ],
+            "recommendedFix": "Timestamp expiration kontrolü ekle:\n\nconst TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000; // 5 minutes\n\nexport async function sendPublishWebhook(payload: ...) {\n  const timestamp = Date.now().toString();\n  \n  // ...\n  \n  // Receiver tarafında:\n  const requestTime = parseInt(req.headers.get('x-timestamp') || '0');\n  if (Math.abs(Date.now() - requestTime) > TIMESTAMP_TOLERANCE_MS) {\n    throw new Error('Webhook timestamp expired');\n  }\n}",
+            "priority": "P1",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "LOW-EDGE_CASE-021",
+            "severity": "LOW",
+            "category": "EDGE_CASE",
+            "filePath": "apps/api/src/server/security/file-validation.ts",
+            "lineNumbers": "41",
+            "title": "Large File Handling - 5MB Limit Çok Küçük mü?",
+            "description": "MAX_CV_FILE_SIZE = 5MB. Modern CV'ler genellikle 1-2 sayfa PDF, ama bazı portfolyolar çok daha büyük olabilir.",
+            "codeSnippet": "export const MAX_CV_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes",
+            "impact": "Bazı kullanıcılar CV'lerini yükleyemeyebilir. Destek kargosu artar.",
+            "attackScenario": "1. Kullanıcı 6MB CV yüklemeye çalışır\n2. Hata mesajı alır\n3. Kullanıcı deneyimi olumsuz\n4. Potansiyel müşteri kaybı",
+            "edgeCases": [
+                "Büyük portfolyolar",
+                "Çok sayfalı CV'ler",
+                "Yüksek çözünürlüklü fotoğraflar"
+            ],
+            "recommendedFix": "Limit'i artır veya dinamik yap:\n\n// Environment variable ile yapılandır\nexport const MAX_CV_FILE_SIZE = \n  parseInt(process.env.MAX_CV_FILE_SIZE || '10485760'); // 10MB default\n\n// Veya dosya tipine göre değişken:\nfunction getMaxFileSize(mimeType: string): number {\n  if (mimeType === 'application/pdf') return 10 * 1024 * 1024;\n  if (mimeType.includes('word')) return 5 * 1024 * 1024;\n  return 1024 * 1024; // 1MB\n}",
+            "priority": "P2",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "LOW-CODE_QUALITY-022",
+            "severity": "LOW",
+            "category": "CODE_QUALITY",
+            "filePath": "apps/api/src/server/inbox/inbox-handler.ts",
+            "lineNumbers": "184, 242",
+            "title": "Type Safety İhlalleri - Any Kullanımı",
+            "description": "Birçok yerde 'any' type kullanılmış. Bu, TypeScript'in tüm faydasını ortadan kaldırıyor ve runtime hatalarına yol açabilir.",
+            "codeSnippet": "const dataQuery = applyInboxFilters(\n  baseDataQuery,\n  parsed,\n  searchFields,\n  additionalFilters,\n  ctx\n) as any;\n\nitems: (data ?? []).map((item: any) => itemSchema.parse(item))",
+            "impact": "Type safety kaybolur. Yanlış veri tipi runtime'da hata verebilir. Refactoring zorlaşır.",
+            "attackScenario": "1. Veritabanı şeması değişir\n2. Runtime'da beklenmeyen veri gelir\n3. Kod crash olur\n4. Debug zorlaşır",
+            "edgeCases": [
+                "Veritabanı şema değişiklikleri",
+                "Unexpected null değerler",
+                "Type mismatch"
+            ],
+            "recommendedFix": "Proper typing ekle:\n\ninterface InboxQueryParams {\n  site_id: string;\n  page: number;\n  limit: number;\n  status?: 'read' | 'unread';\n  search?: string;\n  date_from?: string;\n  date_to?: string;\n}\n\nfunction applyInboxFilters<T extends InboxQueryParams>(\n  query: SupabaseQueryBuilder,\n  params: T,\n  searchFields: string[],\n  additionalFilters?: (q: SupabaseQueryBuilder, p: T) => SupabaseQueryBuilder\n): SupabaseQueryBuilder {\n  // ...\n}",
+            "priority": "P2",
+            "effortEstimate": "MEDIUM"
+        },
+        {
+            "id": "LOW-CODE_QUALITY-023",
+            "severity": "LOW",
+            "category": "CODE_QUALITY",
+            "filePath": "apps/api/src/server/errors/messages.tr.ts",
+            "lineNumbers": "Tümü",
+            "title": "Error Message Localization - Sadece Türkçe",
+            "description": "Tüm error mesajları Türkçe. Bu, development sürecini zorlaştırabilir ve hata ayıklamayı karmaşık hale getirebilir.",
+            "codeSnippet": "// Tüm hatalar Türkçe\nmessage: 'Oturum bilgisi bulunamadı. Lütfen giriş yapın.'",
+            "impact": "Non-Turkish developer'lar için zorluk. Debug süreci karmaşık. Error tracking zorlaşır.",
+            "attackScenario": "1. Non-Turkish developer hata ayıklamaya çalışır\n2. Türkçe mesajları anlayamaz\n3. Google Translate kullanır\n4. Yanlış anlama riski",
+            "edgeCases": [
+                "Non-Turkish developer'lar",
+                "External bug bounty",
+                "Stack Overflow aramaları"
+            ],
+            "recommendedFix": "i18n sistemi kullan:\n\n// errors/en.ts\nexport const errorMessages = {\n  UNAUTHORIZED: {\n    tr: 'Oturum bilgisi bulunamadı. Lütfen giriş yapın.',\n    en: 'Session not found. Please log in.',\n  },\n  // ...\n};\n\n// Kullanımı\nconst lang = req.headers.get('accept-language')?.startsWith('tr') ? 'tr' : 'en';\nmessage = errorMessages[code][lang];",
+            "priority": "P2",
+            "effortEstimate": "MEDIUM"
+        },
+        {
+            "id": "LOW-INFRASTRUCTURE-024",
+            "severity": "LOW",
+            "category": "INFRASTRUCTURE",
+            "filePath": "apps/api/src/server/env.ts",
+            "lineNumbers": "1-106",
+            "title": "Environment Variable Validation - Runtime Değişiklik Takibi Yok",
+            "description": "Required env'ler throw error veriyor, ancak runtime'da env değişikliği detect edilmiyor. URL formatı, secret uzunluğu gibi ek kontroller yok.",
+            "codeSnippet": "function requireEnv(name: string): string {\n  const value = pickEnv(name);\n  if (!value) throw new Error(`Missing required env: ${name}`);\n  return value;\n}",
+            "impact": "Yanlış formatta env değerleri sistemin çökmesine yol açabilir. Runtime'da hata ayıklaması zorlaşır.",
+            "attackScenario": "1. Developer yanlış formatta URL koyar\n2. Runtime'da NaN veya parse hatası\n3. Debug zor\n4. Production'da crash",
+            "edgeCases": [
+                "Yanlış URL formatı",
+                "Çok kısa secret",
+                "Yanlış tip değerleri"
+            ],
+            "recommendedFix": "Runtime validation ekle:\n\nfunction validateUrl(url: string): string {\n  try {\n    const parsed = new URL(url);\n    if (!['http:', 'https:'].includes(parsed.protocol)) {\n      throw new Error('Invalid protocol');\n    }\n    return url;\n  } catch {\n    throw new Error(`Invalid URL: ${url}`);\n  }\n}\n\nfunction validateSecret(secret: string, minLength: number = 32): string {\n  if (secret.length < minLength) {\n    throw new Error(`Secret must be at least ${minLength} characters`);\n  }\n  return secret;\n}\n\n// Kullanımı:\nexport function getServerEnv(): ServerEnv {\n  const supabaseUrl = validateUrl(pickEnv('SUPABASE_URL') ?? ...);\n  const customJwtSecret = validateSecret(requireEnv('CUSTOM_JWT_SECRET'));\n  // ...\n}",
+            "priority": "P2",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "LOW-CODE_QUALITY-025",
+            "severity": "LOW",
+            "category": "CODE_QUALITY",
+            "filePath": "Birçok dosya",
+            "lineNumbers": "Çeşitli",
+            "title": "Unused Imports ve Dead Code",
+            "description": "ESLint kontrolü yapılmadığından, kullanılmayan import'lar ve ölü kod olabilir. Bu, kod tabanının şişmesine ve bakım zorluğuna yol açar.",
+            "codeSnippet": "// Örnek: import edilen ama kullanılmayan fonksiyonlar\nimport { xyz } from '@/server/api/http'; // xyz kullanılmıyor",
+            "impact": "Kod karmaşıklığı artar. Bundle size büyür. Developer'lar yanlış kod kullanabilir.",
+            "attackScenario": "1. Büyük refactoring yapılır\n2. Bazı import'lar kalır ama kod silinir\n3. Bundle şişer\n4. Yanlış import kullanımı",
+            "edgeCases": [
+                "Refactoring sonrası kalan kod",
+                "Kopyala-yapıştır hataları",
+                "IDE otomatik import'ları"
+            ],
+            "recommendedFix": "ESLint kurallarını etkinleştir:\n\n// eslint.config.mjs\nexport default tseslint.configs.recommended.map(config => ({\n  ...config,\n  rules: {\n    ...config.rules,\n    '@typescript-eslint/no-unused-vars': 'error',\n    'no-unused-imports': 'error',\n    'no-console': 'warn',\n  }\n}))",
+            "priority": "P2",
+            "effortEstimate": "SMALL"
+        },
+        {
+            "id": "LOW-CODE_QUALITY-026",
+            "severity": "LOW",
+            "category": "CODE_QUALITY",
+            "filePath": "apps/api/src/server/cache.ts",
+            "lineNumbers": "7",
+            "title": "Magic Numbers - Özel Sayılar",
+            "description": "MAX_CACHE_ENTRIES = 2000 sayısının neden bu değer olduğu açıklanmamış. Bu, kodu okuyan developer'lar için kafa karıştırıcı.",
+            "codeSnippet": "export const MAX_CACHE_ENTRIES = 2000;",
+            "impact": "Kod okunabilirliği düşer. Değiştirmek isteyen developer neden bu değer olduğunu anlamaz.",
+            "attackScenario": "1. Developer MAX_CACHE_ENTRIES'i değiştirmek ister\n2. Neden bu değer olduğunu anlamaz\n3. Yanlış değer seçer\n4. Performance sorunu oluşur",
+            "edgeCases": [
+                "Yanlış değer seçimi",
+                "Kod bakım zorluğu",
+                "Onboarding süreci"
+            ],
+            "recommendedFix": "Açıklayıcı yorum ve constant ekle:\n\n/**\n * Maximum number of cache entries.\n * \n * Rationale:\n * - Prevents unbounded memory growth\n * - 2000 entries ≈ ~10MB assuming 5KB per entry\n * - Balanced for typical multi-tenant workload\n * - If hit rate < 80%, consider Redis instead\n */\nconst CACHE_SIZE_SOFT_LIMIT = 2000; // entries\nconst CACHE_ENTRY_SIZE_ESTIMATE_BYTES = 5 * 1024; // ~5KB per entry\nconst MAX_MEMORY_MB = 10;\n\n// Derived:\nexport const MAX_CACHE_ENTRIES = Math.floor(\n  (MAX_MEMORY_MB * 1024 * 1024) / CACHE_ENTRY_SIZE_ESTIMATE_BYTES\n);",
+            "priority": "P2",
+            "effortEstimate": "SMALL"
+        }
+    ]
+}

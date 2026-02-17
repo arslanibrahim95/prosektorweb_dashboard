@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import {
     LayoutDashboard,
     Users,
     FileText,
+    FileBarChart,
     BarChart3,
     ScrollText,
     Bell,
@@ -28,7 +30,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 
-interface AdminNavItem {
+export interface AdminNavItem {
     label: string;
     href: string;
     icon: React.ReactNode;
@@ -36,7 +38,7 @@ interface AdminNavItem {
 
 const NAV_ICON_SIZE = 'h-5 w-5';
 
-const adminNavItems: AdminNavItem[] = [
+export const adminNavItems: AdminNavItem[] = [
     {
         label: 'Genel Bakış',
         href: '/admin',
@@ -73,8 +75,8 @@ const adminNavItems: AdminNavItem[] = [
         icon: <Shield className={NAV_ICON_SIZE} />,
     },
     {
-        label: 'API Yönetimi',
-        href: '/admin/api',
+        label: 'API Anahtarları',
+        href: '/admin/api-keys',
         icon: <Key className={NAV_ICON_SIZE} />,
     },
     {
@@ -102,9 +104,14 @@ const adminNavItems: AdminNavItem[] = [
         href: '/admin/backup',
         icon: <HardDrive className={NAV_ICON_SIZE} />,
     },
+    {
+        label: 'Raporlar',
+        href: '/admin/reports',
+        icon: <FileBarChart className={NAV_ICON_SIZE} />,
+    },
 ];
 
-const superAdminNavItems: AdminNavItem[] = [
+export const superAdminNavItems: AdminNavItem[] = [
     {
         label: 'Platform Tenantlar',
         href: '/admin/platform/tenants',
@@ -135,6 +142,7 @@ export function AdminSidebar({ collapsed, setCollapsed }: AdminSidebarProps) {
 
     return (
         <aside
+            aria-label="Admin navigasyonu"
             className={cn(
                 'fixed left-[var(--sidebar-width)] top-[var(--topbar-height)] bottom-0 z-30',
                 'border-r border-border bg-card transition-all duration-300 ease-[var(--ease-smooth)]',
@@ -154,7 +162,7 @@ export function AdminSidebar({ collapsed, setCollapsed }: AdminSidebarProps) {
                         variant="ghost"
                         size="icon"
                         onClick={() => setCollapsed(!collapsed)}
-                        className="h-8 w-8"
+                        aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
                     >
                         {collapsed ? (
                             <ChevronRight className="h-4 w-4" />
@@ -166,29 +174,46 @@ export function AdminSidebar({ collapsed, setCollapsed }: AdminSidebarProps) {
 
                 {/* Navigation */}
                 <ScrollArea className="flex-1 px-2 py-4">
-                    <nav className="space-y-1">
-                        {items.map((item) => {
-                            const isActive = pathname === item.href;
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className={cn(
-                                        'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                                        'hover:bg-accent hover:text-accent-foreground',
-                                        isActive
-                                            ? 'bg-accent text-accent-foreground'
-                                            : 'text-muted-foreground',
-                                        collapsed && 'justify-center'
-                                    )}
-                                    title={collapsed ? item.label : undefined}
-                                >
-                                    {item.icon}
-                                    {!collapsed && <span>{item.label}</span>}
-                                </Link>
-                            );
-                        })}
-                    </nav>
+                    <TooltipProvider delayDuration={0}>
+                        <nav className="space-y-1">
+                            {items.map((item) => {
+                                const isActive = pathname === item.href;
+                                const linkEl = (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        className={cn(
+                                            'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                                            'hover:bg-accent hover:text-accent-foreground',
+                                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                                            isActive
+                                                ? 'bg-accent text-accent-foreground'
+                                                : 'text-muted-foreground',
+                                            collapsed && 'justify-center'
+                                        )}
+                                    >
+                                        {item.icon}
+                                        {!collapsed && <span>{item.label}</span>}
+                                    </Link>
+                                );
+
+                                if (collapsed) {
+                                    return (
+                                        <Tooltip key={item.href}>
+                                            <TooltipTrigger asChild>
+                                                {linkEl}
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                {item.label}
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    );
+                                }
+
+                                return linkEl;
+                            })}
+                        </nav>
+                    </TooltipProvider>
                 </ScrollArea>
             </div>
         </aside>

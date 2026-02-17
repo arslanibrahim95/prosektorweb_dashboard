@@ -27,7 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { MoreHorizontal, Search, UserPlus, FileDown } from 'lucide-react';
+import { MoreHorizontal, Search, UserPlus, FileDown, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,6 +44,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface User {
     id: string;
@@ -69,6 +70,8 @@ export default function AdminUsersPage() {
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('viewer');
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+    const [roleChangeTarget, setRoleChangeTarget] = useState<{ userId: string; userName: string; currentRole: string; newRole: string } | null>(null);
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
@@ -117,25 +120,51 @@ export default function AdminUsersPage() {
         }
     };
 
-    const handleRoleChange = async (userId: string, newRole: string) => {
+    const handleRoleChangeRequest = (user: User, newRole: string) => {
+        if (user.role === newRole) return;
+        setRoleChangeTarget({
+            userId: user.id,
+            userName: user.name || user.email || 'Kullanıcı',
+            currentRole: user.role,
+            newRole,
+        });
+    };
+
+    const handleRoleChangeConfirm = async () => {
+        if (!roleChangeTarget) return;
+        const { userId, newRole, userName, currentRole } = roleChangeTarget;
         try {
             await updateRoleMutation.mutateAsync({ id: userId, role: newRole });
-            toast.success('Kullanıcı rolü güncellendi');
+            toast.success(`${userName} rolü güncellendi`, {
+                action: {
+                    label: 'Geri Al',
+                    onClick: async () => {
+                        try {
+                            await updateRoleMutation.mutateAsync({ id: userId, role: currentRole });
+                            toast.success('Rol değişikliği geri alındı');
+                        } catch {
+                            toast.error('Geri alma başarısız');
+                        }
+                    },
+                },
+                duration: 10000,
+            });
         } catch (err: any) {
             toast.error(err.message || 'Rol güncellenemedi');
+        } finally {
+            setRoleChangeTarget(null);
         }
     };
 
-    const handleDelete = async (userId: string) => {
-        if (!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
-            return;
-        }
-
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
         try {
-            await deleteMutation.mutateAsync(userId);
+            await deleteMutation.mutateAsync(deleteTarget);
             toast.success('Kullanıcı silindi');
         } catch (err: any) {
             toast.error(err.message || 'Kullanıcı silinemedi');
+        } finally {
+            setDeleteTarget(null);
         }
     };
 
@@ -231,8 +260,23 @@ export default function AdminUsersPage() {
                             ))
                         ) : !usersData?.items || usersData.items.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
-                                    Kullanıcı bulunamadı.
+                                <TableCell colSpan={5} className="h-32 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Users className="h-8 w-8 text-muted-foreground/50" />
+                                        <p className="text-muted-foreground">Kullanıcı bulunamadı.</p>
+                                        {(searchTerm || roleFilter !== 'all') && (
+                                            <Button
+                                                variant="link"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSearchTerm('');
+                                                    setRoleFilter('all');
+                                                }}
+                                            >
+                                                Filtreleri temizle
+                                            </Button>
+                                        )}
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -292,7 +336,7 @@ export default function AdminUsersPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 p-0"
+                                                    className="p-0"
                                                 >
                                                     <span className="sr-only">Menüyü aç</span>
                                                     <MoreHorizontal className="h-4 w-4" />
@@ -300,20 +344,31 @@ export default function AdminUsersPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
-                                                <DropdownMenuItem
-                                                    onClick={() => handleRoleChange(user.id, 'admin')}
-                                                >
-                                                    Admin Yap
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={() => handleRoleChange(user.id, 'viewer')}
-                                                >
-                                                    Viewer Yap
-                                                </DropdownMenuItem>
+                                                {user.role !== 'admin' && (
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleRoleChangeRequest(user, 'admin')}
+                                                    >
+                                                        Admin Yap
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {user.role !== 'editor' && (
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleRoleChangeRequest(user, 'editor')}
+                                                    >
+                                                        Editor Yap
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {user.role !== 'viewer' && (
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleRoleChangeRequest(user, 'viewer')}
+                                                    >
+                                                        Viewer Yap
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
                                                     className="text-red-600"
-                                                    onClick={() => handleDelete(user.id)}
+                                                    onClick={() => setDeleteTarget(user.id)}
                                                 >
                                                     Kullanıcıyı Sil
                                                 </DropdownMenuItem>
@@ -371,6 +426,7 @@ export default function AdminUsersPage() {
                             <Input
                                 id="email"
                                 type="email"
+                                autoComplete="email"
                                 placeholder="kullanici@example.com"
                                 value={inviteEmail}
                                 onChange={(e) => setInviteEmail(e.target.value)}
@@ -406,6 +462,32 @@ export default function AdminUsersPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Role Change Confirm Dialog */}
+            <ConfirmDialog
+                open={!!roleChangeTarget}
+                onOpenChange={(open) => !open && setRoleChangeTarget(null)}
+                title="Rol Değişikliği"
+                description={
+                    roleChangeTarget
+                        ? `"${roleChangeTarget.userName}" kullanıcısının rolü "${roleChangeTarget.currentRole}" → "${roleChangeTarget.newRole}" olarak değiştirilecek. Devam etmek istiyor musunuz?`
+                        : ''
+                }
+                confirmLabel="Rolü Değiştir"
+                onConfirm={handleRoleChangeConfirm}
+                isLoading={updateRoleMutation.isPending}
+            />
+
+            {/* Delete Confirm Dialog */}
+            <ConfirmDialog
+                open={!!deleteTarget}
+                onOpenChange={(open) => !open && setDeleteTarget(null)}
+                title="Kullanıcıyı Sil"
+                description="Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+                confirmLabel="Sil"
+                onConfirm={handleDelete}
+                isLoading={deleteMutation.isPending}
+            />
         </div>
     );
 }

@@ -3,8 +3,12 @@
  * Eliminates duplication across inbox API routes by providing a unified implementation
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { z } from "zod";
 import type { AuthContext } from "@/server/auth/context";
+
+// Type alias for Supabase query builder after .select() is called
+type PostgrestQueryBuilder = ReturnType<SupabaseClient['from']> extends { select(): infer R } ? R : unknown;
 import {
     asHeaders,
     asErrorBody,
@@ -70,29 +74,33 @@ export interface InboxHandlerConfig<TQuery extends BaseInboxQuery = BaseInboxQue
     /**
      * Zod schema for validating and parsing response items
      */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    itemSchema: z.ZodType<any>;
+    itemSchema: z.ZodType<Record<string, unknown>>;
 
     /**
      * Zod schema for validating the complete response
      */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    responseSchema: z.ZodType<any>;
+    responseSchema: z.ZodType<{ items: unknown[]; total: number }>;
 }
 
 /**
  * Applies common inbox filters to a Supabase query
  * Extracted to avoid duplication between data and count queries
+ * 
+ * Note: Using unknown return type for flexibility with different query builder states
+ * The caller is responsible for proper type handling
  */
 function applyInboxFilters<TQuery extends BaseInboxQuery>(
     query: unknown,
     params: TQuery,
     searchFields: string[],
-    additionalFilters?: (q: unknown, p: TQuery, ctx: AuthContext) => unknown,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    additionalFilters?: (query: any, params: TQuery, ctx: AuthContext) => any,
     ctx?: AuthContext
 ): unknown {
+    // Type assertion for query builder operations
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q = query as any;
+    let q: any = query;
+
     if (params.status === "read") q = q.eq("is_read", true);
     if (params.status === "unread") q = q.eq("is_read", false);
     if (params.date_from) q = q.gte("created_at", params.date_from);

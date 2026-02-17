@@ -189,17 +189,10 @@ describe("Kullanıcı Rolleri ve Yetkilendirme Sistemi", () => {
             expect(permissions).toEqual([]);
         });
 
-        it("bilinmeyen rol için hasPermission hata vermemeli", () => {
-            // Not: Mevcut uygulamada bilinmeyen roller için crash oluyor
-            // Bu test, fonksiyonun hata vermemesi gerektiğini kontrol eder
-            // TODO: Bu bir güvenlik açığı olabilir - hasPermission düzeltilmeli
-            expect(() => {
-                try {
-                    hasPermission("invalid_role" as UserRole, "anything:read");
-                } catch (e) {
-                    // Mevcut davranış: hata fırlatıyor
-                }
-            }).not.toThrow();
+        it("bilinmeyen rol için hasPermission false dönmeli ve hata vermemeli", () => {
+            expect(hasPermission("invalid_role" as UserRole, "anything:read")).toBe(false);
+            expect(hasPermission("invalid_role" as UserRole, "users:create")).toBe(false);
+            expect(hasPermission("invalid_role" as UserRole, "*")).toBe(false);
         });
 
         it("bilinmeyen rol için hasRole false dönmeli", () => {

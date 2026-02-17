@@ -14,8 +14,14 @@ import {
     FileText,
     TrendingUp,
     Search,
+    Shield,
+    Database,
+    ScrollText,
+    BarChart3,
+    ArrowRight,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import Link from 'next/link';
 import { useAdminDashboard } from '@/hooks/use-admin';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -179,6 +185,26 @@ export default function AdminOverviewPage() {
                 </Card>
             </div>
 
+            {/* Quick Access */}
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+                {[
+                    { label: 'Kullanıcılar', href: '/admin/users', icon: Users, color: 'text-blue-500' },
+                    { label: 'Güvenlik', href: '/admin/security', icon: Shield, color: 'text-red-500' },
+                    { label: 'Loglar', href: '/admin/logs', icon: ScrollText, color: 'text-amber-500' },
+                    { label: 'Analitik', href: '/admin/analytics', icon: BarChart3, color: 'text-emerald-500' },
+                ].map((item) => (
+                    <Link key={item.href} href={item.href}>
+                        <Card className="hover:bg-accent/50 transition-colors cursor-pointer group">
+                            <CardContent className="flex items-center gap-3 p-4">
+                                <item.icon className={`h-5 w-5 ${item.color}`} />
+                                <span className="text-sm font-medium flex-1">{item.label}</span>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </CardContent>
+                        </Card>
+                    </Link>
+                ))}
+            </div>
+
             {/* Recent Activity & User Distribution */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="col-span-4">
@@ -223,7 +249,10 @@ export default function AdminOverviewPage() {
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-sm text-muted-foreground">Henüz aktivite bulunmuyor.</p>
+                            <div className="flex flex-col items-center justify-center py-4 gap-2">
+                                <Activity className="h-8 w-8 text-muted-foreground/40" />
+                                <p className="text-sm text-muted-foreground">Henüz aktivite bulunmuyor.</p>
+                            </div>
                         )}
                     </CardContent>
                 </Card>

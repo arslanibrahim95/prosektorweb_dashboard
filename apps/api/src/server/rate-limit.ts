@@ -5,6 +5,12 @@ import { z } from "zod";
 import { getServerEnv } from "./env";
 import { HttpError, mapPostgrestError } from "./api/http";
 
+// Validation constants
+const MIN_RATE_LIMIT = 1;
+const MAX_RATE_LIMIT = 10000;
+const MIN_WINDOW_SECONDS = 1;
+const MAX_WINDOW_SECONDS = 86400; // 24 hours
+
 const rateLimitRpcResponseSchema = z.object({
   allowed: z.boolean(),
   remaining: z.number().int(),
@@ -61,6 +67,18 @@ export function randomId(bytes: number = 8): string {
   return randomBytes(bytes).toString("hex");
 }
 
+/**
+ * Validates rate limit parameters to prevent invalid values
+ */
+function validateRateLimitParams(limit: number, windowSeconds: number): void {
+  if (!Number.isFinite(limit) || limit < MIN_RATE_LIMIT || limit > MAX_RATE_LIMIT) {
+    throw new Error(`Invalid rate limit: must be between ${MIN_RATE_LIMIT} and ${MAX_RATE_LIMIT}`);
+  }
+  if (!Number.isFinite(windowSeconds) || windowSeconds < MIN_WINDOW_SECONDS || windowSeconds > MAX_WINDOW_SECONDS) {
+    throw new Error(`Invalid window: must be between ${MIN_WINDOW_SECONDS} and ${MAX_WINDOW_SECONDS} seconds`);
+  }
+}
+
 export function rateLimitKey(endpoint: string, siteId: string, ipHash: string): string {
   return `rl:${endpoint}:${siteId}:${ipHash}`;
 }
@@ -97,6 +115,9 @@ export async function enforceRateLimit(
   limit: number = 5,
   windowSeconds: number = 3600,
 ): Promise<RateLimitResult> {
+  // Validate parameters before making DB call
+  validateRateLimitParams(limit, windowSeconds);
+
   const { data, error } = await admin.rpc("check_rate_limit", {
     _key: key,
     _limit: limit,

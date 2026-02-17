@@ -56,9 +56,20 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 async function getAccessTokenSafely(): Promise<string | null> {
   try {
     const supabase = getSupabaseBrowserClient();
-    const { data } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
+
+    // DEBUG: Log token durumunu
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Auth] getAccessTokenSafely:', {
+        hasSession: !!data.session,
+        hasToken: !!data.session?.access_token,
+        error: error?.message,
+      });
+    }
+
     return data.session?.access_token ?? null;
-  } catch {
+  } catch (err) {
+    console.error('[Auth] getAccessTokenSafely error:', err);
     return null;
   }
 }

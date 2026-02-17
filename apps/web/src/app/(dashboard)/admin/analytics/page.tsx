@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminPageHeader } from '@/features/admin/components/admin-page-header';
 import { AdminStatCard } from '@/features/admin/components/admin-stat-card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -14,9 +16,10 @@ import {
     Download,
     Calendar,
 } from 'lucide-react';
-import { useAdminAnalytics } from '@/hooks/use-admin';
+import { useAdminAnalytics, useCreateReport } from '@/hooks/use-admin';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface AnalyticsData {
     overview: {
@@ -35,10 +38,30 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsPage() {
+    const router = useRouter();
     const [period, setPeriod] = useState('30d');
+    const [showCustomRange, setShowCustomRange] = useState(false);
+    const [customFrom, setCustomFrom] = useState('');
+    const [customTo, setCustomTo] = useState('');
 
     const { data, isLoading, error } = useAdminAnalytics(period);
     const analyticsData = data as AnalyticsData | undefined;
+    const createReport = useCreateReport();
+
+    const handleDownloadReport = async () => {
+        try {
+            await createReport.mutateAsync({
+                name: `Analitik Raporu - ${period}`,
+                type: 'analytics',
+                format: 'csv',
+                parameters: { period },
+            });
+            toast.success('Rapor oluşturuldu');
+            router.push('/admin/reports');
+        } catch {
+            toast.error('Rapor oluşturulamadı');
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -70,17 +93,53 @@ export default function AnalyticsPage() {
                                 Son 90 Gün
                             </Button>
                         </div>
-                        <Button variant="outline">
+                        <Button
+                            variant={showCustomRange ? 'secondary' : 'outline'}
+                            onClick={() => setShowCustomRange(!showCustomRange)}
+                        >
                             <Calendar className="mr-2 h-4 w-4" />
                             Özel
                         </Button>
-                        <Button>
+                        <Button onClick={handleDownloadReport} disabled={createReport.isPending}>
                             <Download className="mr-2 h-4 w-4" />
-                            Rapor İndir
+                            {createReport.isPending ? 'Oluşturuluyor...' : 'Rapor İndir'}
                         </Button>
                     </div>
                 }
             />
+
+            {showCustomRange && (
+                <Card>
+                    <CardContent className="flex items-center gap-4 py-3">
+                        <label htmlFor="analytics-start-date" className="text-sm font-medium">Başlangıç:</label>
+                        <Input
+                            id="analytics-start-date"
+                            type="date"
+                            value={customFrom}
+                            onChange={(e) => setCustomFrom(e.target.value)}
+                            className="w-auto"
+                        />
+                        <label htmlFor="analytics-end-date" className="text-sm font-medium">Bitiş:</label>
+                        <Input
+                            id="analytics-end-date"
+                            type="date"
+                            value={customTo}
+                            onChange={(e) => setCustomTo(e.target.value)}
+                            className="w-auto"
+                        />
+                        <Button
+                            size="sm"
+                            disabled={!customFrom || !customTo}
+                            onClick={() => {
+                                setPeriod(`custom:${customFrom}:${customTo}`);
+                                setShowCustomRange(false);
+                            }}
+                        >
+                            Uygula
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
 
             {error && (
                 <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">

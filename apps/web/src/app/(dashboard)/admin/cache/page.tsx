@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ import {
     Clock,
     AlertTriangle,
 } from "lucide-react";
-import { useAdminDashboard, useAdminSettings } from "@/hooks/use-admin";
+import { useAdminDashboard, useAdminSettings, useAdminCache, useClearAdminCache, useUpdateAdminCacheSettings } from "@/hooks/use-admin";
 import { toast } from "sonner";
 
 export default function CacheManagementPage() {
@@ -52,15 +52,51 @@ export default function CacheManagementPage() {
     const { data: dashboardData, isLoading: dashboardLoading } = useAdminDashboard();
     const { data: settingsData, isLoading: settingsLoading } = useAdminSettings();
 
-    const isLoading = dashboardLoading || settingsLoading;
+    // Cache hooks
+    const { data: cacheData, isLoading: cacheLoading, refetch: refetchCache } = useAdminCache();
+    const clearCache = useClearAdminCache();
+    const updateCacheSettings = useUpdateAdminCacheSettings();
 
-    const handleClearAll = () => {
-        setClearAllDialogOpen(false);
-        toast.info('Önbellek temizleme özelliği yakında eklenecek');
+    const isLoading = dashboardLoading || settingsLoading || cacheLoading;
+
+    const cacheStats = (cacheData as any)?.stats || {};
+    const cacheSettings = (cacheData as any)?.settings || {};
+
+    // Initialize form state from API settings
+    useEffect(() => {
+        if (cacheSettings.auto_purge !== undefined) {
+            setAutoPurge(cacheSettings.auto_purge);
+        }
+        if (cacheSettings.purge_interval) {
+            setPurgeInterval(cacheSettings.purge_interval);
+        }
+        if (cacheSettings.max_cache_size) {
+            setMaxCacheSize(String(cacheSettings.max_cache_size));
+        }
+    }, [cacheSettings.auto_purge, cacheSettings.purge_interval, cacheSettings.max_cache_size]);
+
+    const handleClearAll = async () => {
+        try {
+            await clearCache.mutateAsync(undefined);
+            toast.success('Önbellek temizlendi');
+            refetchCache();
+            setClearAllDialogOpen(false);
+        } catch (error) {
+            toast.error('Önbellek temizlenemedi');
+        }
     };
 
-    const handleSaveSettings = () => {
-        toast.info('Önbellek ayarları kaydetme özelliği yakında eklenecek');
+    const handleSaveSettings = async () => {
+        try {
+            await updateCacheSettings.mutateAsync({
+                auto_purge: autoPurge,
+                purge_interval: purgeInterval,
+                max_cache_size: parseInt(maxCacheSize),
+            });
+            toast.success('Önbellek ayarları kaydedildi');
+        } catch (error) {
+            toast.error('Ayarlar kaydedilemedi');
+        }
     };
 
     return (
@@ -82,20 +118,20 @@ export default function CacheManagementPage() {
                     <>
                         <AdminStatCard
                             title="Önbellek Boyutu"
-                            value="Veri yok"
-                            description="Önbellek bilgisi mevcut değil"
+                            value={cacheStats.entries != null ? `${cacheStats.entries} kayıt` : "Veri yok"}
+                            description={cacheStats.maxEntries ? `Maks: ${cacheStats.maxEntries} kayıt` : "Önbellek bilgisi mevcut değil"}
                             icon={<HardDrive className="h-4 w-4" />}
                         />
                         <AdminStatCard
-                            title="İsabet Oranı"
-                            value="Veri yok"
-                            description="Önbellek bilgisi mevcut değil"
+                            title="Kullanım Oranı"
+                            value={cacheStats.usagePercent != null ? `%${cacheStats.usagePercent.toFixed(1)}` : "Veri yok"}
+                            description={cacheStats.entries != null ? `${cacheStats.entries} / ${cacheStats.maxEntries || '∞'}` : "Önbellek bilgisi mevcut değil"}
                             icon={<Zap className="h-4 w-4" />}
                         />
                         <AdminStatCard
                             title="Ortalama Yanıt Süresi"
-                            value="Veri yok"
-                            description="Önbellek bilgisi mevcut değil"
+                            value={cacheStats.avgResponseTime != null ? `${cacheStats.avgResponseTime}ms` : "Veri yok"}
+                            description="Önbellek performansı"
                             icon={<Clock className="h-4 w-4" />}
                         />
                     </>
@@ -205,8 +241,8 @@ export default function CacheManagementPage() {
 
                         <Separator />
 
-                        <Button className="w-full" disabled={!autoPurge} onClick={handleSaveSettings}>
-                            Ayarları Kaydet
+                        <Button className="w-full" disabled={!autoPurge || updateCacheSettings.isPending} onClick={handleSaveSettings}>
+                            {updateCacheSettings.isPending ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
                         </Button>
                     </CardContent>
                 </Card>
@@ -247,7 +283,7 @@ export default function CacheManagementPage() {
                         >
                             İptal
                         </Button>
-                        <Button variant="destructive" onClick={handleClearAll}>
+                        <Button variant="destructive" onClick={() => handleClearAll()}>
                             Tüm Önbelleği Temizle
                         </Button>
                     </DialogFooter>

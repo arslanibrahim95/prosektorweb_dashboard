@@ -118,6 +118,16 @@ export class ApiClient {
         };
 
         const maybeToken = this.accessTokenProvider ? await this.accessTokenProvider() : null;
+
+        // DEBUG: Log token durumunu
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[API Client] Token durumu:', {
+                hasProvider: !!this.accessTokenProvider,
+                hasToken: !!maybeToken,
+                tokenPreview: maybeToken ? `${maybeToken.substring(0, 20)}...` : null,
+            });
+        }
+
         if (maybeToken) {
             headers.Authorization = `Bearer ${maybeToken}`;
         }

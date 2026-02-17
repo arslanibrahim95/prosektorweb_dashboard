@@ -179,7 +179,7 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                         aria-label={theme === 'dark' ? 'Açık temaya geç' : 'Koyu temaya geç'}
                     >
@@ -194,7 +194,7 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
+                                className="relative text-muted-foreground hover:text-foreground"
                                 aria-label={`Bildirimler${unreadCount > 0 ? `, ${unreadCount} okunmamış` : ''}`}
                             >
                                 <Bell className={HEADER_ICON_SIZE_CLASS} />

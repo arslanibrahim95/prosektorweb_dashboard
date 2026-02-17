@@ -227,8 +227,9 @@ export default function DomainsPage() {
             {wizardStep === 1 && (
               <div className="space-y-4">
                 <div className="grid gap-2">
-                  <Label>Domain Adı</Label>
+                  <Label htmlFor="domain-name">Domain Adı</Label>
                   <Input
+                    id="domain-name"
                     placeholder="example.com"
                     value={newDomain}
                     onChange={(e) => setNewDomain(e.target.value)}

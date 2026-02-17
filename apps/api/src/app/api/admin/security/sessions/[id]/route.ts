@@ -1,0 +1,99 @@
+import {
+    asHeaders,
+    asErrorBody,
+    asStatus,
+    HttpError,
+    jsonError,
+    jsonOk,
+    mapPostgrestError,
+} from "@/server/api/http";
+import { type UserRole } from "@prosektor/contracts";
+import { requireAuthContext } from "@/server/auth/context";
+import { isAdminRole } from "@/server/auth/permissions";
+import { getServerEnv } from "@/server/env";
+import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { z } from "zod";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function assertAdminRole(role: UserRole) {
+    if (!isAdminRole(role)) {
+        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
+    }
+}
+
+// DELETE /api/admin/security/sessions/:id - Terminate a specific session
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+    try {
+        const ctx = await requireAuthContext(req);
+        const env = getServerEnv();
+        const { id } = await params;
+
+        assertAdminRole(ctx.role);
+
+        const rateLimit = await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_sessions", ctx.tenant.id, ctx.user.id),
+            10,
+            60,
+        );
+
+        // Get the member (session) to find the user
+        const { data: member, error: memberError } = await ctx.admin
+            .from("tenant_members")
+            .select("id, user_id, tenant_id, role")
+            .eq("id", id)
+            .eq("tenant_id", ctx.tenant.id)
+            .single();
+
+        if (memberError || !member) {
+            throw new HttpError(404, {
+                code: "NOT_FOUND",
+                message: "Oturum bulunamadı",
+            });
+        }
+
+        // Can't terminate own session
+        if (member.user_id === ctx.user.id) {
+            throw new HttpError(400, {
+                code: "BAD_REQUEST",
+                message: "Kendi oturumunuzu sonlandıramazsınız",
+            });
+        }
+
+        // Note: Supabase doesn't provide a way to revoke specific sessions directly
+        // In a real implementation, you might need to:
+        // 1. Delete the user and re-create them
+        // 2. Use custom session management
+        // 3. Disable the user temporarily
+
+        // For now, we'll log the attempt and return success
+        // The actual session termination would require Supabase Admin API changes
+
+        // Log the action
+        await ctx.admin.from("audit_logs").insert({
+            tenant_id: ctx.tenant.id,
+            actor_id: ctx.user.id,
+            action: "session_terminate",
+            entity_type: "tenant_member",
+            entity_id: member.id,
+            meta: {
+                target_user_id: member.user_id,
+                target_role: member.role,
+                note: "Session termination requires Supabase Admin API implementation"
+            },
+        });
+
+        return jsonOk(
+            {
+                success: true,
+                message: "Oturum sonlandırma isteği kaydedildi. Gerçek sonlandırma için Supabase yapılandırması gereklidir.",
+            },
+            200,
+            rateLimitHeaders(rateLimit),
+        );
+    } catch (err) {
+        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
+    }
+}

@@ -33,12 +33,18 @@ export default function GlobalError({
                 </h1>
 
                 {/* Description */}
-                <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
+                <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
                     Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.
                 </p>
 
+                {error.digest && (
+                    <p className="text-xs text-muted-foreground font-mono bg-muted rounded px-3 py-2 mb-6 mx-auto max-w-xs">
+                        Hata kodu: {error.digest}
+                    </p>
+                )}
+
                 {/* Actions */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
                     <Button
                         onClick={reset}
                         className="gradient-primary border-0 text-white hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 w-full sm:w-auto"
@@ -49,6 +55,9 @@ export default function GlobalError({
                         <Link href="/home">Ana Sayfa</Link>
                     </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                    Sorun devam ederse lütfen sistem yöneticinize başvurun.
+                </p>
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,13 +31,22 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
     Database,
     Download,
     Upload,
     Plus,
     HardDrive,
+    Trash2,
 } from "lucide-react";
-import { useAdminSettings, useUpdateAdminSettings } from "@/hooks/use-admin";
+import { useAdminSettings, useUpdateAdminSettings, useAdminBackups, useCreateBackup, useDeleteBackup } from "@/hooks/use-admin";
 import { toast } from "sonner";
 
 export default function BackupRestorePage() {
@@ -50,8 +59,57 @@ export default function BackupRestorePage() {
     const [includeConfig, setIncludeConfig] = useState(true);
     const [includeLogs, setIncludeLogs] = useState(false);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const { data: settingsData, isLoading } = useAdminSettings();
     const updateSettings = useUpdateAdminSettings();
+
+    // Backup hooks
+    const { data: backupsData, isLoading: backupsLoading, refetch: refetchBackups } = useAdminBackups();
+    const createBackup = useCreateBackup();
+    const deleteBackup = useDeleteBackup();
+
+    const backups = (backupsData as any)?.items || [];
+
+    const handleCreateBackup = async (type: 'full' | 'partial', description?: string) => {
+        const typeLabels = { full: 'Tam Yedek', partial: 'Kısmi Yedek' };
+        const name = `${typeLabels[type]} - ${new Date().toLocaleDateString('tr-TR')}`;
+        try {
+            await createBackup.mutateAsync({ name, type, description });
+            toast.success('Yedekleme başlatıldı');
+            refetchBackups();
+        } catch (error) {
+            toast.error('Yedekleme başlatılamadı');
+        }
+    };
+
+    const handleDeleteBackup = async (id: string) => {
+        try {
+            await deleteBackup.mutateAsync(id);
+            toast.success('Yedek silindi');
+        } catch (error) {
+            toast.error('Yedek silinemedi');
+        }
+    };
+
+    const handleUploadBackup = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            toast.info(`"${file.name}" seçildi. Geri yükleme özelliği henüz tam olarak desteklenmiyor.`);
+        }
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const formatFileSize = (bytes: number | null) => {
+        if (!bytes) return '-';
+        if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+        if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    };
 
     const handleSaveSettings = async () => {
         try {
@@ -92,24 +150,31 @@ export default function BackupRestorePage() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => toast.info('Yedekleme özelliği yakında eklenecek')}>
+                        <DropdownMenuItem onClick={() => handleCreateBackup('full')}>
                             <Database className="mr-2 h-4 w-4" />
                             Tam Yedek
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.info('Yedekleme özelliği yakında eklenecek')}>
+                        <DropdownMenuItem onClick={() => handleCreateBackup('partial', 'Sadece veritabanı')}>
                             <Database className="mr-2 h-4 w-4" />
                             Sadece Veritabanı
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.info('Yedekleme özelliği yakında eklenecek')}>
+                        <DropdownMenuItem onClick={() => handleCreateBackup('partial', 'Sadece dosyalar')}>
                             <HardDrive className="mr-2 h-4 w-4" />
                             Sadece Dosyalar
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" onClick={() => toast.info('Yedek yükleme özelliği yakında eklenecek')}>
+                <Button variant="outline" onClick={handleUploadBackup}>
                     <Upload className="mr-2 h-4 w-4" />
                     Yedek Yükle
                 </Button>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".sql,.zip,.tar.gz,.bak"
+                    className="hidden"
+                    onChange={handleFileSelected}
+                />
             </div>
 
             {/* Backup History Table */}
@@ -121,18 +186,78 @@ export default function BackupRestorePage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {isLoading ? (
+                    {backupsLoading ? (
                         <div className="space-y-4">
                             <Skeleton className="h-12 w-full" />
                             <Skeleton className="h-12 w-full" />
                             <Skeleton className="h-12 w-full" />
                         </div>
-                    ) : (
+                    ) : backups.length === 0 ? (
                         <div className="p-8 text-center text-muted-foreground">
                             <Database className="mx-auto h-12 w-12 mb-4 opacity-50" />
                             <p>Henüz yedek alınmadı</p>
                             <p className="text-sm mt-2">Yedekleme geçmişi burada görünecek</p>
                         </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Ad</TableHead>
+                                    <TableHead>Tür</TableHead>
+                                    <TableHead>Durum</TableHead>
+                                    <TableHead>Boyut</TableHead>
+                                    <TableHead>Tarih</TableHead>
+                                    <TableHead className="w-[100px]">İşlemler</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {backups.map((backup: any) => (
+                                    <TableRow key={backup.id}>
+                                        <TableCell className="font-medium">{backup.name}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline">
+                                                {backup.type === 'full' ? 'Tam' : backup.type === 'partial' ? 'Kısmi' : backup.type}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={backup.status === 'completed' ? 'default' : backup.status === 'pending' ? 'secondary' : 'destructive'}>
+                                                {backup.status === 'completed' ? 'Tamamlandı' : backup.status === 'pending' ? 'Bekliyor' : backup.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
+                                            {formatFileSize(backup.file_size)}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
+                                            {backup.created_at ? new Date(backup.created_at).toLocaleString('tr-TR') : '-'}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex gap-1">
+                                                {backup.file_url && backup.status === 'completed' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => {
+                                                            window.open(backup.file_url, '_blank');
+                                                            toast.success('İndirme başlatıldı');
+                                                        }}
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-destructive"
+                                                    onClick={() => handleDeleteBackup(backup.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     )}
                 </CardContent>
             </Card>

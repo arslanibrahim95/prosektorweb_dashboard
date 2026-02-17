@@ -14,6 +14,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "seo:*",
     "publish:*",
     "modules:*",
+    "hr:job_posts:*", // Granular permission
     "inbox:*",
     "users:*",
     "billing:*",
@@ -34,6 +35,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "seo:*",
     "publish:*",
     "modules:*",
+    "hr:job_posts:*", // Granular permission
     "inbox:*",
     "users:create,read,update",
     "notifications:*",
@@ -53,6 +55,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "seo:*",
     "publish:staging",
     "modules:read",
+    "hr:job_posts:*", // Granular permission (Editors can manage posts)
     "inbox:read",
     "users:read",
     "notifications:read",
@@ -71,6 +74,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "seo:read",
     "publish:read",
     "modules:read",
+    "hr:job_posts:read", // Read-only
     "users:read",
     "notifications:read",
     "legal:read",
@@ -97,9 +101,25 @@ export function isAdminRole(role: UserRole): boolean {
 /**
  * Check if user has a specific permission
  * Supports wildcard patterns like "inbox:*" or "users:read"
+ * 
+ * SECURITY: Now includes null/undefined checks to prevent runtime crashes
  */
-export function hasPermission(userPermissions: string[], requiredPermission: string): boolean {
+export function hasPermission(userPermissions: string[] | null | undefined, requiredPermission: string | null | undefined): boolean {
+  // Null checks
+  if (!userPermissions || !Array.isArray(userPermissions)) {
+    return false;
+  }
+
+  if (!requiredPermission || typeof requiredPermission !== 'string') {
+    return false;
+  }
+
   for (const permission of userPermissions) {
+    // Skip invalid permission entries
+    if (!permission || typeof permission !== 'string') {
+      continue;
+    }
+
     // Wildcard match (e.g., "inbox:*" matches "inbox:read", "inbox:write")
     if (permission === '*') return true;
 

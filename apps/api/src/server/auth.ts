@@ -26,6 +26,7 @@ export function hasPermission(
     requiredPermission: string
 ): boolean {
     const permissions = ROLE_PERMISSIONS[userRole];
+    if (!permissions) return false;
 
     // Super admin has all permissions
     if (permissions.includes('*')) return true;

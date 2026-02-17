@@ -238,6 +238,19 @@ async function ensureSuperAdminMirrorMembership(
   userId: string,
   tenantId: string,
 ): Promise<void> {
+  // Check if membership already exists before upsert to avoid unnecessary DB writes
+  const { data: existing } = await admin
+    .from('tenant_members')
+    .select('role')
+    .eq('tenant_id', tenantId)
+    .eq('user_id', userId)
+    .single();
+
+  // Skip if already owner - prevents unnecessary upsert operations
+  if (existing?.role === 'owner') {
+    return;
+  }
+
   const { error } = await admin
     .from("tenant_members")
     .upsert(
@@ -353,8 +366,28 @@ export async function requireAuthContext(req: Request): Promise<AuthContext> {
     }
 
     const tenantIds = Array.from(new Set(memberships.map((membership) => membership.tenant_id)));
-    availableTenants = await getTenantsByIds(supabase, tenantIds);
-    tenant = await getTenantById(supabase, selectedMembership.tenant_id);
+
+    // Optimize: Fetch all tenants in a single query instead of separate calls
+    const { data: allTenants, error: tenantsError } = await supabase
+      .from("tenants")
+      .select("id, name, slug, plan, status")
+      .in("id", tenantIds);
+
+    if (tenantsError) {
+      throw createError({
+        code: "DATABASE_ERROR",
+        message: "Tenant listesi yüklenemedi.",
+        originalError: tenantsError,
+      });
+    }
+
+    const tenantMap = new Map(allTenants?.map(t => [t.id, t]) ?? []);
+    availableTenants = tenantIds
+      .map(id => tenantMap.get(id))
+      .filter((t): t is NonNullable<typeof t> => t !== undefined);
+
+    // Get the selected tenant directly from the map
+    tenant = tenantMap.get(selectedMembership.tenant_id) ?? await getTenantById(supabase, selectedMembership.tenant_id);
     role = selectedMembership.role as UserRole;
   }
 

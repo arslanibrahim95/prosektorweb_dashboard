@@ -123,9 +123,34 @@ export function mapPostgrestError(error: PostgrestError): HttpError {
 export function asErrorBody(error: unknown): ErrorBody {
   if (error instanceof HttpError) return error.body;
 
+  // Sanitize error message to prevent sensitive info leakage
+  const rawMessage = error instanceof Error ? error.message : '';
+
+  // Check for sensitive patterns
+  const sensitivePatterns = [
+    /password/i,
+    /secret/i,
+    /key/i,
+    /token/i,
+    /connection.*string/i,
+    /\/\/.*\:.*\@/,
+    /stack.*trace/i,
+    /postgres.*?:.*@/i,
+    /mongodb.*?:.*@/i,
+    /redis.*?:.*@/i,
+  ];
+
+  let sanitizedMessage = rawMessage;
+  for (const pattern of sensitivePatterns) {
+    if (pattern.test(rawMessage) || rawMessage.includes('/var/') || rawMessage.includes('C:\\') || rawMessage.includes('/home/')) {
+      sanitizedMessage = translateError("INTERNAL_ERROR", "tr");
+      break;
+    }
+  }
+
   return {
     code: "INTERNAL_ERROR",
-    message: error instanceof Error ? error.message : translateError("INTERNAL_ERROR", "tr"),
+    message: sanitizedMessage,
   };
 }
 

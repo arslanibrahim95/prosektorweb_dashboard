@@ -401,7 +401,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Site durumu, son aktiviteler, hızlı aksiyonlar |
 | **Primary CTA** | "Siteyi Düzenle" button |
-| **URL** | `/dashboard` |
+| **URL** | `/home` |
 | **Permissions** | All roles (R) |
 
 **Layout:**
@@ -453,7 +453,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Sayfa listesi, CRUD, sıralama |
 | **Primary CTA** | "Yeni Sayfa" button |
-| **URL** | `/dashboard/site/pages` |
+| **URL** | `/site/pages` |
 | **Permissions** | Owner, Admin, Editor (CRUD), Viewer (R) |
 
 **Layout:**
@@ -490,7 +490,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Blok tabanlı görsel sayfa editörü |
 | **Primary CTA** | "Yayınla" sticky button |
-| **URL** | `/dashboard/site/pages/:id/edit` |
+| **URL** | `/site/builder` |
 | **Permissions** | Owner, Admin, Editor (CRUD), Viewer (R) |
 
 **Layout:**
@@ -542,7 +542,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Site geneli görsel ayarlar |
 | **Primary CTA** | "Değişiklikleri Kaydet" |
-| **URL** | `/dashboard/site/theme` |
+| **URL** | `/admin/theme` |
 | **Permissions** | Owner, Admin (CRUD), Editor (RU), Viewer (R) |
 
 **Sections:**
@@ -560,7 +560,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Navigasyon menü yapısı |
 | **Primary CTA** | "Menü Ekle" |
-| **URL** | `/dashboard/site/menus` |
+| **URL** | `/site/menus` |
 | **Permissions** | Owner, Admin, Editor (CRUD), Viewer (R) |
 
 **Features:**
@@ -577,7 +577,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Görsel/dosya yönetimi |
 | **Primary CTA** | "Yükle" |
-| **URL** | `/dashboard/site/media` |
+| **URL** | `/site/media` |
 | **Permissions** | All except Viewer |
 
 **Features:**
@@ -599,7 +599,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Custom domain bağlama |
 | **Primary CTA** | "Domain Ekle" |
-| **URL** | `/dashboard/site/domains` |
+| **URL** | `/site/domains` |
 | **Permissions** | Owner, Admin (CRUD), Editor (R), Viewer (R) |
 
 **Wizard Steps:**
@@ -623,7 +623,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Site geneli + sayfa bazlı SEO |
 | **Primary CTA** | "Kaydet" |
-| **URL** | `/dashboard/site/seo` |
+| **URL** | `/site/seo` |
 | **Permissions** | All except Viewer |
 
 **Sections:**
@@ -639,7 +639,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Staging → Production deploy |
 | **Primary CTA** | "Production'a Al" |
-| **URL** | `/dashboard/site/publish` |
+| **URL** | `/site/publish` |
 | **Permissions** | Owner, Admin, Editor (staging only) |
 
 **Layout:**
@@ -674,7 +674,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Teklif formu yapılandırması |
 | **Primary CTA** | "Kaydet" |
-| **URL** | `/dashboard/modules/offer` |
+| **URL** | `/modules/offer` |
 | **Permissions** | Owner, Admin (CRUD), Editor (R) |
 
 **Fields:**
@@ -693,7 +693,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | İletişim bilgileri + form ayarı |
 | **Primary CTA** | "Kaydet" |
-| **URL** | `/dashboard/modules/contact` |
+| **URL** | `/modules/contact` |
 | **Permissions** | Owner, Admin (CRUD), Editor (R) |
 
 **Fields:**
@@ -713,7 +713,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | İş ilanları CRUD |
 | **Primary CTA** | "Yeni İlan" |
-| **URL** | `/dashboard/modules/hr/jobs` |
+| **URL** | `/modules/hr/job-posts` |
 | **Permissions** | Owner, Admin, Editor (CRUD), Viewer (R) |
 
 **Table Columns:**
@@ -742,7 +742,7 @@ flowchart TD
 |-----------|-------|
 | **Purpose** | Başvuru inbox |
 | **Primary CTA** | - |
-| **URL** | `/dashboard/modules/hr/applications` |
+| **URL** | `/modules/hr/applications` |
 | **Permissions** | Owner, Admin (CRUD), Editor (R) |
 
 **Table:**
@@ -776,7 +776,7 @@ Pattern: DataTable + Drawer
 |-----------|-------|
 | **Purpose** | Kullanıcı davet + rol atama |
 | **Primary CTA** | "Kullanıcı Davet Et" |
-| **URL** | `/dashboard/settings/users` |
+| **URL** | `/settings/users` |
 | **Permissions** | Owner (CRUD), Admin (CRU for non-owner) |
 
 **Table:**
@@ -795,7 +795,7 @@ Pattern: DataTable + Drawer
 |-----------|-------|
 | **Purpose** | Form bildirimleri yapılandırma |
 | **Primary CTA** | "Kaydet" |
-| **URL** | `/dashboard/settings/notifications` |
+| **URL** | `/settings/notifications` |
 
 **Options:**
 - Email on new offer
@@ -810,7 +810,7 @@ Pattern: DataTable + Drawer
 | Attribute | Value |
 |-----------|-------|
 | **Purpose** | Plan görüntüleme + upgrade |
-| **URL** | `/dashboard/settings/billing` |
+| **URL** | `/settings/billing` |
 | **Permissions** | Owner only |
 
 **Sections:**
@@ -827,7 +827,7 @@ Pattern: DataTable + Drawer
 |-----------|-------|
 | **Purpose** | Onay metni şablonları |
 | **Primary CTA** | "Yeni Metin Ekle" |
-| **URL** | `/dashboard/modules/legal` |
+| **URL** | `/modules/legal` |
 
 **Fields:**
 - Title
@@ -1920,3 +1920,51 @@ UPSTASH_REDIS_TOKEN=
 > 3. Initialize Next.js project with base structure
 > 4. Implement auth flow
 > 5. Build core components
+
+## 11. Validated Routes Reference (Generated)
+
+| Route | File Path |
+|-------|-----------|
+| `/` | `src/app/page.tsx` |
+| `/login` | `src/app/login/page.tsx` |
+| `/home` | `src/app/(dashboard)/home/page.tsx` |
+| `/analytics` | `src/app/(dashboard)/analytics/page.tsx` |
+| `/inbox/applications` | `src/app/(dashboard)/inbox/applications/page.tsx` |
+| `/inbox/contact` | `src/app/(dashboard)/inbox/contact/page.tsx` |
+| `/inbox/offers` | `src/app/(dashboard)/inbox/offers/page.tsx` |
+| `/modules/contact` | `src/app/(dashboard)/modules/contact/page.tsx` |
+| `/modules/hr/applications` | `src/app/(dashboard)/modules/hr/applications/page.tsx` |
+| `/modules/hr/job-posts` | `src/app/(dashboard)/modules/hr/job-posts/page.tsx` |
+| `/modules/legal` | `src/app/(dashboard)/modules/legal/page.tsx` |
+| `/modules/offer` | `src/app/(dashboard)/modules/offer/page.tsx` |
+| `/onboarding` | `src/app/(dashboard)/onboarding/page.tsx` |
+| `/settings` | `src/app/(dashboard)/settings/page.tsx` |
+| `/settings/billing` | `src/app/(dashboard)/settings/billing/page.tsx` |
+| `/settings/notifications` | `src/app/(dashboard)/settings/notifications/page.tsx` |
+| `/settings/supabase` | `src/app/(dashboard)/settings/supabase/page.tsx` |
+| `/settings/users` | `src/app/(dashboard)/settings/users/page.tsx` |
+| `/site/builder` | `src/app/(dashboard)/site/builder/page.tsx` |
+| `/site/domains` | `src/app/(dashboard)/site/domains/page.tsx` |
+| `/site/media` | `src/app/(dashboard)/site/media/page.tsx` |
+| `/site/menus` | `src/app/(dashboard)/site/menus/page.tsx` |
+| `/site/pages` | `src/app/(dashboard)/site/pages/page.tsx` |
+| `/site/publish` | `src/app/(dashboard)/site/publish/page.tsx` |
+| `/site/seo` | `src/app/(dashboard)/site/seo/page.tsx` |
+| `/admin` | `src/app/(dashboard)/admin/page.tsx` |
+| `/admin/analytics` | `src/app/(dashboard)/admin/analytics/page.tsx` |
+| `/admin/api` | `src/app/(dashboard)/admin/api/page.tsx` |
+| `/admin/api-keys` | `src/app/(dashboard)/admin/api-keys/page.tsx` |
+| `/admin/backup` | `src/app/(dashboard)/admin/backup/page.tsx` |
+| `/admin/cache` | `src/app/(dashboard)/admin/cache/page.tsx` |
+| `/admin/content` | `src/app/(dashboard)/admin/content/page.tsx` |
+| `/admin/i18n` | `src/app/(dashboard)/admin/i18n/page.tsx` |
+| `/admin/logs` | `src/app/(dashboard)/admin/logs/page.tsx` |
+| `/admin/notifications` | `src/app/(dashboard)/admin/notifications/page.tsx` |
+| `/admin/reports` | `src/app/(dashboard)/admin/reports/page.tsx` |
+| `/admin/security` | `src/app/(dashboard)/admin/security/page.tsx` |
+| `/admin/settings` | `src/app/(dashboard)/admin/settings/page.tsx` |
+| `/admin/theme` | `src/app/(dashboard)/admin/theme/page.tsx` |
+| `/admin/users` | `src/app/(dashboard)/admin/users/page.tsx` |
+| `/admin/platform/analytics` | `src/app/(dashboard)/admin/platform/analytics/page.tsx` |
+| `/admin/platform/settings` | `src/app/(dashboard)/admin/platform/settings/page.tsx` |
+| `/admin/platform/tenants` | `src/app/(dashboard)/admin/platform/tenants/page.tsx` |

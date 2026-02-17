@@ -37,6 +37,7 @@ dist/
 coverage/
 .nyc_output/
 playwright-report/
+playwright-repo/
 test-results/
 *.lcov
 

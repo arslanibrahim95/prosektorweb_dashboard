@@ -5,12 +5,14 @@ import { SiteProvider } from '@/components/site/site-provider';
 import { useAuth } from '@/components/auth/auth-provider';
 import { InlineSessionWarning } from '@/components/auth/session-timeout-alert';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AuthLoadingSkeleton } from '@/components/auth/auth-loading-skeleton';
 
 function DashboardGate({ children }: { children: React.ReactNode }) {
     const auth = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         if (auth.status === 'unauthenticated') {
@@ -35,50 +37,19 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
     }
 
     if (auth.status === 'loading') {
-        return <div className="min-h-screen" />;
+        return <AuthLoadingSkeleton />;
     }
 
-    // If user is signed in but has no tenant membership yet, /api/me will 403.
+    // If user is signed in but has no tenant membership yet
     if (auth.session && !auth.me) {
-        return (
-            <div className="min-h-screen flex items-center justify-center p-6">
-                <Card className="glass max-w-lg w-full">
-                    <CardHeader>
-                        <CardTitle>Tenant Üyeliği Yok</CardTitle>
-                        <CardDescription>
-                            Giriş yaptınız ama bu kullanıcı herhangi bir tenant&apos;a bağlı değil.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Devam etmek için bu kullanıcıya <span className="font-medium">tenant_members</span> kaydı eklenmeli
-                            (role: owner/admin/editor/viewer).
-                        </p>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => auth.signOut().then(() => router.replace('/login'))}
-                                className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                                aria-label="Oturumu kapat"
-                            >
-                                Çıkış Yap
-                            </button>
-                            <button
-                                onClick={() => auth.refreshMe()}
-                                className="px-4 py-2 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-                                aria-label="Bilgileri yenile"
-                            >
-                                Tekrar Dene
-                            </button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
+        // Redirect to new onboarding flow
+        router.replace('/onboarding/welcome');
+        return <AuthLoadingSkeleton />;
     }
 
     if (!auth.me) {
-        // Redirect effect will handle unauthenticated; keep a blank frame for hydration.
-        return <div className="min-h-screen" />;
+        // Redirect effect will handle unauthenticated; keep a skeleton for hydration.
+        return <AuthLoadingSkeleton />;
     }
 
     return (

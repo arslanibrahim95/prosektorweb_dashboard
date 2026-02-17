@@ -322,7 +322,7 @@ export default function AnalyticsPage() {
                           timeline.points.length <= 31 &&
                           idx % 5 === 0) ||
                         (timeline.points.length > 31 && idx % 10 === 0)) && (
-                          <span className="absolute -bottom-1 text-[9px] text-muted-foreground whitespace-nowrap transform translate-y-full">
+                          <span className="absolute -bottom-1 text-[10px] text-muted-foreground whitespace-nowrap transform translate-y-full">
                             {point.date.slice(5)}
                           </span>
                         )}

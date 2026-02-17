@@ -51,7 +51,16 @@ import {
     AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAdminSessions, useAdminSettings, useUpdateAdminSettings } from '@/hooks/use-admin';
+import {
+    useAdminSessions,
+    useAdminSettings,
+    useUpdateAdminSettings,
+    useAdminIpBlocks,
+    useCreateIpBlock,
+    useUpdateIpBlock,
+    useDeleteIpBlock,
+    useTerminateSession,
+} from '@/hooks/use-admin';
 import { toast } from 'sonner';
 
 const twofaMethodLabels = {
@@ -93,19 +102,37 @@ export default function SecurityPage() {
     const { data: settingsData, isLoading: settingsLoading } = useAdminSettings();
     const updateSettings = useUpdateAdminSettings();
 
+    // IP Block hooks
+    const { data: ipBlocksData, isLoading: ipBlocksLoading } = useAdminIpBlocks();
+    const createIpBlock = useCreateIpBlock();
+    const updateIpBlock = useUpdateIpBlock();
+    const deleteIpBlock = useDeleteIpBlock();
+    const terminateSession = useTerminateSession();
+
     const sessions = (sessionsData as any)?.items || [];
     const tenant = (settingsData as any)?.tenant || {};
     const securitySettings = tenant?.settings?.security || {};
-    const blockedIPs: any[] = [];
+    const blockedIPs: any[] = (ipBlocksData as any)?.items || [];
 
-    const handleTerminateSession = (sessionId: string) => {
-        console.log('Terminate session:', sessionId);
-        toast.info('Oturum sonlandırma özelliği yakında eklenecek');
+    const handleTerminateSession = async (sessionId: string) => {
+        try {
+            await terminateSession.mutateAsync(sessionId);
+            toast.success('Oturum sonlandırıldı');
+        } catch (error) {
+            toast.error('Oturum sonlandırılamadı');
+        }
     };
 
-    const handleTerminateAllSessions = () => {
-        console.log('Terminate all sessions');
-        toast.info('Toplu oturum sonlandırma özelliği yakında eklenecek');
+    const handleTerminateAllSessions = async () => {
+        try {
+            // Terminate all sessions (by iterating through them)
+            for (const session of sessions) {
+                await terminateSession.mutateAsync(session.id);
+            }
+            toast.success('Tüm oturumlar sonlandırıldı');
+        } catch (error) {
+            toast.error('Oturumlar sonlandırılamadı');
+        }
     };
 
     const handleAddIpBlock = () => {
@@ -124,14 +151,54 @@ export default function SecurityPage() {
         setIpBlockDialogOpen(true);
     };
 
-    const handleDeleteIpBlock = (ipBlock: any) => {
-        console.log('Delete IP block:', ipBlock.id);
-        toast.info('IP engelleme kaldırma özelliği yakında eklenecek');
+    const handleDeleteIpBlock = async (ipBlock: any) => {
+        try {
+            await deleteIpBlock.mutateAsync(ipBlock.id);
+            toast.success('IP engelleme kaldırıldı');
+        } catch (error) {
+            toast.error('IP engelleme kaldırılamadı');
+        }
     };
 
     const handleSubmitIpBlock = async (data: any) => {
-        console.log('Submit IP block:', data);
-        toast.info('IP engelleme özelliği yakında eklenecek');
+        try {
+            const blockedUntil = data.duration === 'permanent' ? null : new Date(Date.now() + parseDuration(data.duration)).toISOString();
+
+            if (selectedIpBlock?.id) {
+                // Update existing IP block
+                await updateIpBlock.mutateAsync({
+                    id: selectedIpBlock.id,
+                    data: {
+                        ip_address: data.ip_address,
+                        reason: data.reason,
+                        blocked_until: blockedUntil,
+                    },
+                });
+                toast.success('IP engeli güncellendi');
+            } else {
+                // Create new IP block
+                await createIpBlock.mutateAsync({
+                    ip_address: data.ip_address,
+                    reason: data.reason,
+                    blocked_until: blockedUntil,
+                });
+                toast.success('IP engellendi');
+            }
+            setIpBlockDialogOpen(false);
+        } catch (error) {
+            toast.error(selectedIpBlock?.id ? 'IP engeli güncellenemedi' : 'IP engellenemedi');
+        }
+    };
+
+    // Helper function to parse duration to milliseconds
+    const parseDuration = (duration: string): number => {
+        const units: Record<string, number> = {
+            '1h': 60 * 60 * 1000,
+            '24h': 24 * 60 * 60 * 1000,
+            '7d': 7 * 24 * 60 * 60 * 1000,
+            '30d': 30 * 24 * 60 * 60 * 1000,
+        };
+        return units[duration] || 0;
     };
 
     const handleSaveSessionSettings = async () => {
@@ -308,7 +375,7 @@ export default function SecurityPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8"
+                                                            className=""
                                                             onClick={() => handleTerminateSession(session.id)}
                                                         >
                                                             <LogOut className="h-4 w-4" />
@@ -569,7 +636,7 @@ export default function SecurityPage() {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-8 w-8"
+                                                                className=""
                                                             >
                                                                 <MoreVertical className="h-4 w-4" />
                                                             </Button>

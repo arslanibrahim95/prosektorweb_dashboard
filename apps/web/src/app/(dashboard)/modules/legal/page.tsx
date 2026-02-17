@@ -39,6 +39,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/layout';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, MoreHorizontal, Trash2, FileText, CheckCircle2, Circle } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { format } from 'date-fns';
@@ -116,6 +117,45 @@ export default function LegalTextsPage() {
       onError: (err) => toast.error(err instanceof Error ? err.message : 'Silme başarısız'),
     });
   };
+
+  // Skeleton state
+  if (isLoading) {
+    return (
+      <div className="dashboard-page">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-56 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-28" />
+        </div>
+
+        {/* Table skeleton */}
+        <div className="rounded-lg border bg-card">
+          <div className="border-b">
+            <div className="flex items-center gap-4 p-4">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-16 ml-auto" />
+            </div>
+          </div>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="flex items-center gap-4 p-4 border-b last:border-0">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-24" />
+              <div className="ml-auto flex items-center gap-2">
+                <Skeleton className="h-6 w-14 rounded-full" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-page">

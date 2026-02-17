@@ -18,6 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+
+
 import { Save, X, Plus, Power, Mail, MessageSquare, Shield } from 'lucide-react';
 import { ActionButton } from '@/components/ui/action-button';
 import { toast } from 'sonner';
@@ -155,6 +158,83 @@ export default function OfferModulePage() {
     );
   }, [clearDraft, formState, saveMutation]);
 
+  // Skeleton state
+  if (isLoading) {
+    return (
+      <div className={cn('dashboard-page', 'dashboard-page-narrow', 'stagger-children')}>
+        {/* Header skeleton */}
+        <div>
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </div>
+
+        {/* Module Status skeleton */}
+        <Card className="glass border-border/50 shadow-sm overflow-hidden">
+          <CardHeader className="pb-4">
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-4 w-48 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+              <Skeleton className="h-6 w-11 rounded-full" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recipient Emails skeleton */}
+        <Card className="glass border-border/50 shadow-sm">
+          <CardHeader className="pb-4">
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-4 w-48 mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-6 w-48" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-10" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Success Message skeleton */}
+        <Card className="glass border-border/50 shadow-sm">
+          <CardHeader className="pb-4">
+            <Skeleton className="h-6 w-28" />
+            <Skeleton className="h-4 w-56 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-20 w-full" />
+          </CardContent>
+        </Card>
+
+        {/* KVKK Text skeleton */}
+        <Card className="glass border-border/50 shadow-sm">
+          <CardHeader className="pb-4">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-4 w-40 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-3 w-64 mt-3" />
+          </CardContent>
+        </Card>
+
+        {/* Save Button skeleton */}
+        <div className="flex justify-end gap-2 pb-4">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-44" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn('dashboard-page', 'dashboard-page-narrow', 'stagger-children')}>
       {/* Header */}
@@ -223,7 +303,9 @@ export default function OfferModulePage() {
           </div>
           <div className="flex gap-2">
             <Input
+              id="offer-email"
               type="email"
+              autoComplete="email"
               placeholder="yeni@email.com"
               className="bg-muted/50 border-transparent focus:border-ring focus:bg-background transition-all duration-200"
               value={newEmail}

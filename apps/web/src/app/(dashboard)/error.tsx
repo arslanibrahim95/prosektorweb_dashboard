@@ -39,7 +39,12 @@ export default function DashboardError({
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
+                        {error.digest && (
+                            <p className="text-xs text-muted-foreground font-mono bg-muted rounded px-3 py-2">
+                                Hata kodu: {error.digest}
+                            </p>
+                        )}
                         <div className="flex flex-col sm:flex-row items-center gap-3">
                             <Button
                                 onClick={reset}
@@ -52,6 +57,9 @@ export default function DashboardError({
                                 <Link href="/home">Ana Sayfa</Link>
                             </Button>
                         </div>
+                        <p className="text-xs text-muted-foreground text-center">
+                            Sorun devam ederse lütfen sistem yöneticinize başvurun.
+                        </p>
                     </CardContent>
                 </Card>
             </div>

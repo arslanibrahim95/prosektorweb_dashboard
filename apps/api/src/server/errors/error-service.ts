@@ -38,6 +38,41 @@ export interface CreateErrorOptions {
 }
 
 /**
+ * Sanitizes error message to prevent sensitive information leakage
+ * Filters out passwords, secrets, connection strings, and other sensitive data
+ */
+function sanitizeErrorMessage(message: string): string {
+    // Sensitive patterns that should never be exposed to users
+    const sensitivePatterns = [
+        /password/i,
+        /secret/i,
+        /key/i,
+        /token/i,
+        /connection.*string/i,
+        /\/\/.*\:.*\@/, // URL with credentials
+        /stack.*trace/i,
+        /at.*line \d+/i, // Stack trace lines
+        /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/, // IP addresses
+        /postgres.*?:.*@/i, // PostgreSQL connection
+        /mongodb.*?:.*@/i, // MongoDB connection
+        /redis.*?:.*@/i, // Redis connection
+    ];
+
+    for (const pattern of sensitivePatterns) {
+        if (pattern.test(message)) {
+            return translateError('INTERNAL_ERROR', 'tr');
+        }
+
+        // Check for file paths that might leak system info
+        if (message.includes('/var/') || message.includes('C:\\') || message.includes('/home/')) {
+            return translateError('INTERNAL_ERROR', 'tr');
+        }
+    }
+
+    return message;
+}
+
+/**
  * Merkezi hata oluşturma fonksiyonu
  */
 export function createError(options: CreateErrorOptions): HttpError {

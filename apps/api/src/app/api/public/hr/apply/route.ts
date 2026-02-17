@@ -1,5 +1,6 @@
 import { cvFileSchema, publicJobApplyFieldsSchema, publicSubmitSuccessSchema } from "@prosektor/contracts";
 import { NextResponse } from "next/server";
+import { SupabaseClient } from "@supabase/supabase-js";
 import {
   asHeaders,
   asErrorBody,
@@ -173,9 +174,37 @@ export async function POST(req: Request) {
       .select("id")
       .single();
     if (insertError) {
-      // Best-effort cleanup to avoid orphaned objects.
-      await admin.storage.from(env.storageBucketPrivateCv).remove([key]);
+      // Robust cleanup with retry logic to avoid orphaned objects
+      await cleanupStorageFile(admin, env.storageBucketPrivateCv, key);
       throw mapPostgrestError(insertError);
+    }
+
+    // Helper function for robust storage cleanup with retries
+    async function cleanupStorageFile(
+      admin: SupabaseClient,
+      bucketName: string,
+      filePath: string,
+      maxRetries: number = 3
+    ): Promise<void> {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const { error } = await admin.storage.from(bucketName).remove([filePath]);
+          if (!error) {
+            return; // Success
+          }
+          console.warn(`[Cleanup] Attempt ${attempt} failed:`, error.message);
+        } catch (err) {
+          console.warn(`[Cleanup] Attempt ${attempt} threw:`, err);
+        }
+
+        // Wait before retry (exponential backoff)
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+        }
+      }
+
+      // Log final failure for manual cleanup
+      console.error(`[Cleanup] Failed to remove file after ${maxRetries} attempts:`, filePath);
     }
 
     return jsonOk(

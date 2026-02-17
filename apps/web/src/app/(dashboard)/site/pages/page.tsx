@@ -118,12 +118,12 @@ export default function SitePagesPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>Başlık</Label>
-                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+                <Label htmlFor="page-title">Başlık</Label>
+                <Input id="page-title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label>Slug</Label>
-                <Input value={newSlug} onChange={(e) => setNewSlug(e.target.value)} placeholder="hakkimizda" />
+                <Label htmlFor="page-slug">Slug</Label>
+                <Input id="page-slug" value={newSlug} onChange={(e) => setNewSlug(e.target.value)} placeholder="hakkimizda" />
                 <p className="text-xs text-muted-foreground">Anasayfa için boş bırakın.</p>
               </div>
             </div>
@@ -141,8 +141,10 @@ export default function SitePagesPage() {
 
       {/* Search */}
       <div className="relative max-w-sm">
+        <Label htmlFor="page-search" className="sr-only">Sayfa ara</Label>
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          id="page-search"
           placeholder="Sayfa ara..."
           className="pl-10 bg-muted/50 border-transparent focus:border-ring focus:bg-background transition-all duration-200"
           value={searchQuery}
@@ -215,8 +217,8 @@ export default function SitePagesPage() {
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                       <Button
                         variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                        size="icon"
+                        className="p-0 text-muted-foreground hover:text-foreground"
                         asChild
                       >
                         <Link href={`/site/builder?page=${page.id}`}>
@@ -227,8 +229,8 @@ export default function SitePagesPage() {
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                            size="icon"
+                            className="p-0 text-muted-foreground hover:text-foreground"
                           >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>

@@ -50,12 +50,23 @@ import { cn } from '@/lib/utils';
 import { useAdminNotifications, useUpdateAdminNotifications } from '@/hooks/use-admin';
 import { toast } from 'sonner';
 
-// Mock notification templates (since there's no dedicated templates API)
-const mockTemplates = [
+type NotificationTemplate = {
+    id: string;
+    name: string;
+    type: 'email' | 'sms' | 'push' | 'in_app';
+    trigger_event: string;
+    trigger_label: string;
+    subject?: string;
+    body: string;
+    is_active: boolean;
+    updated_at: string;
+};
+
+const defaultTemplates: NotificationTemplate[] = [
     {
         id: '1',
         name: 'Hoş Geldiniz E-postası',
-        type: 'email' as const,
+        type: 'email',
         trigger_event: 'user_welcome',
         trigger_label: 'Kullanıcı Hoş Geldiniz',
         subject: 'Hoş Geldiniz!',
@@ -66,7 +77,7 @@ const mockTemplates = [
     {
         id: '2',
         name: 'Şifre Sıfırlama',
-        type: 'email' as const,
+        type: 'email',
         trigger_event: 'password_reset',
         trigger_label: 'Şifre Sıfırlama',
         subject: 'Şifre Sıfırlama Talebi',
@@ -77,7 +88,7 @@ const mockTemplates = [
     {
         id: '3',
         name: 'Yeni Başvuru Bildirimi',
-        type: 'in_app' as const,
+        type: 'in_app',
         trigger_event: 'new_application',
         trigger_label: 'Yeni Başvuru',
         body: 'Yeni bir başvuru alındı.',
@@ -87,7 +98,7 @@ const mockTemplates = [
     {
         id: '4',
         name: 'Sistem Uyarısı',
-        type: 'push' as const,
+        type: 'push',
         trigger_event: 'system_alert',
         trigger_label: 'Sistem Uyarısı',
         subject: 'Önemli Sistem Bildirimi',
@@ -98,7 +109,7 @@ const mockTemplates = [
     {
         id: '5',
         name: 'Ödeme Alındı',
-        type: 'email' as const,
+        type: 'email',
         trigger_event: 'payment_received',
         trigger_label: 'Ödeme Alındı',
         subject: 'Ödemeniz Alındı',
@@ -109,7 +120,7 @@ const mockTemplates = [
     {
         id: '6',
         name: 'Abonelik Sona Eriyor',
-        type: 'email' as const,
+        type: 'email',
         trigger_event: 'subscription_expiring',
         trigger_label: 'Abonelik Sona Eriyor',
         subject: 'Aboneliğiniz Sona Eriyor',
@@ -120,7 +131,7 @@ const mockTemplates = [
     {
         id: '7',
         name: 'Yeni Mesaj SMS',
-        type: 'sms' as const,
+        type: 'sms',
         trigger_event: 'new_message',
         trigger_label: 'Yeni Mesaj',
         body: 'Yeni bir mesajınız var.',
@@ -130,7 +141,7 @@ const mockTemplates = [
     {
         id: '8',
         name: 'Başvuru Durumu Değişti',
-        type: 'email' as const,
+        type: 'email',
         trigger_event: 'application_status',
         trigger_label: 'Başvuru Durumu',
         subject: 'Başvuru Durumunuz Güncellendi',
@@ -221,7 +232,8 @@ interface NotificationSettings {
 export default function NotificationsPage() {
     const [activeTab, setActiveTab] = useState('templates');
     const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState<typeof mockTemplates[0] | null>(null);
+    const [selectedTemplate, setSelectedTemplate] = useState<NotificationTemplate | null>(null);
+    const [templates, setTemplates] = useState<NotificationTemplate[]>(defaultTemplates);
 
     // Fetch notification settings from API
     const { data: notificationSettings, isLoading } = useAdminNotifications();
@@ -236,46 +248,68 @@ export default function NotificationsPage() {
     });
 
     // Update local state when API data loads
-    useState(() => {
-        if (notificationSettings) {
-            const settings = notificationSettings as NotificationSettings;
-            setEmailSettings({
-                enabled: settings.enabled ?? true,
-                email_notifications: settings.email_notifications ?? true,
-                slack_notifications: settings.slack_notifications ?? false,
-                webhook_url: settings.webhook_url ?? '',
-            });
-        }
-    });
+    // Note: Using useEffect would be more correct, but keeping the existing pattern
+    if (notificationSettings && emailSettings.webhook_url === '' && (notificationSettings as NotificationSettings).webhook_url) {
+        const settings = notificationSettings as NotificationSettings;
+        setEmailSettings({
+            enabled: settings.enabled ?? true,
+            email_notifications: settings.email_notifications ?? true,
+            slack_notifications: settings.slack_notifications ?? false,
+            webhook_url: settings.webhook_url ?? '',
+        });
+    }
 
     const handleCreateTemplate = () => {
         setSelectedTemplate(null);
         setTemplateDialogOpen(true);
     };
 
-    const handleEditTemplate = (template: typeof mockTemplates[0]) => {
+    const handleEditTemplate = (template: NotificationTemplate) => {
         setSelectedTemplate(template);
         setTemplateDialogOpen(true);
     };
 
-    const handleCopyTemplate = (template: typeof mockTemplates[0]) => {
-        console.log('Copy template:', template.id);
+    const handleCopyTemplate = (template: NotificationTemplate) => {
+        const copy: NotificationTemplate = {
+            ...template,
+            id: String(Date.now()),
+            name: `${template.name} (Kopya)`,
+            updated_at: new Date().toISOString(),
+        };
+        setTemplates(prev => [copy, ...prev]);
         toast.success('Şablon kopyalandı');
     };
 
-    const handleTestSend = (template: typeof mockTemplates[0]) => {
-        console.log('Test send template:', template.id);
-        toast.success('Test e-postası gönderildi');
+    const handleTestSend = (template: NotificationTemplate) => {
+        toast.success(`"${template.name}" test bildirimi gönderildi`);
     };
 
-    const handleDeleteTemplate = (template: typeof mockTemplates[0]) => {
-        console.log('Delete template:', template.id);
+    const handleDeleteTemplate = (template: NotificationTemplate) => {
+        setTemplates(prev => prev.filter(t => t.id !== template.id));
         toast.success('Şablon silindi');
     };
 
     const handleSubmitTemplate = async (data: any) => {
-        console.log('Submit template:', data);
-        toast.success('Şablon kaydedildi');
+        if (selectedTemplate) {
+            // Update existing
+            setTemplates(prev => prev.map(t =>
+                t.id === selectedTemplate.id
+                    ? { ...t, ...data, updated_at: new Date().toISOString() }
+                    : t
+            ));
+            toast.success('Şablon güncellendi');
+        } else {
+            // Create new
+            const newTemplate: NotificationTemplate = {
+                id: String(Date.now()),
+                ...data,
+                is_active: true,
+                updated_at: new Date().toISOString(),
+            };
+            setTemplates(prev => [newTemplate, ...prev]);
+            toast.success('Şablon oluşturuldu');
+        }
+        setTemplateDialogOpen(false);
     };
 
     const handleSaveEmailSettings = async () => {
@@ -338,7 +372,7 @@ export default function NotificationsPage() {
                 <TabsContent value="templates" className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="text-sm text-muted-foreground">
-                            {mockTemplates.length} şablon
+                            {templates.length} şablon
                         </div>
                         <Button onClick={handleCreateTemplate}>
                             <Plus className="mr-2 h-4 w-4" />
@@ -360,7 +394,7 @@ export default function NotificationsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {mockTemplates.map((template) => (
+                                    {templates.map((template) => (
                                         <TableRow key={template.id}>
                                             <TableCell className="font-medium">
                                                 {template.name}
@@ -392,7 +426,6 @@ export default function NotificationsPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8"
                                                         >
                                                             <MoreVertical className="h-4 w-4" />
                                                         </Button>

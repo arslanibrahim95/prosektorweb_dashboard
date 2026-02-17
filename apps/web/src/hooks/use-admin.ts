@@ -26,11 +26,16 @@ export const adminKeys = {
     analytics: (period: string) => [...adminKeys.all, 'analytics', period] as const,
     settings: () => [...adminKeys.all, 'settings'] as const,
     sessions: (params?: Record<string, unknown>) => [...adminKeys.all, 'sessions', params] as const,
+    ipBlocks: (params?: Record<string, unknown>) => [...adminKeys.all, 'security', 'ip-blocks', params] as const,
+    backups: (params?: Record<string, unknown>) => [...adminKeys.all, 'backups', params] as const,
+    apiKeys: (params?: Record<string, unknown>) => [...adminKeys.all, 'api-keys', params] as const,
+    reports: (params?: Record<string, unknown>) => [...adminKeys.all, 'reports', params] as const,
     notifications: () => [...adminKeys.all, 'notifications'] as const,
     platformTenants: (params?: Record<string, unknown>) =>
         [...adminKeys.all, 'platform', 'tenants', params] as const,
     platformAnalytics: () => [...adminKeys.all, 'platform', 'analytics'] as const,
     platformSettings: () => [...adminKeys.all, 'platform', 'settings'] as const,
+    cache: () => [...adminKeys.all, 'cache'] as const,
 };
 
 // === Dashboard ===
@@ -132,7 +137,7 @@ export function useDeleteUser() {
 /**
  * useAdminLogs - Fetch activity logs with filters
  * 
- * @param params - Optional filters (search, level, action, page, limit)
+ * @param params - Optional filters (search, level, action, page, limit, date_from, date_to)
  */
 export function useAdminLogs(params?: {
     search?: string;
@@ -140,6 +145,8 @@ export function useAdminLogs(params?: {
     action?: string;
     page?: number;
     limit?: number;
+    date_from?: string;
+    date_to?: string;
 }) {
     return useQuery({
         queryKey: adminKeys.logs(params),
@@ -247,6 +254,80 @@ export function useAdminSessions(params?: {
     });
 }
 
+/**
+ * useTerminateSession - Terminate a specific session
+ */
+export function useTerminateSession() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (sessionId: string) =>
+            api.delete(`/admin/security/sessions/${sessionId}`),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.sessions() });
+        },
+    });
+}
+
+/**
+ * useAdminIpBlocks - Fetch IP blocks list
+ */
+export function useAdminIpBlocks(params?: {
+    page?: number;
+    limit?: number;
+}) {
+    return useQuery({
+        queryKey: adminKeys.ipBlocks(params),
+        queryFn: () => api.get('/admin/security/ip-blocks', params),
+        staleTime: 30 * 1000,
+    });
+}
+
+/**
+ * useCreateIpBlock - Create a new IP block
+ */
+export function useCreateIpBlock() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { ip_address: string; reason?: string; blocked_until?: string | null }) =>
+            api.post('/admin/security/ip-blocks', data),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.ipBlocks() });
+        },
+    });
+}
+
+/**
+ * useUpdateIpBlock - Update an existing IP block
+ */
+export function useUpdateIpBlock() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, data }: { id: string; data: { ip_address: string; reason?: string; blocked_until?: string | null } }) =>
+            api.patch(`/admin/security/ip-blocks?id=${id}`, data),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.ipBlocks() });
+        },
+    });
+}
+
+/**
+ * useDeleteIpBlock - Delete an IP block
+ */
+export function useDeleteIpBlock() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) =>
+            api.delete(`/admin/security/ip-blocks?id=${id}`),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.ipBlocks() });
+        },
+    });
+}
+
 // === Notifications ===
 
 /**
@@ -274,6 +355,50 @@ export function useUpdateAdminNotifications() {
         },
     });
 }
+
+// === Cache ===
+
+/**
+ * useAdminCache - Fetch cache stats and settings
+ */
+export function useAdminCache() {
+    return useQuery({
+        queryKey: adminKeys.cache(),
+        queryFn: () => api.get('/admin/cache'),
+        staleTime: 30 * 1000, // 30 seconds
+    });
+}
+
+/**
+ * useUpdateAdminCacheSettings - Update cache settings (PATCH mutation)
+ */
+export function useUpdateAdminCacheSettings() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: Record<string, unknown>) =>
+            api.patch('/admin/cache', data),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.cache() });
+        },
+    });
+}
+
+/**
+ * useClearAdminCache - Clear cache (DELETE mutation)
+ */
+export function useClearAdminCache() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (type?: string) =>
+            api.delete(`/admin/cache${type ? `?type=${type}` : ''}`),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.cache() });
+        },
+    });
+}
+
 
 // === Platform (Super Admin) ===
 
@@ -374,6 +499,167 @@ export function useUpdatePlatformSettings() {
             api.patch('/admin/platform/settings', data, platformSettingsResponseSchema),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: adminKeys.platformSettings() });
+        },
+    });
+}
+
+// === Backup ===
+
+/**
+ * useAdminBackups - Fetch backups list with pagination
+ */
+export function useAdminBackups(params?: { page?: number; limit?: number }) {
+    return useQuery({
+        queryKey: adminKeys.backups(params),
+        queryFn: () => api.get('/admin/backup', params),
+        staleTime: 30 * 1000,
+    });
+}
+
+/**
+ * useCreateBackup - Create a new backup (POST mutation)
+ */
+export function useCreateBackup() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: { name: string; type?: 'full' | 'partial'; description?: string }) =>
+            api.post('/admin/backup', data),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.backups() });
+        },
+    });
+}
+
+/**
+ * useDeleteBackup - Delete a backup (DELETE mutation)
+ */
+export function useDeleteBackup() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) =>
+            api.delete(`/admin/backup?id=${id}`),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.backups() });
+        },
+    });
+}
+
+// === API Keys ===
+
+/**
+ * useAdminApiKeys - Fetch API keys list with pagination
+ */
+export function useAdminApiKeys(params?: { page?: number; limit?: number }) {
+    return useQuery({
+        queryKey: adminKeys.apiKeys(params),
+        queryFn: () => api.get('/admin/api-keys', params),
+        staleTime: 30 * 1000,
+    });
+}
+
+/**
+ * useCreateApiKey - Create a new API key (POST mutation)
+ */
+export function useCreateApiKey() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: {
+            name: string;
+            permissions?: string[];
+            rate_limit?: number;
+            expires_at?: string;
+        }) => api.post('/admin/api-keys', data),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.apiKeys() });
+        },
+    });
+}
+
+/**
+ * useUpdateApiKey - Update an API key (PATCH mutation)
+ */
+export function useUpdateApiKey() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            id,
+            data,
+        }: {
+            id: string;
+            data: {
+                name?: string;
+                is_active?: boolean;
+                rate_limit?: number;
+            };
+        }) => api.patch(`/admin/api-keys/${id}`, data),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.apiKeys() });
+        },
+    });
+}
+
+/**
+ * useDeleteApiKey - Delete an API key (DELETE mutation)
+ */
+export function useDeleteApiKey() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) =>
+            api.delete(`/admin/api-keys/${id}`),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.apiKeys() });
+        },
+    });
+}
+
+// === Reports ===
+
+/**
+ * useAdminReports - Fetch reports list with pagination
+ */
+export function useAdminReports(params?: { page?: number; limit?: number; status?: string; type?: string }) {
+    return useQuery({
+        queryKey: adminKeys.reports(params),
+        queryFn: () => api.get('/admin/reports', params),
+        staleTime: 30 * 1000,
+    });
+}
+
+/**
+ * useDeleteReport - Delete a report (DELETE mutation)
+ */
+export function useDeleteReport() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) =>
+            api.delete(`/admin/reports?id=${id}`),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.reports() });
+        },
+    });
+}
+
+/**
+ * useCreateReport - Create a new report (POST mutation)
+ */
+export function useCreateReport() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: {
+            name: string;
+            type: 'users' | 'content' | 'analytics' | 'revenue' | 'custom';
+            format?: 'csv' | 'xlsx' | 'pdf';
+            parameters?: Record<string, unknown>;
+        }) => api.post('/admin/reports', data),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: adminKeys.reports() });
         },
     });
 }

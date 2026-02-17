@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Save, X, Plus, MapPin, Phone, Mail, Shield } from 'lucide-react';
 import { ActionButton } from '@/components/ui/action-button';
 import { toast } from 'sonner';
@@ -173,6 +174,99 @@ export default function ContactModulePage() {
     );
   }, [clearDraft, formState, saveMutation]);
 
+  // Skeleton state
+  if (isLoading) {
+    return (
+      <div className={cn('dashboard-page', 'dashboard-page-narrow')}>
+        {/* Header skeleton */}
+        <div>
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </div>
+
+        {/* Contact Info Card skeleton */}
+        <Card className="glass">
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-4 w-48 mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+            <div className="grid gap-2">
+              <Skeleton className="h-4 w-28" />
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-6 w-28" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-10" />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Skeleton className="h-4 w-20" />
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-32" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-10" />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Form Settings Card skeleton */}
+        <Card className="glass">
+          <CardHeader>
+            <Skeleton className="h-6 w-28" />
+            <Skeleton className="h-4 w-32 mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+              <Skeleton className="h-6 w-11 rounded-full" />
+            </div>
+            <div className="grid gap-2">
+              <Skeleton className="h-4 w-28" />
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-36" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-10" />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+            <div className="grid gap-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Save Button skeleton */}
+        <div className="flex justify-end gap-2">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-44" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn('dashboard-page', 'dashboard-page-narrow')}>
       {/* Header */}
@@ -224,6 +318,9 @@ export default function ContactModulePage() {
             </div>
             <div className="flex gap-2">
               <Input
+                id="contact-phone"
+                type="tel"
+                autoComplete="tel"
                 placeholder="+90 xxx xxx xxxx"
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
@@ -264,7 +361,9 @@ export default function ContactModulePage() {
             </div>
             <div className="flex gap-2">
               <Input
+                id="contact-email"
                 type="email"
+                autoComplete="email"
                 placeholder="email@domain.com"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
@@ -331,7 +430,9 @@ export default function ContactModulePage() {
             </div>
             <div className="flex gap-2">
               <Input
+                id="recipient-email"
                 type="email"
+                autoComplete="email"
                 placeholder="alici@email.com"
                 value={newRecipient}
                 onChange={(e) => setNewRecipient(e.target.value)}

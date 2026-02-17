@@ -56,6 +56,12 @@ export async function sendPublishWebhook(payload: Omit<PublishWebhookBody, "vers
     }
 
     const timestamp = Date.now().toString();
+
+    // SECURITY NOTE: Timestamp validation is performed by the RECEIVER of this webhook.
+    // The receiver should verify that the x-timestamp header is within an acceptable window
+    // (e.g., 5 minutes) to prevent replay attacks.
+    // See: https://owasp.org/www-community/attacks/Replay_attack
+
     const bodyString = JSON.stringify(fullPayload);
     const signature = createHmac("sha256", WEBHOOK_SECRET)
         .update(`${timestamp}.${bodyString}`)

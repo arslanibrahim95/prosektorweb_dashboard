@@ -208,7 +208,7 @@ export default function AdminContentPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 p-0"
+                                                            className="p-0"
                                                         >
                                                             <span className="sr-only">Menüyü aç</span>
                                                             <MoreHorizontal className="h-4 w-4" />
@@ -370,7 +370,7 @@ export default function AdminContentPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 p-0"
+                                                            className="p-0"
                                                         >
                                                             <span className="sr-only">Menüyü aç</span>
                                                             <MoreHorizontal className="h-4 w-4" />

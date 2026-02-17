@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -145,6 +145,43 @@ export default function ThemeCustomizationPage() {
 
     const { data: settingsData, isLoading } = useAdminSettings();
     const updateSettings = useUpdateAdminSettings();
+    const initializedRef = useRef(false);
+
+    // Initialize from saved settings (one-time sync)
+    const themeSettings = (settingsData as any)?.tenant?.settings?.theme;
+    if (themeSettings && !initializedRef.current) {
+        initializedRef.current = true;
+        if (themeSettings.colors) setColors(themeSettings.colors);
+        if (themeSettings.fontFamily) setFontFamily(themeSettings.fontFamily);
+        if (themeSettings.baseFontSize) setBaseFontSize(themeSettings.baseFontSize);
+        if (themeSettings.headingFont) setHeadingFont(themeSettings.headingFont);
+        if (themeSettings.lineHeight) setLineHeight(themeSettings.lineHeight);
+        if (themeSettings.sidebarWidth) setSidebarWidth(themeSettings.sidebarWidth);
+        if (themeSettings.borderRadius) setBorderRadius(themeSettings.borderRadius);
+        if (themeSettings.shadowStyle) setShadowStyle(themeSettings.shadowStyle);
+        if (themeSettings.compactMode !== undefined) setCompactMode(themeSettings.compactMode);
+    }
+
+    const handleSaveTheme = async () => {
+        try {
+            await updateSettings.mutateAsync({
+                theme: {
+                    colors,
+                    fontFamily,
+                    baseFontSize,
+                    headingFont,
+                    lineHeight,
+                    sidebarWidth,
+                    borderRadius,
+                    shadowStyle,
+                    compactMode,
+                },
+            });
+            toast.success('Tema ayarları kaydedildi');
+        } catch {
+            toast.error('Tema ayarları kaydedilemedi');
+        }
+    };
 
     const handleColorChange = (key: keyof ThemeColors, value: string) => {
         setColors({ ...colors, [key]: value });
@@ -171,6 +208,11 @@ export default function ThemeCustomizationPage() {
             <AdminPageHeader
                 title="Tema Özelleştirme"
                 description="Uygulamanızın görünümünü ve hissini özelleştirin"
+                actions={
+                    <Button onClick={handleSaveTheme} disabled={updateSettings.isPending}>
+                        {updateSettings.isPending ? 'Kaydediliyor...' : 'Tema Ayarlarını Kaydet'}
+                    </Button>
+                }
             />
 
             <div className="grid gap-6 lg:grid-cols-3">

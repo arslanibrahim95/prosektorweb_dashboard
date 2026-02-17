@@ -27,9 +27,9 @@ test.describe('E2E-CONTACT: Contact Form Flow', () => {
 
         // Step 2: Login and check inbox
         await page.goto('/login');
-        await page.fill('[data-testid="email-input"]', 'owner@prosektorweb.com');
-        await page.fill('[data-testid="password-input"]', 'test-password');
-        await page.click('[data-testid="login-button"]');
+        await page.fill('[data-slot="login-email"]', 'owner@prosektorweb.com');
+        await page.fill('[data-slot="login-password"]', 'test-password');
+        await page.click('[data-slot="login-submit"]');
         await page.waitForURL('/home');
 
         // Navigate to contact inbox
@@ -48,9 +48,9 @@ test.describe('E2E-CONTACT: Contact Form Flow', () => {
     test('should filter messages by date', async ({ page }) => {
         // Login
         await page.goto('/login');
-        await page.fill('[data-testid="email-input"]', 'owner@prosektorweb.com');
-        await page.fill('[data-testid="password-input"]', 'test-password');
-        await page.click('[data-testid="login-button"]');
+        await page.fill('[data-slot="login-email"]', 'owner@prosektorweb.com');
+        await page.fill('[data-slot="login-password"]', 'test-password');
+        await page.click('[data-slot="login-submit"]');
 
         await page.goto('/inbox/contact');
 
@@ -67,9 +67,9 @@ test.describe('E2E-CONTACT: Contact Form Flow', () => {
     test('should search messages', async ({ page }) => {
         // Login
         await page.goto('/login');
-        await page.fill('[data-testid="email-input"]', 'owner@prosektorweb.com');
-        await page.fill('[data-testid="password-input"]', 'test-password');
-        await page.click('[data-testid="login-button"]');
+        await page.fill('[data-slot="login-email"]', 'owner@prosektorweb.com');
+        await page.fill('[data-slot="login-password"]', 'test-password');
+        await page.click('[data-slot="login-submit"]');
 
         await page.goto('/inbox/contact');
 

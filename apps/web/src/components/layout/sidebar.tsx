@@ -25,6 +25,7 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
     Shield,
+    Database,
 } from 'lucide-react';
 import { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -100,6 +101,7 @@ export const navItems: NavItem[] = [
             { label: 'Kullanıcılar', href: '/settings/users', icon: <Users className="h-4 w-4" /> },
             { label: 'Bildirimler', href: '/settings/notifications', icon: <Inbox className="h-4 w-4" /> },
             { label: 'Fatura & Plan', href: '/settings/billing', icon: <FileText className="h-4 w-4" /> },
+            { label: 'Supabase', href: '/settings/supabase', icon: <Database className="h-4 w-4" /> },
         ],
     },
 ];
@@ -129,13 +131,13 @@ function NavItemComponent({ item, depth = 0, collapsed = false, unreadCount = 0 
                     collapsed ? 'justify-center px-3 py-2.5' : 'justify-between px-3 py-2.5',
                     isActive
                         ? 'bg-white/10 text-white'
-                        : 'text-white/60 hover:bg-white/[0.06] hover:text-white/90'
+                        : 'text-white/75 hover:bg-white/[0.06] hover:text-white/90'
                 )}
             >
                 <div className={cn('flex items-center', collapsed ? '' : 'gap-3')}>
                     <span className={cn(
                         'transition-colors duration-200',
-                        isActive ? 'text-sidebar-primary' : 'text-white/50'
+                        isActive ? 'text-sidebar-primary' : 'text-white/70'
                     )} aria-hidden="true">
                         {item.icon}
                     </span>
@@ -156,7 +158,7 @@ function NavItemComponent({ item, depth = 0, collapsed = false, unreadCount = 0 
                             </span>
                         )}
                         <ChevronDown className={cn(
-                            'h-4 w-4 text-white/60 transition-transform duration-200',
+                            'h-4 w-4 text-white/75 transition-transform duration-200',
                             isExpanded ? 'rotate-0' : '-rotate-90'
                         )} aria-hidden="true" />
                     </div>
@@ -205,7 +207,7 @@ function NavItemComponent({ item, depth = 0, collapsed = false, unreadCount = 0 
                 depth > 0 && !collapsed ? 'py-2' : '',
                 pathname === item.href
                     ? 'bg-sidebar-primary/15 text-white'
-                    : 'text-white/60 hover:bg-white/[0.06] hover:text-white/90'
+                    : 'text-white/75 hover:bg-white/[0.06] hover:text-white/90'
             )}
         >
             {/* Active indicator */}
@@ -214,7 +216,7 @@ function NavItemComponent({ item, depth = 0, collapsed = false, unreadCount = 0 
             )}
             <span className={cn(
                 'transition-colors duration-200',
-                pathname === item.href ? 'text-sidebar-primary' : depth > 0 ? 'text-white/60' : 'text-white/50'
+                pathname === item.href ? 'text-sidebar-primary' : depth > 0 ? 'text-white/75' : 'text-white/70'
             )} aria-hidden="true">
                 {item.icon}
             </span>
@@ -278,7 +280,7 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
                         {!collapsed && (
                             <div>
                                 <span className="font-bold text-[15px] text-white tracking-tight">ProsektorWeb</span>
-                                <span className="block text-[var(--font-size-xs)] text-white/60 font-medium tracking-widest uppercase">Dashboard</span>
+                                <span className="block text-[var(--font-size-xs)] text-white/75 font-medium tracking-widest uppercase">Dashboard</span>
                             </div>
                         )}
                     </Link>
@@ -322,7 +324,7 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
                         collapsed && 'flex justify-center p-2'
                     )}>
                         <div className={cn(
-                            'flex items-center text-[var(--font-size-xs)] text-white/60',
+                            'flex items-center text-[var(--font-size-xs)] text-white/75',
                             collapsed ? 'justify-center' : 'gap-2'
                         )}>
                             <div className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -346,7 +348,7 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
                                 size="icon"
                                 onClick={() => onToggleCollapse?.(!collapsed)}
                                 className={cn(
-                                    'w-full text-white/60 hover:text-white hover:bg-white/[0.06]',
+                                    'w-full text-white/75 hover:text-white hover:bg-white/[0.06]',
                                     collapsed ? 'h-9' : 'h-9'
                                 )}
                                 aria-label={collapsed ? 'Kenar çubuğunu genişlet' : 'Kenar çubuğunu daralt'}

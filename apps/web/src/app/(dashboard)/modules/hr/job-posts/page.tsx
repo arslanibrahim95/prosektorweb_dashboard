@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Pencil, Trash2, Briefcase, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 type JobPost = z.infer<typeof jobPostSchema>;
@@ -145,6 +146,51 @@ export default function HrJobPostsPage() {
 
   const activeCount = useMemo(() => items.filter((i) => i.is_active).length, [items]);
 
+  // Skeleton state
+  if (isLoading) {
+    return (
+      <div className="dashboard-page">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-56 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-28" />
+        </div>
+
+        {/* Summary Card skeleton */}
+        <Card className="glass border-border/50 shadow-sm">
+          <CardHeader>
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-4 w-32 mt-2" />
+          </CardHeader>
+        </Card>
+
+        {/* Job Posts list skeleton */}
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Card key={index} className="glass border-border/50 shadow-sm">
+              <CardContent className="pt-5 pb-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-page">
       <div className="flex items-center justify-between">
@@ -167,20 +213,20 @@ export default function HrJobPostsPage() {
 
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>Başlık</Label>
-                <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
+                <Label htmlFor="job-title">Başlık</Label>
+                <Input id="job-title" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
               </div>
 
               <div className="grid gap-2">
-                <Label>Slug</Label>
-                <Input value={form.slug} onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))} />
+                <Label htmlFor="job-slug">Slug</Label>
+                <Input id="job-slug" value={form.slug} onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">Sadece `a-z`, `0-9` ve `-`.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>Lokasyon</Label>
-                  <Input value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
+                  <Label htmlFor="job-location">Lokasyon</Label>
+                  <Input id="job-location" value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
                 </div>
 
                 <div className="grid gap-2">

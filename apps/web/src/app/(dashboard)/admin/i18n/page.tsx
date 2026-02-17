@@ -38,7 +38,7 @@ import {
     Download,
     Search,
 } from "lucide-react";
-import { useAdminSettings } from "@/hooks/use-admin";
+import { useAdminSettings, useUpdateAdminSettings } from "@/hooks/use-admin";
 import { toast } from "sonner";
 
 interface Language {
@@ -121,8 +121,11 @@ export default function LocalizationPage() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState("");
+    const [languages, setLanguages] = useState<Language[]>(mockLanguages);
+    const [translations, setTranslations] = useState<Translation[]>(mockTranslations);
 
     const { data: settingsData, isLoading } = useAdminSettings();
+    const updateSettings = useUpdateAdminSettings();
 
     const getStatusBadge = (status: string) => {
         const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
@@ -136,7 +139,7 @@ export default function LocalizationPage() {
         return <Badge variant={config.variant}>{config.label}</Badge>;
     };
 
-    const filteredTranslations = mockTranslations.filter((t) => {
+    const filteredTranslations = translations.filter((t) => {
         const matchesSearch =
             t.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
             t.turkish.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -151,9 +154,31 @@ export default function LocalizationPage() {
     };
 
     const handleSaveEdit = () => {
-        // Save the translation
+        if (editingId) {
+            setTranslations(prev => prev.map(t =>
+                t.id === editingId
+                    ? { ...t, target: editValue, status: editValue ? 'translated' as const : 'untranslated' as const }
+                    : t
+            ));
+            toast.success('Çeviri kaydedildi');
+        }
         setEditingId(null);
         setEditValue("");
+    };
+
+    const handleSaveI18nSettings = async () => {
+        try {
+            await updateSettings.mutateAsync({
+                i18n: {
+                    defaultLanguage: languages.find(l => l.isDefault)?.code || 'tr',
+                    enabledLanguages: languages.filter(l => l.status === 'active').map(l => l.code),
+                    languages: languages,
+                },
+            });
+            toast.success('Dil ayarları kaydedildi');
+        } catch {
+            toast.error('Dil ayarları kaydedilemedi');
+        }
     };
 
     const handleCancelEdit = () => {
@@ -165,7 +190,12 @@ export default function LocalizationPage() {
         <div className="space-y-6">
             <AdminPageHeader
                 title="Yerelleştirme (i18n)"
-                description="Dil ayarlarını ve çevirileri yönetin"
+                description="Dil ayarlarını ve çevirileri yönetin (Demo mod - veriler oturum boyunca korunur)"
+                actions={
+                    <Button onClick={handleSaveI18nSettings} disabled={updateSettings.isPending}>
+                        {updateSettings.isPending ? 'Kaydediliyor...' : 'Dil Ayarlarını Kaydet'}
+                    </Button>
+                }
             />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -208,7 +238,7 @@ export default function LocalizationPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {mockLanguages.map((language) => (
+                                        {languages.map((language) => (
                                             <tr key={language.id} className="border-b last:border-0">
                                                 <td className="py-4 text-sm font-medium">{language.name}</td>
                                                 <td className="py-4">
@@ -372,7 +402,7 @@ export default function LocalizationPage() {
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className="h-8 w-8"
+                                                                className=""
                                                                 onClick={handleSaveEdit}
                                                             >
                                                                 <Check className="h-4 w-4" />
@@ -380,7 +410,7 @@ export default function LocalizationPage() {
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className="h-8 w-8"
+                                                                className=""
                                                                 onClick={handleCancelEdit}
                                                             >
                                                                 <X className="h-4 w-4" />
