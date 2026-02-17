@@ -1,6 +1,23 @@
 # ProsektorWeb Dashboard - Technical Specification
 
-> **Version:** 1.0.0 | **Date:** 2026-02-08 | **Status:** MVP Specification
+> **Version:** 1.1.0 | **Date:** 2026-02-18 | **Status:** MVP Specification
+
+---
+
+## 🧠 Memory Bank Sistemi
+
+Bu proje **Memory Bank** sistemi ile çalışır. Uzun konuşmalarda bağlam kaybını önlemek için:
+
+| Dosya | Amaç | Ne Zaman Okunur? |
+|-------|------|------------------|
+| `CLAUDE.md` | Proje Anayasası - Temel kurallar | Her işe başlarken |
+| `SKILLS.md` | Özel yetenekler ve prosedürler | Skill gerektiğinde |
+| `.claude/memory/activeContext.md` | Şu an ne yapılıyor? | Bağlam kaybolduğunda |
+| `.claude/memory/progress.md` | Neler bitirildi? | Son durumu görmek için |
+
+```
+KONUŞMA UZADIĞINDA → Memory Bank'a bak → activeContext.md oku
+```
 
 ---
 

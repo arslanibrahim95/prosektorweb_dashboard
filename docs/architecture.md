@@ -1,5 +1,16 @@
 # ProsektorWeb Platform Architecture
 
+> **Versiyon:** 1.1.0 | **Güncelleme:** 2026-02-18
+
+## 🧠 Memory Bank Referansı
+
+Bu proje Memory Bank sistemi ile yönetilir. Detaylar için:
+- **Ana Kurallar:** `CLAUDE.md`
+- **Özel Yetenekler:** `SKILLS.md`
+- **Aktif Bağlam:** `.claude/memory/activeContext.md`
+
+---
+
 ## Overview
 
 ProsektorWeb platformu iki ana repository'den oluşur:
