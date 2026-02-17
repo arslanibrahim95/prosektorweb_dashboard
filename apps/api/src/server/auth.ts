@@ -5,22 +5,20 @@ import { ROLE_DISPLAY_NAMES, ROLE_PERMISSIONS } from './auth/permissions';
 
 export type { MeResponse, UserRole };
 
-// === Auth Context (Client-side cache) ===
-let cachedMe: MeResponse | null = null;
+// === Auth Context ===
+// SECURITY FIX: Removed module-level cachedMe to prevent cross-user data leakage
+// in shared-process environments (Next.js API routes, serverless warm starts).
+// Each call fetches fresh data — callers should handle their own request-scoped caching.
 
 export async function getMe(): Promise<MeResponse> {
-    if (cachedMe) return cachedMe;
-
-    const response = await api.get<MeResponse>('/me', undefined, meResponseSchema);
-    cachedMe = response;
-    return response;
-}
-
-export function clearAuthCache(): void {
-    cachedMe = null;
+    return api.get<MeResponse>('/me', undefined, meResponseSchema);
 }
 
 // === Permission Checking ===
+// SECURITY FIX: Supports hierarchical wildcards at any depth.
+// E.g. 'hr:job_posts:*' matches 'hr:job_posts:delete',
+//      'hr:*' matches 'hr:job_posts:anything',
+//      'domains:create,read,update' matches 'domains:read'.
 export function hasPermission(
     userRole: UserRole,
     requiredPermission: string
@@ -34,16 +32,35 @@ export function hasPermission(
     // Check exact match
     if (permissions.includes(requiredPermission)) return true;
 
-    // Check wildcard match (e.g., "pages:*" covers "pages:read")
-    const [resource, action] = requiredPermission.split(':');
-    const wildcardPermission = `${resource}:*`;
-    if (permissions.includes(wildcardPermission)) return true;
+    const requiredParts = requiredPermission.split(':');
 
-    // Check partial match (e.g., "domains:create,read,update" for "domains:read")
-    const partialPermission = permissions.find(p => p.startsWith(`${resource}:`));
-    if (partialPermission) {
-        const allowedActions = partialPermission.split(':')[1].split(',');
-        if (allowedActions.includes(action)) return true;
+    for (const permission of permissions) {
+        const permParts = permission.split(':');
+
+        // Wildcard matching at any level:
+        // 'hr:*' matches 'hr:job_posts:delete'
+        // 'hr:job_posts:*' matches 'hr:job_posts:delete'
+        if (permParts[permParts.length - 1] === '*') {
+            const prefix = permParts.slice(0, -1);
+            const matchesPrefix = prefix.every(
+                (part, i) => i < requiredParts.length && part === requiredParts[i]
+            );
+            if (matchesPrefix && requiredParts.length >= prefix.length) return true;
+        }
+
+        // Comma-separated action matching at any depth:
+        // 'domains:create,read,update' matches 'domains:read'
+        // 'hr:job_posts:create,read' matches 'hr:job_posts:read'
+        if (permParts.length === requiredParts.length) {
+            const allMatch = permParts.every((part, idx) => {
+                if (idx === permParts.length - 1) {
+                    // Last segment: check comma-separated actions
+                    return part.split(',').includes(requiredParts[idx]);
+                }
+                return part === requiredParts[idx];
+            });
+            if (allMatch) return true;
+        }
     }
 
     return false;

@@ -7,26 +7,61 @@ import {
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
-import { type UserRole } from "@prosektor/contracts";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import { z } from "zod";
+import { isIP } from "net";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
+// Check if string is valid CIDR notation (IPv4)
+function isIpv4Cidr(value: string): boolean {
+    const parts = value.split('/');
+    if (parts.length !== 2) return false;
+
+    const ip = parts[0];
+    const prefix = parseInt(parts[1], 10);
+
+    // Validate prefix
+    if (isNaN(prefix) || prefix < 0 || prefix > 32) return false;
+
+    // Validate IP
+    return isIP(ip) === 4;
 }
 
-// Supports both plain IPv4 and CIDR notation (e.g. 192.168.1.0/24)
+// Validate IP address format (IPv4, IPv6, or CIDR)
+function validateIpAddress(ip: string): { valid: boolean; error?: string } {
+    const trimmed = ip.trim();
+
+    if (!trimmed || trimmed.length === 0) {
+        return { valid: false, error: "IP adresi boş olamaz" };
+    }
+
+    // Check IPv4 or IPv6
+    if (isIP(trimmed)) {
+        return { valid: true };
+    }
+
+    // Check IPv4 CIDR (e.g., 192.168.1.0/24)
+    if (isIpv4Cidr(trimmed)) {
+        return { valid: true };
+    }
+
+    return { valid: false, error: "Geçerli bir IP adresi (IPv4, IPv6 veya CIDR notation) giriniz" };
+}
+
+// Supports both plain IPv4/IPv6 and CIDR notation (e.g. 192.168.1.0/24)
 const ipBlockSchema = z.object({
-    ip_address: z.string().min(1, "IP adresi gerekli"),
-    reason: z.string().max(500).optional(),
+    ip_address: z.string()
+        .min(1, "IP adresi gerekli")
+        .refine(
+            (val) => validateIpAddress(val).valid,
+            { message: "Geçerli bir IP adresi (IPv4, IPv6 veya CIDR notation) giriniz" }
+        ),
+    reason: z.string().max(500).trim().optional(),
     blocked_until: z.string().datetime().optional().nullable(),
 });
 

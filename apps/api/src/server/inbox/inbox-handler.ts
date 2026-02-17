@@ -3,12 +3,7 @@
  * Eliminates duplication across inbox API routes by providing a unified implementation
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { z } from "zod";
-import type { AuthContext } from "@/server/auth/context";
-
-// Type alias for Supabase query builder after .select() is called
-type PostgrestQueryBuilder = ReturnType<SupabaseClient['from']> extends { select(): infer R } ? R : unknown;
 import {
     asHeaders,
     asErrorBody,
@@ -17,9 +12,7 @@ import {
     jsonError,
     jsonOk,
     mapPostgrestError,
-    zodErrorToDetails,
 } from "@/server/api/http";
-import { buildSafeIlikeOr } from "@/server/api/postgrest-search";
 import { calculatePaginationRange } from "@/server/api/pagination";
 import { getOrSetCachedValue } from "@/server/cache";
 import { requireAuthContext } from "@/server/auth/context";
@@ -29,6 +22,7 @@ import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/r
 import { INBOX_COUNT_CACHE_TTL_SEC } from "./constants";
 import type { BaseInboxQuery } from "./base-schema";
 import { parseInboxQueryParams } from "./query-params";
+import { applyInboxFilters, getInboxDbClient, type InboxAdditionalFilters } from "./query-utils";
 
 /**
  * Configuration for inbox handler factory
@@ -62,8 +56,7 @@ export interface InboxHandlerConfig<TQuery extends BaseInboxQuery = BaseInboxQue
      * Optional function to apply additional filters to the query
      * Useful for routes like hr-applications that need job_post_id filtering
      */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    additionalFilters?: (query: any, params: TQuery, ctx: AuthContext) => any;
+    additionalFilters?: InboxAdditionalFilters<TQuery>;
 
     /**
      * Optional function to build cache key parts for additional filters
@@ -80,38 +73,6 @@ export interface InboxHandlerConfig<TQuery extends BaseInboxQuery = BaseInboxQue
      * Zod schema for validating the complete response
      */
     responseSchema: z.ZodType<{ items: unknown[]; total: number }>;
-}
-
-/**
- * Applies common inbox filters to a Supabase query
- * Extracted to avoid duplication between data and count queries
- * 
- * Note: Using unknown return type for flexibility with different query builder states
- * The caller is responsible for proper type handling
- */
-function applyInboxFilters<TQuery extends BaseInboxQuery>(
-    query: unknown,
-    params: TQuery,
-    searchFields: string[],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    additionalFilters?: (query: any, params: TQuery, ctx: AuthContext) => any,
-    ctx?: AuthContext
-): unknown {
-    // Type assertion for query builder operations
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q: any = query;
-
-    if (params.status === "read") q = q.eq("is_read", true);
-    if (params.status === "unread") q = q.eq("is_read", false);
-    if (params.date_from) q = q.gte("created_at", params.date_from);
-    if (params.date_to) q = q.lte("created_at", params.date_to);
-    if (params.search) {
-        q = q.or(buildSafeIlikeOr(searchFields, params.search));
-    }
-    if (additionalFilters && ctx) {
-        q = additionalFilters(q, params, ctx);
-    }
-    return q;
 }
 
 /**
@@ -172,13 +133,14 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
             const { from, to } = calculatePaginationRange(parsed.page, parsed.limit);
 
             // 5. Build data query with common filters
-            // Use admin client for super_admin to bypass RLS
-            const dbClient = ctx.role === 'super_admin' ? ctx.admin : ctx.supabase;
+            const dbClient = getInboxDbClient(ctx);
             const baseDataQuery = dbClient
                 .from(tableName)
                 .select(selectFields)
                 .eq("tenant_id", ctx.tenant.id)
                 .eq("site_id", parsed.site_id)
+                // Security: orderBy is strictly from server-side config, not user input.
+                // This prevents SQL injection via sort parameters.
                 .order(orderBy, { ascending: orderDirection === "asc" })
                 .range(from, to);
 
@@ -195,9 +157,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
 
             // 7. Execute data query
             const { data, error } = await dataQuery;
-            if (error) {
-                throw mapPostgrestError(error as unknown as import('@supabase/supabase-js').PostgrestError);
-            }
+            if (error) throw mapPostgrestError(error);
 
             // 11. Build cache key for count query
             const cacheKeyParts = [
@@ -240,9 +200,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                     );
 
                     const { error: countError, count } = await countQuery;
-                    if (countError) {
-                        throw mapPostgrestError(countError as unknown as import('@supabase/supabase-js').PostgrestError);
-                    }
+                    if (countError) throw mapPostgrestError(countError);
                     return count ?? 0;
                 }
             );

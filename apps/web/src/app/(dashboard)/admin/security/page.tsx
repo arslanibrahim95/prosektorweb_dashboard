@@ -34,9 +34,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-    Shield,
     Users,
-    ShieldAlert,
     ShieldCheck,
     Ban,
     Plus,
@@ -46,11 +44,8 @@ import {
     LogOut,
     Smartphone,
     Mail,
-    CheckCircle2,
-    XCircle,
     AlertTriangle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import {
     useAdminSessions,
     useAdminSettings,
@@ -63,17 +58,91 @@ import {
 } from '@/hooks/use-admin';
 import { toast } from 'sonner';
 
-const twofaMethodLabels = {
-    authenticator: 'Authenticator',
-    sms: 'SMS',
-    email: 'E-posta',
+type IpBlockDuration = '1h' | '24h' | '7d' | '30d' | 'permanent';
+
+interface SecuritySession {
+    id: string;
+    user_id: string;
+    user_email?: string | null;
+    user_name?: string | null;
+    device?: string | null;
+    browser?: string | null;
+    ip_address?: string | null;
+    location?: string | null;
+    last_activity?: string | null;
+    is_current?: boolean;
+}
+
+interface IpBlockRecord {
+    id: string;
+    ip_address: string;
+    reason?: string | null;
+    blocked_until?: string | null;
+    expires_at?: string | null;
+    created_at: string;
+    created_by?: string | null;
+    created_by_email?: string | null;
+    blocked_by?: string | null;
+}
+
+interface SecuritySettingsPayload {
+    twofa_enabled?: boolean;
+    session_timeout?: string;
+    twofa_required?: boolean;
+    twofa_methods?: {
+        authenticator?: boolean;
+        sms?: boolean;
+        email?: boolean;
+    };
+    auto_block?: {
+        failedLoginLimit?: number;
+        blockDuration?: string;
+    };
+}
+
+interface AdminSessionsResponse {
+    items?: SecuritySession[];
+}
+
+interface AdminIpBlocksResponse {
+    items?: IpBlockRecord[];
+}
+
+interface AdminSettingsResponse {
+    tenant?: {
+        settings?: {
+            security?: SecuritySettingsPayload;
+        };
+    };
+}
+
+interface IpBlockFormData {
+    ip_address: string;
+    reason: string;
+    duration: IpBlockDuration;
+    type: 'block' | 'allow';
+}
+
+const durationToMs: Record<Exclude<IpBlockDuration, 'permanent'>, number> = {
+    '1h': 60 * 60 * 1000,
+    '24h': 24 * 60 * 60 * 1000,
+    '7d': 7 * 24 * 60 * 60 * 1000,
+    '30d': 30 * 24 * 60 * 60 * 1000,
 };
 
-const twofaMethodIcons = {
-    authenticator: Smartphone,
-    sms: Smartphone,
-    email: Mail,
-};
+function parseDuration(duration: IpBlockDuration): number {
+    if (duration === 'permanent') {
+        return 0;
+    }
+    return durationToMs[duration];
+}
+
+function getBlockedUntil(duration: IpBlockDuration): string | null {
+    if (duration === 'permanent') {
+        return null;
+    }
+    return new Date(Date.now() + parseDuration(duration)).toISOString();
+}
 
 export default function SecurityPage() {
     const [activeTab, setActiveTab] = useState('sessions');
@@ -103,22 +172,22 @@ export default function SecurityPage() {
     const updateSettings = useUpdateAdminSettings();
 
     // IP Block hooks
-    const { data: ipBlocksData, isLoading: ipBlocksLoading } = useAdminIpBlocks();
+    const { data: ipBlocksData } = useAdminIpBlocks();
     const createIpBlock = useCreateIpBlock();
     const updateIpBlock = useUpdateIpBlock();
     const deleteIpBlock = useDeleteIpBlock();
     const terminateSession = useTerminateSession();
 
-    const sessions = (sessionsData as any)?.items || [];
-    const tenant = (settingsData as any)?.tenant || {};
+    const sessions = (sessionsData as AdminSessionsResponse | undefined)?.items ?? [];
+    const tenant = (settingsData as AdminSettingsResponse | undefined)?.tenant ?? {};
     const securitySettings = tenant?.settings?.security || {};
-    const blockedIPs: any[] = (ipBlocksData as any)?.items || [];
+    const blockedIPs = (ipBlocksData as AdminIpBlocksResponse | undefined)?.items ?? [];
 
     const handleTerminateSession = async (sessionId: string) => {
         try {
             await terminateSession.mutateAsync(sessionId);
             toast.success('Oturum sonlandırıldı');
-        } catch (error) {
+        } catch {
             toast.error('Oturum sonlandırılamadı');
         }
     };
@@ -130,7 +199,7 @@ export default function SecurityPage() {
                 await terminateSession.mutateAsync(session.id);
             }
             toast.success('Tüm oturumlar sonlandırıldı');
-        } catch (error) {
+        } catch {
             toast.error('Oturumlar sonlandırılamadı');
         }
     };
@@ -140,29 +209,29 @@ export default function SecurityPage() {
         setIpBlockDialogOpen(true);
     };
 
-    const handleEditIpBlock = (ipBlock: any) => {
+    const handleEditIpBlock = (ipBlock: IpBlockRecord) => {
         setSelectedIpBlock({
             id: ipBlock.id,
             ip_address: ipBlock.ip_address,
-            reason: ipBlock.reason,
+            reason: ipBlock.reason ?? '',
             duration: '24h' as const,
             type: 'block' as const,
         });
         setIpBlockDialogOpen(true);
     };
 
-    const handleDeleteIpBlock = async (ipBlock: any) => {
+    const handleDeleteIpBlock = async (ipBlock: IpBlockRecord) => {
         try {
             await deleteIpBlock.mutateAsync(ipBlock.id);
             toast.success('IP engelleme kaldırıldı');
-        } catch (error) {
+        } catch {
             toast.error('IP engelleme kaldırılamadı');
         }
     };
 
-    const handleSubmitIpBlock = async (data: any) => {
+    const handleSubmitIpBlock = async (data: IpBlockFormData) => {
         try {
-            const blockedUntil = data.duration === 'permanent' ? null : new Date(Date.now() + parseDuration(data.duration)).toISOString();
+            const blockedUntil = getBlockedUntil(data.duration);
 
             if (selectedIpBlock?.id) {
                 // Update existing IP block
@@ -185,20 +254,9 @@ export default function SecurityPage() {
                 toast.success('IP engellendi');
             }
             setIpBlockDialogOpen(false);
-        } catch (error) {
+        } catch {
             toast.error(selectedIpBlock?.id ? 'IP engeli güncellenemedi' : 'IP engellenemedi');
         }
-    };
-
-    // Helper function to parse duration to milliseconds
-    const parseDuration = (duration: string): number => {
-        const units: Record<string, number> = {
-            '1h': 60 * 60 * 1000,
-            '24h': 24 * 60 * 60 * 1000,
-            '7d': 7 * 24 * 60 * 60 * 1000,
-            '30d': 30 * 24 * 60 * 60 * 1000,
-        };
-        return units[duration] || 0;
     };
 
     const handleSaveSessionSettings = async () => {
@@ -210,7 +268,7 @@ export default function SecurityPage() {
                 },
             });
             toast.success('Oturum ayarları kaydedildi');
-        } catch (error) {
+        } catch {
             toast.error('Ayarlar kaydedilemedi');
         }
     };
@@ -225,7 +283,7 @@ export default function SecurityPage() {
                 },
             });
             toast.success('2FA ayarları kaydedildi');
-        } catch (error) {
+        } catch {
             toast.error('Ayarlar kaydedilemedi');
         }
     };
@@ -239,7 +297,7 @@ export default function SecurityPage() {
                 },
             });
             toast.success('Otomatik engelleme ayarları kaydedildi');
-        } catch (error) {
+        } catch {
             toast.error('Ayarlar kaydedilemedi');
         }
     };
@@ -336,7 +394,7 @@ export default function SecurityPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {sessions.map((session: any) => (
+                                        {sessions.map((session) => (
                                             <TableRow key={session.id}>
                                                 <TableCell>
                                                     <div className="flex flex-col">
@@ -609,22 +667,22 @@ export default function SecurityPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {blockedIPs.map((ipBlock: any) => (
+                                        {blockedIPs.map((ipBlock) => (
                                             <TableRow key={ipBlock.id}>
                                                 <TableCell className="font-mono font-medium">
                                                     {ipBlock.ip_address}
                                                 </TableCell>
                                                 <TableCell>{ipBlock.reason}</TableCell>
                                                 <TableCell className="text-muted-foreground">
-                                                    {ipBlock.blocked_by}
+                                                    {ipBlock.blocked_by ?? ipBlock.created_by_email ?? ipBlock.created_by ?? '-'}
                                                 </TableCell>
                                                 <TableCell className="text-muted-foreground">
                                                     {formatDate(ipBlock.created_at)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {ipBlock.expires_at ? (
+                                                    {(ipBlock.expires_at ?? ipBlock.blocked_until) ? (
                                                         <span className="text-muted-foreground">
-                                                            {formatDate(ipBlock.expires_at)}
+                                                            {formatDate(ipBlock.expires_at ?? ipBlock.blocked_until ?? ipBlock.created_at)}
                                                         </span>
                                                     ) : (
                                                         <Badge variant="secondary">Süresiz</Badge>

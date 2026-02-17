@@ -26,7 +26,7 @@ export function ProgressIndicator({
                 <div
                     className="absolute top-5 left-0 h-0.5 bg-primary -z-10 transition-all duration-300 ease-in-out"
                     style={{
-                        width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%`,
+                        width: totalSteps > 1 ? `${((currentStep - 1) / (totalSteps - 1)) * 100}%` : '0%',
                     }}
                 />
 

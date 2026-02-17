@@ -49,9 +49,12 @@ describe("POST /api/publish", () => {
         name: "Tenant",
         slug: "tenant",
         plan: "pro",
+        status: "active",
       },
       role: "admin",
       permissions: [],
+      activeTenantId: TENANT_ID,
+      availableTenants: [],
     });
   });
 

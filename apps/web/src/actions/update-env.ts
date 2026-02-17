@@ -13,6 +13,10 @@ interface SupabaseSettings {
     serviceRoleKey?: string;
 }
 
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu.';
+}
+
 export async function testSupabaseConnection(settings: SupabaseSettings) {
     try {
         const client = createClient(settings.url, settings.serviceRoleKey || settings.anonKey);
@@ -41,8 +45,8 @@ export async function testSupabaseConnection(settings: SupabaseSettings) {
                 buckets: data?.length
             }
         };
-    } catch (error: any) {
-        return { success: false, message: `Bağlantı hatası: ${error.message}` };
+    } catch (error: unknown) {
+        return { success: false, message: `Bağlantı hatası: ${getErrorMessage(error)}` };
     }
 }
 

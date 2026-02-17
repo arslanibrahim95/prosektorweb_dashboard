@@ -1,3 +1,10 @@
+/**
+ * API Client with Dependency Injection
+ * 
+ * ARCHITECTURE FIX: Factory pattern with dependency injection
+ * Replaces singleton pattern for better testability and flexibility.
+ */
+
 import { z } from 'zod';
 
 // === Error Types ===
@@ -79,26 +86,31 @@ export class ApiError extends Error {
     }
 }
 
+// === Dependencies Interface ===
+export interface ApiClientDependencies {
+    baseUrl: string;
+    accessTokenProvider?: () => Promise<string | null> | string | null;
+    contextHeadersProvider?: () => Promise<Record<string, string> | null> | Record<string, string> | null;
+}
+
 // === API Client ===
 export class ApiClient {
-    private baseUrl: string;
-    private accessTokenProvider: (() => Promise<string | null> | string | null) | null = null;
-    private contextHeadersProvider:
-        (() => Promise<Record<string, string> | null> | Record<string, string> | null) | null = null;
+    private deps: ApiClientDependencies;
 
-    constructor(baseUrl: string = '/api') {
-        this.baseUrl = baseUrl;
+    constructor(deps: ApiClientDependencies) {
+        this.deps = deps;
     }
 
     setAccessTokenProvider(provider: (() => Promise<string | null> | string | null) | null) {
-        this.accessTokenProvider = provider;
+        this.deps.accessTokenProvider = provider ?? undefined;
     }
 
     setContextHeadersProvider(
         provider:
-            (() => Promise<Record<string, string> | null> | Record<string, string> | null) | null
+            | (() => Promise<Record<string, string> | null> | Record<string, string> | null)
+            | null
     ) {
-        this.contextHeadersProvider = provider;
+        this.deps.contextHeadersProvider = provider ?? undefined;
     }
 
     async request<T>(
@@ -111,29 +123,24 @@ export class ApiClient {
             signal?: AbortSignal;
         }
     ): Promise<T> {
-        const url = `${this.baseUrl}${path}${options?.params ? buildQueryString(options.params) : ''}`;
+        const url = `${this.deps.baseUrl}${path}${options?.params ? buildQueryString(options.params) : ''}`;
 
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-        };
+        const headers: Record<string, string> = {};
 
-        const maybeToken = this.accessTokenProvider ? await this.accessTokenProvider() : null;
-
-        // DEBUG: Log token durumunu
-        if (process.env.NODE_ENV === 'development') {
-            console.log('[API Client] Token durumu:', {
-                hasProvider: !!this.accessTokenProvider,
-                hasToken: !!maybeToken,
-                tokenPreview: maybeToken ? `${maybeToken.substring(0, 20)}...` : null,
-            });
+        if (options?.body) {
+            headers['Content-Type'] = 'application/json';
         }
+
+        const maybeToken = this.deps.accessTokenProvider
+            ? await this.deps.accessTokenProvider()
+            : null;
 
         if (maybeToken) {
             headers.Authorization = `Bearer ${maybeToken}`;
         }
 
-        const contextHeaders = this.contextHeadersProvider
-            ? await this.contextHeadersProvider()
+        const contextHeaders = this.deps.contextHeadersProvider
+            ? await this.deps.contextHeadersProvider()
             : null;
         if (contextHeaders) {
             Object.entries(contextHeaders).forEach(([key, value]) => {
@@ -161,7 +168,6 @@ export class ApiClient {
             throw new ApiError(error.code, error.message, response.status, error.details);
         }
 
-        // Validate with Zod if schema provided
         if (options?.schema) {
             const result = options.schema.safeParse(data);
             if (!result.success) {
@@ -203,7 +209,41 @@ export class ApiClient {
         return this.request<T>('PUT', path, { body, schema });
     }
 
-    async delete<T>(path: string, schema?: z.ZodType<T>): Promise<T> {
-        return this.request<T>('DELETE', path, { schema });
+    async delete<T>(path: string, body?: unknown, schema?: z.ZodType<T>): Promise<T> {
+        return this.request<T>('DELETE', path, { body, schema });
     }
+}
+
+// === Factory Function ===
+// Creates a new API client instance with dependencies
+export function createApiClient(
+    baseUrl: string = '/api',
+    deps?: Partial<ApiClientDependencies>
+): ApiClient {
+    return new ApiClient({
+        baseUrl,
+        ...deps,
+    });
+}
+
+// === Legacy Exports (for backward compatibility during migration) ===
+// These will be removed after full migration to DI pattern
+
+let globalApiClient: ApiClient | null = null;
+
+/**
+ * @deprecated Use createApiClient() with dependency injection instead
+ */
+export function getGlobalApiClient(): ApiClient {
+    if (!globalApiClient) {
+        globalApiClient = createApiClient();
+    }
+    return globalApiClient;
+}
+
+/**
+ * @deprecated Use createApiClient() with dependency injection instead
+ */
+export function setGlobalApiClient(client: ApiClient): void {
+    globalApiClient = client;
 }

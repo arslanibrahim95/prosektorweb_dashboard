@@ -47,14 +47,23 @@ import {
     Download,
     MoreVertical,
     Trash2,
-    Clock,
-    CheckCircle,
-    AlertCircle,
     Loader2,
-    FileSpreadsheet,
-    File,
-    Calendar
 } from "lucide-react";
+
+interface ReportItem {
+    id: string;
+    name: string;
+    type: string;
+    format: string;
+    status: string;
+    file_url?: string | null;
+    created_at?: string | null;
+    completed_at?: string | null;
+}
+
+interface ReportsResponse {
+    items?: ReportItem[];
+}
 
 const reportTypes = [
     { value: 'users', label: 'Kullanıcılar Raporu', description: 'Kullanıcı verileri ve aktiviteleri' },
@@ -89,7 +98,7 @@ export default function ReportsPage() {
     const createReport = useCreateReport();
     const deleteReport = useDeleteReport();
 
-    const reports = (reportsData as any)?.items || [];
+    const reports = (reportsData as ReportsResponse | undefined)?.items ?? [];
 
     const handleDeleteReport = async () => {
         if (!deleteTarget) return;
@@ -126,12 +135,12 @@ export default function ReportsPage() {
             setReportType("");
             setReportFormat("csv");
             setDateRange("30d");
-        } catch (error) {
+        } catch {
             toast.error("Rapor oluşturulamadı");
         }
     };
 
-    const handleDownload = (report: any) => {
+    const handleDownload = (report: ReportItem) => {
         if (report.file_url) {
             window.open(report.file_url, '_blank');
             toast.success("İndirme başladı");
@@ -190,7 +199,7 @@ export default function ReportsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {reports.map((report: any) => (
+                                {reports.map((report) => (
                                     <TableRow key={report.id}>
                                         <TableCell className="font-medium">{report.name}</TableCell>
                                         <TableCell>

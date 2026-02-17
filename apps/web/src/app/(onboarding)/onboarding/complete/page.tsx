@@ -48,14 +48,15 @@ export default function CompletePage() {
         };
 
         refreshAuth();
-    }, [auth]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);  // FIX: Run once on mount — auth.refreshMe is stable
 
     useEffect(() => {
         // If user doesn't have a tenant yet, redirect back to organization page
         if (!isRefreshing && !auth.me?.tenant) {
             router.replace('/onboarding/organization');
         }
-    }, [auth.me, isRefreshing, router]);
+    }, [auth.me?.tenant, isRefreshing, router]);  // FIX: Depend on .tenant specifically
 
     useEffect(() => {
         // Auto redirect after 5 seconds (only if tenant exists)
@@ -66,7 +67,7 @@ export default function CompletePage() {
 
             return () => clearTimeout(timer);
         }
-    }, [auth.me, isRefreshing, router]);
+    }, [auth.me?.tenant, isRefreshing, router]);  // FIX: Depend on .tenant specifically
 
     // Show loading while refreshing
     if (isRefreshing) {
@@ -108,7 +109,7 @@ export default function CompletePage() {
                     Harika! Her Şey Hazır 🎉
                 </h1>
                 <p className="text-xl text-muted-foreground">
-                    Organizasyonunuz başarıyla oluşturuldu. Artık ProsektorWeb'i kullanmaya başlayabilirsiniz.
+                    Organizasyonunuz başarıyla oluşturuldu. Artık ProsektorWeb&apos;i kullanmaya başlayabilirsiniz.
                 </p>
             </div>
 
@@ -154,7 +155,7 @@ export default function CompletePage() {
                     className="gradient-primary border-0 text-white hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 h-12 px-8"
                     onClick={() => router.push('/home')}
                 >
-                    Dashboard'a Git
+                    Dashboard&apos;a Git
                     <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
                 <p className="text-sm text-muted-foreground">

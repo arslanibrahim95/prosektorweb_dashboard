@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/auth-provider';
 import { Eye, EyeOff, AlertCircle, Sparkles } from 'lucide-react';
+import { safeLocalStorageSetItem } from '@/lib/storage';
 
 const loginSchema = z.object({
   email: z.string().email('Geçerli bir e-posta adresi girin'),
@@ -79,12 +80,8 @@ function LoginForm() {
 
         // Handle remember me
         if (values.rememberMe) {
-          // Store remember me preference
-          try {
-            localStorage.setItem('rememberMe', 'true');
-          } catch {
-            // Ignore localStorage errors
-          }
+          // Store remember me preference securely
+          safeLocalStorageSetItem('rememberMe', 'true');
         }
 
         // Small delay for better UX

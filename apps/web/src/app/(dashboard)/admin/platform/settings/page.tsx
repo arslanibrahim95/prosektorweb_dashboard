@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { usePlatformSettings, useUpdatePlatformSettings } from '@/hooks/use-admin';
 import { useAuth } from '@/components/auth/auth-provider';
 import { UnauthorizedScreen } from '@/components/layout/role-guard';
@@ -46,16 +46,21 @@ export default function PlatformSettingsPage() {
     return map;
   }, [settingsQuery.data?.items]);
 
-  const [featureFlagsText, setFeatureFlagsText] = useState('');
-  const [planLimitsText, setPlanLimitsText] = useState('');
-
-  useEffect(() => {
-    if (!settingsQuery.data) return;
+  const defaultFeatureFlagsText = useMemo(() => {
     const featureFlags = settingsMap.get('feature_flags') ?? DEFAULT_FEATURE_FLAGS;
+    return JSON.stringify(featureFlags, null, 2);
+  }, [settingsMap]);
+
+  const defaultPlanLimitsText = useMemo(() => {
     const planLimits = settingsMap.get('plan_limits') ?? DEFAULT_PLAN_LIMITS;
-    setFeatureFlagsText(JSON.stringify(featureFlags, null, 2));
-    setPlanLimitsText(JSON.stringify(planLimits, null, 2));
-  }, [settingsMap, settingsQuery.data]);
+    return JSON.stringify(planLimits, null, 2);
+  }, [settingsMap]);
+
+  const [featureFlagsText, setFeatureFlagsText] = useState<string | null>(null);
+  const [planLimitsText, setPlanLimitsText] = useState<string | null>(null);
+
+  const featureFlagsInput = featureFlagsText ?? defaultFeatureFlagsText;
+  const planLimitsInput = planLimitsText ?? defaultPlanLimitsText;
 
   if (auth.me?.role !== 'super_admin') {
     return <UnauthorizedScreen />;
@@ -86,7 +91,7 @@ export default function PlatformSettingsPage() {
             <CardContent>
               <Textarea
                 className="min-h-[220px] font-mono text-xs"
-                value={featureFlagsText}
+                value={featureFlagsInput}
                 onChange={(event) => setFeatureFlagsText(event.target.value)}
               />
             </CardContent>
@@ -100,7 +105,7 @@ export default function PlatformSettingsPage() {
             <CardContent>
               <Textarea
                 className="min-h-[240px] font-mono text-xs"
-                value={planLimitsText}
+                value={planLimitsInput}
                 onChange={(event) => setPlanLimitsText(event.target.value)}
               />
             </CardContent>
@@ -110,13 +115,13 @@ export default function PlatformSettingsPage() {
             <Button
               disabled={updateMutation.isPending}
               onClick={() => {
-                const featureFlagsParsed = safeJsonParse(featureFlagsText);
+                const featureFlagsParsed = safeJsonParse(featureFlagsInput);
                 if (!featureFlagsParsed.ok) {
                   toast.error(`feature_flags: ${featureFlagsParsed.message}`);
                   return;
                 }
 
-                const planLimitsParsed = safeJsonParse(planLimitsText);
+                const planLimitsParsed = safeJsonParse(planLimitsInput);
                 if (!planLimitsParsed.ok) {
                   toast.error(`plan_limits: ${planLimitsParsed.message}`);
                   return;

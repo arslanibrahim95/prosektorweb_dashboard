@@ -5,6 +5,7 @@ import { listSitesResponseSchema } from '@prosektor/contracts';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '@/server/api';
 import { useAuth } from '@/components/auth/auth-provider';
+import { safeLocalStorageGetItem, safeLocalStorageSetItem, safeLocalStorageRemoveItem } from '@/lib/storage';
 
 export interface SiteContextValue {
   sites: Site[];
@@ -25,18 +26,18 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const getStoredSiteId = useCallback((tenantId: string | null): string | null => {
-    if (!tenantId || typeof window === 'undefined') return null;
-    return localStorage.getItem(`${CURRENT_SITE_STORAGE_PREFIX}${tenantId}`);
+    if (!tenantId) return null;
+    return safeLocalStorageGetItem(`${CURRENT_SITE_STORAGE_PREFIX}${tenantId}`);
   }, []);
 
   const persistSiteId = useCallback((tenantId: string | null, siteId: string | null) => {
-    if (!tenantId || typeof window === 'undefined') return;
+    if (!tenantId) return;
     const storageKey = `${CURRENT_SITE_STORAGE_PREFIX}${tenantId}`;
     if (siteId) {
-      localStorage.setItem(storageKey, siteId);
+      safeLocalStorageSetItem(storageKey, siteId);
       return;
     }
-    localStorage.removeItem(storageKey);
+    safeLocalStorageRemoveItem(storageKey);
   }, []);
 
   const setCurrentSiteId = useCallback((id: string) => {

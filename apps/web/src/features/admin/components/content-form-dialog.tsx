@@ -199,7 +199,7 @@ export function ContentFormDialog({
                                         <Input {...field} placeholder="url-slug" />
                                     </FormControl>
                                     <FormDescription>
-                                        URL'de görünecek benzersiz tanımlayıcı
+                                        URL&apos;de görünecek benzersiz tanımlayıcı
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>

@@ -55,7 +55,7 @@ export default function WelcomePage() {
                     <Rocket className="w-10 h-10" />
                 </div>
                 <h1 className="text-4xl sm:text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    ProsektorWeb'e Hoş Geldiniz! 🎉
+                    ProsektorWeb&apos;e Hoş Geldiniz! 🎉
                 </h1>
                 <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                     Web sitenizi kolayca yönetin, iletişim formları ve iş ilanları oluşturun, teklif talepleri alın.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Sparkles, Layout, CheckSquare, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { safeLocalStorageGetItem, safeLocalStorageSetItem } from '@/lib/storage';
 
 const STORAGE_KEY = 'prosektorweb_onboarding_done';
+
+/** Global event name to re-trigger the welcome tour */
+const REPLAY_EVENT = 'prosektorweb:replay-tour';
 
 const steps = [
   {
@@ -41,30 +45,41 @@ const steps = [
   },
 ];
 
+/**
+ * Dispatch this event from anywhere to re-open the welcome tour.
+ * Example: `replayWelcomeTour()`
+ */
+export function replayWelcomeTour() {
+  window.dispatchEvent(new CustomEvent(REPLAY_EVENT));
+}
+
 export function WelcomeModal() {
   const [open, setOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
-  useEffect(() => {
-    try {
-      const done = localStorage.getItem(STORAGE_KEY);
-      if (!done) {
-        // Small delay for page to render first
-        const timer = setTimeout(() => setOpen(true), 800);
-        return () => clearTimeout(timer);
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
+  const openTour = useCallback(() => {
+    setCurrentStep(0);
+    setOpen(true);
   }, []);
+
+  useEffect(() => {
+    const done = safeLocalStorageGetItem(STORAGE_KEY);
+    if (!done) {
+      const timer = setTimeout(() => openTour(), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [openTour]);
+
+  // Listen for replay events (from settings, help menu, etc.)
+  useEffect(() => {
+    const handler = () => openTour();
+    window.addEventListener(REPLAY_EVENT, handler);
+    return () => window.removeEventListener(REPLAY_EVENT, handler);
+  }, [openTour]);
 
   const handleClose = () => {
     setOpen(false);
-    try {
-      localStorage.setItem(STORAGE_KEY, 'true');
-    } catch {
-      // Ignore
-    }
+    safeLocalStorageSetItem(STORAGE_KEY, 'true');
   };
 
   const handleNext = () => {

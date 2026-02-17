@@ -20,7 +20,7 @@ export const CUSTOM_JWT_ISSUER = 'prosektor:auth';
 export const TOKEN_TTL = {
   ACCESS: 15 * 60, // 15 minutes
   REFRESH: 7 * 24 * 60 * 60, // 7 days
-  REMEMBER_ME: 30 * 24 * 60 * 60, // 30 days
+  REMEMBER_ME: 14 * 24 * 60 * 60, // 14 days (reduced from 30 for security)
 } as const;
 
 export type TokenType = 'access' | 'refresh' | 'remember_me';
@@ -29,8 +29,9 @@ export type TokenType = 'access' | 'refresh' | 'remember_me';
  * Custom JWT Payload Schema
  */
 const customJWTPayloadSchema = z.object({
-  sub: z.string(), // User ID
-  tenant_id: z.string(), // Tenant ID
+  // SECURITY FIX: Validate as UUID to prevent arbitrary string injection
+  sub: z.string().uuid(), // User ID
+  tenant_id: z.string().uuid(), // Tenant ID
   email: z.string().email(),
   name: z.string(),
   role: userRoleSchema,
@@ -104,10 +105,16 @@ export async function signCustomJWT(
   const ttl = getTTLForTokenType(options.tokenType);
   const exp = Math.floor(Date.now() / 1000) + ttl;
 
-  // Validate payload
+  // SECURITY FIX: Explicitly pick allowed fields instead of spreading
+  // Spreading `payload` could let callers inject `exp`, `iat`, `iss`, `aud`,
+  // or override `role`/`permissions` after schema validation.
   const validatedPayload = customJWTPayloadSchema.parse({
-    ...payload,
+    sub: payload.sub,
     tenant_id: options.tenantId,
+    email: payload.email,
+    name: payload.name,
+    role: payload.role,
+    permissions: payload.permissions,
   });
 
   const token = await new SignJWT(validatedPayload)
@@ -220,7 +227,17 @@ export async function refreshAccessToken(
   userInfo: UserInfo
 ): Promise<SignResult> {
   // Mevcut token'ı validate et (expire olmamalı)
-  await verifyCustomJWT(currentToken);
+  const payload = await verifyCustomJWT(currentToken);
+
+  // SECURITY FIX: Verify token claims match userInfo to prevent privilege escalation.
+  // Without this check, an attacker could present a valid token but pass different
+  // userInfo (e.g. elevated role/tenant) to get a new token with escalated privileges.
+  if (payload.sub !== userInfo.id || payload.tenant_id !== userInfo.tenantId) {
+    throw createError({
+      code: 'UNAUTHORIZED',
+      message: 'Token bilgileri kullanıcı bilgileri ile eşleşmiyor.',
+    });
+  }
 
   // Yeni access token oluştur
   return signCustomJWT(createCustomJWTPayload(userInfo), {

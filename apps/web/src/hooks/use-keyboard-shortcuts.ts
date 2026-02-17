@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { replayWelcomeTour } from '@/components/onboarding/welcome-modal';
 
 interface ShortcutConfig {
   key: string;
@@ -27,6 +28,7 @@ export function useKeyboardShortcuts(onHelpOpen: () => void) {
     { key: 'g d', description: 'Domainler', action: () => router.push('/site/domains') },
     { key: 'g s', description: 'Ayarlar', action: () => router.push('/settings/users') },
     { key: 'g m', description: 'Modüller', action: () => router.push('/modules/offer') },
+    { key: 'g t', description: 'Rehberi Tekrar Oynat', action: () => replayWelcomeTour() },
   ];
 
   const handleKeyDown = useCallback(

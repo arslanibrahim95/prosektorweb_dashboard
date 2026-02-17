@@ -16,6 +16,14 @@ describe("csv helpers", () => {
       expect(csvCell("@cmd")).toBe("'@cmd");
     });
 
+    it("mitigates tab and carriage-return formula injection", () => {
+      // Tab-prefixed values can trigger formula execution in some spreadsheet apps
+      expect(csvCell("\t=1+1")).toBe("'\t=1+1");
+      // CR-prefixed values: the '\r' in the result triggers CSV quoting
+      // (the formula prefix "'" is added first, then CSV escaping wraps in quotes due to \r)
+      expect(csvCell("\r=SUM(A1)")).toBe("\"'\r=SUM(A1)\"");
+    });
+
     it("handles null and undefined", () => {
       expect(csvCell(null)).toBe("");
       expect(csvCell(undefined)).toBe("");

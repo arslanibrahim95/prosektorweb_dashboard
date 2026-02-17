@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useState, createContext, useContext } from 'react';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { Breadcrumbs } from './breadcrumbs';
@@ -9,6 +10,7 @@ import { CommandPalette } from '@/components/search/command-palette';
 import { ShortcutsHelp } from './shortcuts-help';
 import { WelcomeModal } from '@/components/onboarding/welcome-modal';
 import { MobileNav } from './mobile-nav';
+import { safeLocalStorageGetItem, safeLocalStorageSetItem } from '@/lib/storage';
 
 interface AppShellProps {
     children: ReactNode;
@@ -49,17 +51,13 @@ export function AppShell({ children, user, tenant }: AppShellProps) {
 
     // Load sidebar collapsed state from localStorage on initialization (lazy)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-        if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('sidebar-collapsed');
-            return stored === 'true';
-        }
-        return false;
+        return safeLocalStorageGetItem('sidebar-collapsed') === 'true';
     });
 
     // Persist sidebar collapsed state to localStorage
     const handleSetSidebarCollapsed = (value: boolean) => {
         setSidebarCollapsed(value);
-        localStorage.setItem('sidebar-collapsed', String(value));
+        safeLocalStorageSetItem('sidebar-collapsed', String(value));
     };
 
     const sidebarCtx = {
@@ -99,7 +97,9 @@ export function AppShell({ children, user, tenant }: AppShellProps) {
                     }`}>
                     <div className="dashboard-main-content page-enter">
                         <Breadcrumbs />
-                        {children}
+                        <ErrorBoundary>
+                            {children}
+                        </ErrorBoundary>
                     </div>
                 </main>
 

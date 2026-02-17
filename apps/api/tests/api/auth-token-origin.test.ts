@@ -11,34 +11,34 @@ const mocks = vi.hoisted(() => {
       from(table: string) {
         const filters: Record<string, unknown> = {};
         const neqFilters: Record<string, unknown> = {};
-        const chain = {
-          select: vi.fn(() => chain),
-          eq: vi.fn((column: string, value: unknown) => {
-            filters[column] = value;
-            return chain;
-          }),
-          neq: vi.fn((column: string, value: unknown) => {
-            neqFilters[column] = value;
-            return chain;
-          }),
-          limit: vi.fn(() => chain),
-          maybeSingle: vi.fn(async () => {
-            if (table === "domains") {
-              const domain = String(filters.domain ?? "");
-              const blockedStatus = neqFilters.status;
-              const matched = state.dynamicDomains.find(
-                (row) => row.domain === domain && row.status !== blockedStatus,
-              );
-              return { data: matched ? { id: "domain-id" } : null, error: null };
-            }
-            if (table === "sites") {
-              const primaryDomain = String(filters.primary_domain ?? "");
-              const matched = state.dynamicSites.find((row) => row.primary_domain === primaryDomain);
-              return { data: matched ? { id: "site-id" } : null, error: null };
-            }
-            return { data: null, error: null };
-          }),
-        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const chain: any = {};
+        chain.select = vi.fn(() => chain);
+        chain.eq = vi.fn((column: string, value: unknown) => {
+          filters[column] = value;
+          return chain;
+        });
+        chain.neq = vi.fn((column: string, value: unknown) => {
+          neqFilters[column] = value;
+          return chain;
+        });
+        chain.limit = vi.fn(() => chain);
+        chain.maybeSingle = vi.fn(async () => {
+          if (table === "domains") {
+            const domain = String(filters.domain ?? "");
+            const blockedStatus = neqFilters.status;
+            const matched = state.dynamicDomains.find(
+              (row) => row.domain === domain && row.status !== blockedStatus,
+            );
+            return { data: matched ? { id: "domain-id" } : null, error: null };
+          }
+          if (table === "sites") {
+            const primaryDomain = String(filters.primary_domain ?? "");
+            const matched = state.dynamicSites.find((row) => row.primary_domain === primaryDomain);
+            return { data: matched ? { id: "site-id" } : null, error: null };
+          }
+          return { data: null, error: null };
+        });
         return chain;
       },
     };

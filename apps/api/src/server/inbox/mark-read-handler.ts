@@ -5,6 +5,7 @@
 
 import { asErrorBody, asStatus, HttpError, jsonError, jsonOk, mapPostgrestError } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { getInboxDbClient } from "./query-utils";
 
 /**
  * Creates a generic mark-as-read POST handler
@@ -16,8 +17,7 @@ export function createMarkReadHandler(tableName: string) {
             const ctx = await requireAuthContext(req);
             const { id } = await ctxRoute.params;
 
-            // Use admin client for super_admin to bypass RLS
-            const dbClient = ctx.role === 'super_admin' ? ctx.admin : ctx.supabase;
+            const dbClient = getInboxDbClient(ctx);
 
             const { data, error } = await dbClient
                 .from(tableName)

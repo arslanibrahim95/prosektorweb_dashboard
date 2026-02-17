@@ -22,7 +22,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -42,7 +42,7 @@ describe("createInboxHandler", () => {
                 orderBy: "updated_at",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -61,7 +61,7 @@ describe("createInboxHandler", () => {
                 orderDirection: "asc",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -80,7 +80,7 @@ describe("createInboxHandler", () => {
                 cacheKeyPrefix: "test",
                 additionalFilters: (query, _params, _ctx) => query,
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -99,7 +99,7 @@ describe("createInboxHandler", () => {
                 cacheKeyPrefix: "test",
                 additionalCacheKeyParts: (_params) => ["extra", "parts"],
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -119,7 +119,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -136,7 +136,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -155,7 +155,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint_one",
                 cacheKeyPrefix: "one",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const config2: InboxHandlerConfig = {
@@ -166,7 +166,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint_two",
                 cacheKeyPrefix: "two",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler1 = createInboxHandler(config1);
@@ -186,7 +186,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const config2: InboxHandlerConfig = {
@@ -197,7 +197,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler1 = createInboxHandler(config1);
@@ -215,7 +215,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint_a",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const config2: InboxHandlerConfig = {
@@ -226,7 +226,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint_b",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler1 = createInboxHandler(config1);
@@ -250,7 +250,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "hr_applications",
                 cacheKeyPrefix: "hr_app",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -270,7 +270,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -286,7 +286,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);
@@ -302,7 +302,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                responseSchema: z.object({ data: z.array(z.any()), total: z.number() }),
+                responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
             const handler = createInboxHandler(config);

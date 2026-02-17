@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import { Button } from "@/components/ui/button";
@@ -43,14 +43,32 @@ import {
 import { useAdminDashboard, useAdminSettings, useAdminCache, useClearAdminCache, useUpdateAdminCacheSettings } from "@/hooks/use-admin";
 import { toast } from "sonner";
 
+interface CacheStats {
+    entries?: number;
+    maxEntries?: number;
+    usagePercent?: number;
+    avgResponseTime?: number;
+}
+
+interface CacheSettingsPayload {
+    auto_purge?: boolean;
+    purge_interval?: "hourly" | "every6hours" | "daily" | "weekly";
+    max_size_mb?: number;
+}
+
+interface AdminCacheResponse {
+    settings?: CacheSettingsPayload;
+    stats?: CacheStats;
+}
+
 export default function CacheManagementPage() {
-    const [autoPurge, setAutoPurge] = useState(true);
-    const [purgeInterval, setPurgeInterval] = useState("daily");
-    const [maxCacheSize, setMaxCacheSize] = useState("1024");
+    const [autoPurgeOverride, setAutoPurgeOverride] = useState<boolean | null>(null);
+    const [purgeIntervalOverride, setPurgeIntervalOverride] = useState<"hourly" | "every6hours" | "daily" | "weekly" | null>(null);
+    const [maxCacheSizeOverride, setMaxCacheSizeOverride] = useState<string | null>(null);
     const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
 
-    const { data: dashboardData, isLoading: dashboardLoading } = useAdminDashboard();
-    const { data: settingsData, isLoading: settingsLoading } = useAdminSettings();
+    const { isLoading: dashboardLoading } = useAdminDashboard();
+    const { isLoading: settingsLoading } = useAdminSettings();
 
     // Cache hooks
     const { data: cacheData, isLoading: cacheLoading, refetch: refetchCache } = useAdminCache();
@@ -59,21 +77,13 @@ export default function CacheManagementPage() {
 
     const isLoading = dashboardLoading || settingsLoading || cacheLoading;
 
-    const cacheStats = (cacheData as any)?.stats || {};
-    const cacheSettings = (cacheData as any)?.settings || {};
+    const cacheResponse = cacheData as AdminCacheResponse | undefined;
+    const cacheStats = cacheResponse?.stats ?? {};
+    const cacheSettings = cacheResponse?.settings;
 
-    // Initialize form state from API settings
-    useEffect(() => {
-        if (cacheSettings.auto_purge !== undefined) {
-            setAutoPurge(cacheSettings.auto_purge);
-        }
-        if (cacheSettings.purge_interval) {
-            setPurgeInterval(cacheSettings.purge_interval);
-        }
-        if (cacheSettings.max_cache_size) {
-            setMaxCacheSize(String(cacheSettings.max_cache_size));
-        }
-    }, [cacheSettings.auto_purge, cacheSettings.purge_interval, cacheSettings.max_cache_size]);
+    const autoPurge = autoPurgeOverride ?? cacheSettings?.auto_purge ?? true;
+    const purgeInterval = purgeIntervalOverride ?? cacheSettings?.purge_interval ?? "daily";
+    const maxCacheSize = maxCacheSizeOverride ?? String(cacheSettings?.max_size_mb ?? 1024);
 
     const handleClearAll = async () => {
         try {
@@ -81,7 +91,7 @@ export default function CacheManagementPage() {
             toast.success('Önbellek temizlendi');
             refetchCache();
             setClearAllDialogOpen(false);
-        } catch (error) {
+        } catch {
             toast.error('Önbellek temizlenemedi');
         }
     };
@@ -91,10 +101,10 @@ export default function CacheManagementPage() {
             await updateCacheSettings.mutateAsync({
                 auto_purge: autoPurge,
                 purge_interval: purgeInterval,
-                max_cache_size: parseInt(maxCacheSize),
+                max_size_mb: Number.parseInt(maxCacheSize, 10),
             });
             toast.success('Önbellek ayarları kaydedildi');
-        } catch (error) {
+        } catch {
             toast.error('Ayarlar kaydedilemedi');
         }
     };
@@ -200,7 +210,7 @@ export default function CacheManagementPage() {
                             <Switch
                                 id="autoPurge"
                                 checked={autoPurge}
-                                onCheckedChange={setAutoPurge}
+                                onCheckedChange={setAutoPurgeOverride}
                             />
                         </div>
 
@@ -210,7 +220,7 @@ export default function CacheManagementPage() {
                             <Label htmlFor="purgeInterval">Temizleme Aralığı</Label>
                             <Select
                                 value={purgeInterval}
-                                onValueChange={setPurgeInterval}
+                                onValueChange={(value: "hourly" | "every6hours" | "daily" | "weekly") => setPurgeIntervalOverride(value)}
                                 disabled={!autoPurge}
                             >
                                 <SelectTrigger id="purgeInterval">
@@ -231,7 +241,7 @@ export default function CacheManagementPage() {
                                 id="maxCacheSize"
                                 type="number"
                                 value={maxCacheSize}
-                                onChange={(e) => setMaxCacheSize(e.target.value)}
+                                onChange={(e) => setMaxCacheSizeOverride(e.target.value)}
                                 disabled={!autoPurge}
                             />
                             <p className="text-xs text-muted-foreground">

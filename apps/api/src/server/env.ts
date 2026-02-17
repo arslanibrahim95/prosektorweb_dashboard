@@ -20,6 +20,8 @@ export interface ServerEnv {
   publicOfferRlWindowSec: number;
   publicHrApplyRlLimit: number;
   publicHrApplyRlWindowSec: number;
+  /** Dedicated salt for IP hashing in rate limiting (falls back to siteTokenSecret if not set) */
+  rateLimitSalt: string;
 }
 
 let cachedEnv: ServerEnv | null = null;
@@ -78,7 +80,8 @@ export function getServerEnv(): ServerEnv {
     );
   }
 
-  cachedEnv = {
+  // SECURITY: Object.freeze prevents downstream mutation of shared config
+  cachedEnv = Object.freeze({
     supabaseUrl,
     supabaseAnonKey,
     supabaseServiceRoleKey,
@@ -100,7 +103,9 @@ export function getServerEnv(): ServerEnv {
     publicOfferRlWindowSec: pickPositiveInt("PUBLIC_OFFER_RL_WINDOW_SEC", 60),
     publicHrApplyRlLimit: pickPositiveInt("PUBLIC_HR_APPLY_RL_LIMIT", 3),
     publicHrApplyRlWindowSec: pickPositiveInt("PUBLIC_HR_APPLY_RL_WINDOW_SEC", 300),
-  };
+    // SECURITY: Dedicated salt for IP hashing to avoid dual-use of siteTokenSecret
+    rateLimitSalt: pickEnv("RATE_LIMIT_SALT") ?? siteTokenSecret + ":ratelimit",
+  });
 
   return cachedEnv;
 }

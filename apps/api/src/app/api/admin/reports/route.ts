@@ -1,30 +1,79 @@
 import { NextRequest } from "next/server";
 import {
     HttpError,
+    parseJson,
     jsonError,
     jsonOk,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
+import { enforceRateLimit, rateLimitAuthKey } from "@/server/rate-limit";
+import { getServerEnv } from "@/server/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const MAX_LIMIT = 100;
+const MAX_PAGE = 1000000;
+
+function parsePositiveIntParam(
+    value: string | null,
+    fallback: number,
+    max: number,
+    field: string
+): number {
+    if (value === null || value.trim() === "") {
+        return fallback;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+        throw new HttpError(400, {
+            code: "VALIDATION_ERROR",
+            message: `${field} must be a positive integer`,
+        });
+    }
+
+    return Math.min(parsed, max);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        throw new HttpError(400, {
+            code: "VALIDATION_ERROR",
+            message: "Request body must be a JSON object",
+        });
+    }
+    return value as Record<string, unknown>;
+}
 
 // GET /api/admin/reports - List all reports for the tenant
 async function GET(req: NextRequest) {
     try {
         const ctx = await requireAuthContext(req);
 
-        if (!isAdminRole(ctx.role)) {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Admin yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role, "Admin yetkisi gerekli");
+
+        const env = getServerEnv();
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_reports", ctx.tenant.id, ctx.user.id),
+            env.dashboardReadRateLimit,
+            env.dashboardReadRateWindowSec,
+        );
 
         const { searchParams } = new URL(req.url);
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '20');
+        const page = parsePositiveIntParam(searchParams.get("page"), 1, MAX_PAGE, "page");
+        const limit = parsePositiveIntParam(searchParams.get("limit"), 20, MAX_LIMIT, "limit");
         const status = searchParams.get('status');
         const type = searchParams.get('type');
         const offset = (page - 1) * limit;
+        if (!Number.isSafeInteger(offset)) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Pagination values are out of range",
+            });
+        }
 
         // Build query
         let query = ctx.admin
@@ -64,7 +113,11 @@ async function GET(req: NextRequest) {
             countQuery = countQuery.eq('type', type);
         }
 
-        const { count } = await countQuery;
+        const { count, error: countError } = await countQuery;
+        if (countError) {
+            console.error('Error fetching report count:', countError);
+            return jsonError({ code: 'FETCH_ERROR', message: 'Failed to fetch report count' }, 500);
+        }
 
         return jsonOk({
             items: reports || [],
@@ -87,35 +140,53 @@ async function POST(req: NextRequest) {
     try {
         const ctx = await requireAuthContext(req);
 
-        if (!isAdminRole(ctx.role)) {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Admin yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role, "Admin yetkisi gerekli");
 
-        const body = await req.json();
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_reports_write", ctx.tenant.id, ctx.user.id),
+            5,
+            300,
+        );
+
+        const parsedBody = await parseJson(req);
+        const body = asRecord(parsedBody);
+        const name = typeof body.name === "string" ? body.name.trim() : "";
+        const type = typeof body.type === "string" ? body.type : "";
 
         // Validate required fields
-        if (!body.name || !body.type) {
+        if (!name || !type) {
             return jsonError({ code: 'VALIDATION_ERROR', message: 'Name and type are required' }, 400);
+        }
+        if (name.length > 255) {
+            return jsonError({ code: 'VALIDATION_ERROR', message: 'Name must be at most 255 characters' }, 400);
         }
 
         const validTypes = ['users', 'content', 'analytics', 'revenue', 'custom'];
         const validFormats = ['csv', 'xlsx', 'pdf'];
 
-        if (!validTypes.includes(body.type)) {
+        if (!validTypes.includes(type)) {
             return jsonError({ code: 'VALIDATION_ERROR', message: 'Invalid report type' }, 400);
         }
 
-        const format = validFormats.includes(body.format) ? body.format : 'csv';
+        const requestedFormat = typeof body.format === "string" ? body.format : "";
+        const format = validFormats.includes(requestedFormat) ? requestedFormat : 'csv';
+        const parameters =
+            typeof body.parameters === "object" &&
+            body.parameters !== null &&
+            !Array.isArray(body.parameters)
+                ? body.parameters
+                : {};
 
         // Create report record
         const { data: report, error } = await ctx.admin
             .from('reports')
             .insert({
                 tenant_id: ctx.tenant.id,
-                name: body.name,
-                type: body.type,
+                name,
+                type,
                 format: format,
-                parameters: body.parameters || {},
+                parameters,
                 status: 'pending',
                 expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
                 created_by: ctx.user.id,
@@ -164,9 +235,14 @@ async function DELETE(req: NextRequest) {
     try {
         const ctx = await requireAuthContext(req);
 
-        if (!isAdminRole(ctx.role)) {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Admin yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role, "Admin yetkisi gerekli");
+
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_reports_write", ctx.tenant.id, ctx.user.id),
+            5,
+            300,
+        );
 
         const { searchParams } = new URL(req.url);
         const reportId = searchParams.get('id');

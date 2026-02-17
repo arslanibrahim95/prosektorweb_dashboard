@@ -1,47 +1,23 @@
 import {
-    asHeaders,
-    asErrorBody,
-    asStatus,
     HttpError,
-    jsonError,
     jsonOk,
     mapPostgrestError,
     parseJson,
 } from "@/server/api/http";
-import { type UserRole } from "@prosektor/contracts";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole, isOwnerRole } from "@/server/auth/permissions";
-import { getServerEnv } from "@/server/env";
-import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { assertAdminRole, assertOwnerRole } from "@/server/admin/access";
+import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
-}
-
-function assertOwnerRole(role: UserRole) {
-    if (!isOwnerRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Sadece workspace sahibi ayarları değiştirebilir" });
-    }
-}
-
-export async function GET(req: Request) {
-    try {
+export const GET = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
-        const env = getServerEnv();
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_settings", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_settings", "read");
 
         // Get tenant settings
         const { data: tenant, error: tenantError } = await ctx.admin
@@ -68,13 +44,9 @@ export async function GET(req: Request) {
             200,
             rateLimitHeaders(rateLimit),
         );
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});
 
-export async function PATCH(req: Request) {
-    try {
+export const PATCH = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
         const body = await parseJson(req);
 
@@ -164,7 +136,4 @@ export async function PATCH(req: Request) {
         }
 
         return jsonOk(results);
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});

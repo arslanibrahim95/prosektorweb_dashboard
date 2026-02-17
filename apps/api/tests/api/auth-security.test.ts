@@ -11,7 +11,10 @@
 import { describe, it, expect } from 'vitest';
 import { getServerEnv } from '@/server/env';
 import { signCustomJWT, verifyCustomJWT, createCustomJWTPayload } from '@/server/auth/custom-jwt';
-import { extractTokenFromRequest } from '@/server/auth/dual-auth';
+import { extractBearerToken } from '@/server/auth/dual-auth';
+
+const TEST_USER_ID = 'aaaaaaaa-0000-4000-8000-000000000001';
+const TEST_TENANT_ID = 'bbbbbbbb-1111-4000-8000-000000000001';
 
 describe('Authentication Security', () => {
     describe('JWT Secret Separation', () => {
@@ -33,8 +36,8 @@ describe('Authentication Security', () => {
 
         it('should use custom JWT secret for signing tokens', async () => {
             const userInfo = {
-                id: 'test-user-id',
-                tenantId: 'test-tenant-id',
+                id: TEST_USER_ID,
+                tenantId: TEST_TENANT_ID,
                 email: 'test@example.com',
                 name: 'Test User',
                 role: 'owner' as const,
@@ -53,11 +56,11 @@ describe('Authentication Security', () => {
         });
     });
 
-    describe('Token Type Detection', () => {
-        it('should detect custom JWT by issuer claim', async () => {
+    describe('Bearer Token Extraction (secure - no payload inspection)', () => {
+        it('should extract valid bearer token', async () => {
             const userInfo = {
-                id: 'test-user-id',
-                tenantId: 'test-tenant-id',
+                id: TEST_USER_ID,
+                tenantId: TEST_TENANT_ID,
                 email: 'test@example.com',
                 name: 'Test User',
                 role: 'owner' as const,
@@ -76,35 +79,31 @@ describe('Authentication Security', () => {
                 },
             });
 
-            const { token, type } = extractTokenFromRequest(req);
+            const token = extractBearerToken(req);
             expect(token).toBe(result.token);
-            expect(type).toBe('custom');
         });
 
-        it('should reject malformed tokens', () => {
+        it('should reject malformed tokens (not 3 parts)', () => {
             const req = new Request('https://example.com', {
                 headers: {
                     'Authorization': 'Bearer invalid.token',
                 },
             });
 
-            const { token, type } = extractTokenFromRequest(req);
+            const token = extractBearerToken(req);
             expect(token).toBeNull();
-            expect(type).toBe('none');
         });
 
-        it('should reject tokens with manipulated headers', () => {
-            // Create a fake token with manipulated header
+        it('should not inspect unverified payload', () => {
+            // SECURITY: extractBearerToken should NOT decode/inspect JWT payload
+            // Token type determination happens via try-verify in requireDualAuth
             const fakeHeader = Buffer.from(JSON.stringify({
                 alg: 'HS256',
-                aud: 'prosektor:api',
             })).toString('base64url');
-
             const fakePayload = Buffer.from(JSON.stringify({
                 sub: 'attacker',
                 iss: 'attacker',
             })).toString('base64url');
-
             const fakeToken = `${fakeHeader}.${fakePayload}.fakesignature`;
 
             const req = new Request('https://example.com', {
@@ -113,18 +112,16 @@ describe('Authentication Security', () => {
                 },
             });
 
-            const { type } = extractTokenFromRequest(req);
-
-            // Should not be detected as custom JWT because issuer doesn't match
-            expect(type).not.toBe('custom');
+            // Token is extracted (3-part structure valid) but NOT decoded
+            // Actual verification happens in requireDualAuth via try-verify
+            const token = extractBearerToken(req);
+            expect(token).toBe(fakeToken);
         });
 
         it('should handle missing authorization header', () => {
             const req = new Request('https://example.com');
-            const { token, type } = extractTokenFromRequest(req);
-
+            const token = extractBearerToken(req);
             expect(token).toBeNull();
-            expect(type).toBe('none');
         });
 
         it('should handle invalid bearer scheme', () => {
@@ -134,17 +131,16 @@ describe('Authentication Security', () => {
                 },
             });
 
-            const { token, type } = extractTokenFromRequest(req);
+            const token = extractBearerToken(req);
             expect(token).toBeNull();
-            expect(type).toBe('none');
         });
     });
 
     describe('JWT Validation', () => {
         it('should validate custom JWT signature', async () => {
             const userInfo = {
-                id: 'test-user-id',
-                tenantId: 'test-tenant-id',
+                id: TEST_USER_ID,
+                tenantId: TEST_TENANT_ID,
                 email: 'test@example.com',
                 name: 'Test User',
                 role: 'owner' as const,
@@ -165,8 +161,8 @@ describe('Authentication Security', () => {
 
         it('should reject JWT with invalid signature', async () => {
             const userInfo = {
-                id: 'test-user-id',
-                tenantId: 'test-tenant-id',
+                id: TEST_USER_ID,
+                tenantId: TEST_TENANT_ID,
                 email: 'test@example.com',
                 name: 'Test User',
                 role: 'owner' as const,
@@ -190,8 +186,8 @@ describe('Authentication Security', () => {
             // This test would require mocking time or waiting for expiration
             // For now, we verify that the expiration is set correctly
             const userInfo = {
-                id: 'test-user-id',
-                tenantId: 'test-tenant-id',
+                id: TEST_USER_ID,
+                tenantId: TEST_TENANT_ID,
                 email: 'test@example.com',
                 name: 'Test User',
                 role: 'owner' as const,
@@ -213,8 +209,8 @@ describe('Authentication Security', () => {
     describe('Token Expiration', () => {
         it('should set correct expiration for access tokens', async () => {
             const userInfo = {
-                id: 'test-user-id',
-                tenantId: 'test-tenant-id',
+                id: TEST_USER_ID,
+                tenantId: TEST_TENANT_ID,
                 email: 'test@example.com',
                 name: 'Test User',
                 role: 'owner' as const,
@@ -232,8 +228,8 @@ describe('Authentication Security', () => {
 
         it('should set correct expiration for refresh tokens', async () => {
             const userInfo = {
-                id: 'test-user-id',
-                tenantId: 'test-tenant-id',
+                id: TEST_USER_ID,
+                tenantId: TEST_TENANT_ID,
                 email: 'test@example.com',
                 name: 'Test User',
                 role: 'owner' as const,
@@ -251,8 +247,8 @@ describe('Authentication Security', () => {
 
         it('should set correct expiration for remember_me tokens', async () => {
             const userInfo = {
-                id: 'test-user-id',
-                tenantId: 'test-tenant-id',
+                id: TEST_USER_ID,
+                tenantId: TEST_TENANT_ID,
                 email: 'test@example.com',
                 name: 'Test User',
                 role: 'owner' as const,
@@ -272,8 +268,8 @@ describe('Authentication Security', () => {
     describe('Security Headers', () => {
         it('should include required JWT claims', async () => {
             const userInfo = {
-                id: 'test-user-id',
-                tenantId: 'test-tenant-id',
+                id: TEST_USER_ID,
+                tenantId: TEST_TENANT_ID,
                 email: 'test@example.com',
                 name: 'Test User',
                 role: 'owner' as const,

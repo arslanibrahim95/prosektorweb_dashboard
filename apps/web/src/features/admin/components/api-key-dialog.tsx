@@ -53,8 +53,9 @@ export function ApiKeyDialog({ open, onOpenChange, apiKey }: ApiKeyDialogProps) 
 
     const handleSubmit = () => {
         if (!apiKey) {
-            // Generate a new API key
-            const newKey = `pk_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+            // SECURITY: Use crypto.randomUUID for cryptographically secure API key generation
+            const uuid = crypto.randomUUID().replace(/-/g, '');
+            const newKey = `pk_${uuid}`;
             setGeneratedKey(newKey);
         } else {
             // Update existing key

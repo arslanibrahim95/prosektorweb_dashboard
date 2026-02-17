@@ -1,15 +1,17 @@
-# UI Component Style Guide
+# UI Component Style Guide - 2026 Edition
 
-This guide documents the styling patterns and conventions used in the ProsektorWeb Dashboard UI components.
+This guide documents the styling patterns and conventions used in the ProsektorWeb Dashboard UI components, updated for 2026 trends.
+
+---
 
 ## Table of Contents
 
 - [Class Name Utility (`cn()`)](#class-name-utility-cn)
-- [Responsive Breakpoints](responsive-breakpoints)
+- [Responsive Breakpoints](#responsive-breakpoints)
 - [Design Tokens](#design-tokens)
 - [Component Patterns](#component-patterns)
-- [Custom Variants](#custom-variants)
-- [Data Attributes](#data-attributes)
+- [2026 Trends](#2026-trends)
+- [Accessibility](#accessibility)
 
 ---
 
@@ -116,14 +118,19 @@ Design tokens are stored in `@prosektorweb/design-tokens` and should be used ins
 | `--font-size-md` | 1rem (16px) | Default text |
 | `--font-size-lg` | 1.125rem (18px) | Large text |
 | `--font-size-xl` | 1.25rem (20px) | Headings |
+| `--font-size-2xl` | 1.5rem (24px) | Hero headings |
+| `--font-size-3xl` | 1.875rem (30px) | Large hero |
+| `--font-size-4xl` | 2.25rem (36px) | Hero titles |
+| `--font-size-5xl` | 3rem (48px) | Impact statements |
 
-**Usage:**
+**2026: Fluid Typography**
 ```tsx
-// ✅ Good - use token
-className="text-[var(--font-size-xs)]"
-
-// ❌ Bad - hardcoded value
-className="text-[10px]"
+// ✅ Good - fluid text that scales with viewport
+className="text-fluid-lg"  // clamp(1.125rem, 1rem + 0.625vw, 1.25rem)
+className="text-fluid-xl"
+className="text-fluid-2xl"
+className="text-fluid-3xl"
+className="text-fluid-4xl"
 ```
 
 ### Layout Tokens
@@ -131,19 +138,12 @@ className="text-[10px]"
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--sidebar-width` | 260px | Sidebar width |
+| `--sidebar-width-collapsed` | 72px | Collapsed sidebar |
 | `--topbar-height` | 64px | Topbar/header height |
 | `--header-height` | 64px | Generic header height |
-
-**Usage:**
-```tsx
-// ✅ Good
-className="lg:left-[var(--sidebar-width)]"
-className="h-[var(--topbar-height)]"
-
-// ❌ Bad
-className="lg:left-[260px]"
-className="h-16"
-```
+| `--content-max-width` | 1440px | Max content width |
+| `--content-narrow` | 768px | Narrow content |
+| `--content-wide` | 1200px | Wide content |
 
 ### Color Tokens
 
@@ -161,6 +161,24 @@ className="bg-blue-600 text-white"
 className="bg-slate-50 text-slate-900"
 ```
 
+### 2026: New Accent Colors
+
+```tsx
+// Coral - Energetic accent
+className="bg-coral-500 text-white"
+className="text-gradient-coral"
+
+// Turquoise - Fresh accent
+className="bg-turquoise-500 text-white"
+
+// Violet - Premium accent
+className="bg-violet-500 text-white"
+className="text-gradient-violet"
+
+// Emerald - Success evolution
+className="bg-emerald-500 text-white"
+```
+
 ### Radius Tokens
 
 ```tsx
@@ -171,6 +189,11 @@ className="rounded-[var(--radius-lg)]"
 // ✅ Also acceptable - Tailwind utilities
 className="rounded-md"
 className="rounded-lg"
+
+// 2026: New radius values
+className="rounded-xl"
+className="rounded-2xl"
+className="rounded-3xl"  // 2026 trend
 ```
 
 ### Transition Tokens
@@ -178,9 +201,11 @@ className="rounded-lg"
 ```tsx
 // ✅ Good
 style={{ transitionDuration: 'var(--transition-normal)' }}
+style={{ transitionDuration: 'var(--transition-micro)' }}  // 2026: Micro-interactions
 
 // ✅ Also acceptable - Tailwind utilities
 className="transition-all duration-200"
+className="transition-all duration-micro"  // 2026
 ```
 
 ---
@@ -194,7 +219,7 @@ The Button component uses `class-variance-authority` for variant management.
 ```tsx
 import { Button } from '@/components/ui/button'
 
-// Variants
+// Default variants
 <Button variant="default">Default</Button>
 <Button variant="destructive">Destructive</Button>
 <Button variant="outline">Outline</Button>
@@ -202,212 +227,165 @@ import { Button } from '@/components/ui/button'
 <Button variant="ghost">Ghost</Button>
 <Button variant="link">Link</Button>
 
+// 2026: New variants
+<Button variant="glass">Glass</Button>
+<Button variant="neo">Neo</Button>
+<Button variant="gradient">Gradient</Button>
+<Button variant="coral">Coral</Button>
+<Button variant="turquoise">Turquoise</Button>
+<Button variant="violet">Violet</Button>
+
 // Sizes
+<Button size="micro">Micro</Button>
 <Button size="xs">Extra Small</Button>
 <Button size="sm">Small</Button>
 <Button size="default">Default</Button>
 <Button size="lg">Large</Button>
+<Button size="xl">Extra Large</Button>  // 2026
 <Button size="icon">Icon</Button>
-
-// With custom className
-<Button className="w-full">Full Width</Button>
+<Button size="icon-xl">Icon XL</Button>  // 2026
 ```
 
 ### Card Component
 
 ```tsx
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, GlassCard, NeoCard, GradientCard } from '@/components/ui/card'
 
+// Default
 <Card>
   <CardHeader>
     <CardTitle>Title</CardTitle>
-    <CardDescription>Description text</CardDescription>
+    <CardDescription>Description</CardDescription>
   </CardHeader>
-  <CardContent>
-    Content goes here
-  </CardContent>
-  <CardFooter>
-    <Button>Action</Button>
-  </CardFooter>
+  <CardContent>Content</CardContent>
+  <CardFooter>Footer</CardFooter>
 </Card>
+
+// 2026: Glass card with hover effect
+<GlassCard hover>
+  Premium glass content
+</GlassCard>
+
+// 2026: Neo card
+<NeoCard>
+  Neomorphic content
+</NeoCard>
+
+// 2026: Gradient card
+<GradientCard hover>
+  Gradient content
+</GradientCard>
+
+// Card with variant prop
+<Card variant="glass" hover>Content</Card>
+<Card variant="neo" hover>Content</Card>
+<Card variant="gradient" hover>Content</Card>
 ```
 
-### Base Component Pattern
-
-When creating new components, follow this pattern:
+### Input Component
 
 ```tsx
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import { Input, SearchInput, FloatingInput } from '@/components/ui/input'
 
-interface MyComponentProps extends React.ComponentProps<"div"> {
-  // Add your custom props here
-}
+// Default
+<Input placeholder="Enter text" />
 
-function MyComponent({ className, ...props }: MyComponentProps) {
-  return (
-    <div
-      data-slot="my-component" // For data attributes
-      className={cn(
-        "base-classes-here", // Default styles
-        className // Allow parent overrides
-      )}
-      {...props}
-    />
-  )
-}
+// 2026: Glass input
+<Input variant="glass" placeholder="Glass input" />
 
-export { MyComponent }
+// 2026: Neo input
+<Input variant="neo" placeholder="Neo input" />
+
+// 2026: Filled input
+<Input variant="filled" placeholder="Filled input" />
+
+// Search input with icon
+<SearchInput placeholder="Search..." />
+
+// Floating label input
+<FloatingInput label="Email address" type="email" />
 ```
 
 ---
 
-## Custom Variants
+## 2026 Trends
 
-### Adding Variants to Existing Components
-
-For components using `class-variance-authority`:
+### Glassmorphism
 
 ```tsx
-// 1. Add the variant to the cva config
-const buttonVariants = cva(baseClasses, {
-  variants: {
-    variant: {
-      // ... existing variants
-      'custom': 'custom-variant-classes',
-    },
-    size: {
-      // ... existing sizes
-      'custom-size': 'custom-size-classes',
-    },
-  },
-})
-
-// 2. Update the type definition
-type ButtonVariants = VariantProps<typeof buttonVariants>
-// Type now includes 'custom' and 'custom-size'
-```
-
-### Creating Variant Components
-
-```tsx
-// Create a specialized variant component
-function PrimaryButton(props: React.ComponentProps<typeof Button>) {
-  return <Button variant="default" {...props} />
-}
-
-function IconButton({ icon: Icon, ...props }: { icon: React.ComponentType<{ className?: string }> } & React.ComponentProps<typeof Button>) {
-  return (
-    <Button size="icon" {...props}>
-      <Icon className="h-4 w-4" />
-    </Button>
-  )
-}
-```
-
----
-
-## Data Attributes
-
-Components use `data-slot` attributes for:
-
-1. **Testing**: Easy selection in tests
-2. **Styling**: Targeting specific component parts
-3. **Debugging**: Identifying components in browser dev tools
-
-### Pattern
-
-```tsx
-<Component data-slot="component-name" />
-```
-
-### Examples from the codebase
-
-```tsx
-// Button
-<Button data-slot="button" data-variant={variant} data-size={size} />
-
-// Card
-<div data-slot="card" />
-<div data-slot="card-header" />
-<div data-slot="card-title" />
-<div data-slot="card-content" />
-```
-
-### Usage in CSS
-
-```css
-/* You can use data attributes for styling */
-[data-slot="button"][data-variant="ghost"] {
-  /* Custom styles */
-}
-```
-
----
-
-## Utility Classes Reference
-
-### Semantic Badge Classes
-
-Available in `globals.css`:
-
-```tsx
-<Badge className="badge-success">Success</Badge>
-<Badge className="badge-warning">Warning</Badge>
-<Badge className="badge-danger">Danger</Badge>
-<Badge className="badge-info">Info</Badge>
-```
-
-### Glassmorphism Utilities
-
-```tsx
-<div className="glass">Glass effect</div>
+<div className="glass">Standard glass effect</div>
 <div className="glass-strong">Strong glass effect</div>
 <div className="glass-dark">Dark glass effect</div>
+<div className="glass-frosted">Frosted glass - Maximum blur</div>
 ```
 
-### Gradient Utilities
+### Neomorphism
 
 ```tsx
-<div className="gradient-sidebar">Sidebar gradient</div>
+<div className="neo">Neomorphic card</div>
+<div className="neo-pressed">Pressed neomorphic</div>
+<Button variant="neo">Neomorphic button</Button>
+<Input variant="neo">Neomorphic input</Input>
+```
+
+### Gradients
+
+```tsx
 <div className="gradient-primary">Primary gradient</div>
-<div className="gradient-accent">Accent gradient</div>
-<div className="gradient-success">Success gradient</div>
-<div className="gradient-warning">Warning gradient</div>
-<div className="gradient-info">Info gradient</div>
+<div className="gradient-coral">Coral gradient</div>
+<div className="gradient-turquoise">Turquoise gradient</div>
+<div className="gradient-violet">Violet gradient</div>
+<div className="gradient-ai">AI gradient</div>
+<div className="gradient-mesh">Mesh gradient</div>
+<div className="gradient-mesh-animated">Animated mesh</div>
 ```
 
 ### Glow Effects
 
 ```tsx
 <div className="glow-primary">Primary glow</div>
-<div className="glow-success">Success glow</div>
+<div className="glow-coral">Coral glow</div>
+<div className="glow-turquoise">Turquoise glow</div>
+<div className="glow-violet">Violet glow</div>
+<div className="glow-pulse">Pulsing glow</div>
 ```
 
-### Shadow Utilities
+### Micro-interactions
 
 ```tsx
-<div className="smooth-shadow">Smooth shadow</div>
-<div className="smooth-shadow-lg">Large smooth shadow</div>
-```
+// Hover lift effect
+<div className="hover-lift">Lifts on hover</div>
 
-### Animation Utilities
+// Scale on hover
+<div className="hover-scale">Scales on hover</div>
 
-```tsx
-<div className="page-enter">Page transition</div>
+// Page entrance
+<div className="page-enter-elastic">Elastic entrance</div>
 
+// Staggered children
 <div className="stagger-children">
   <div>Item 1</div>
   <div>Item 2</div>
-  {/* Staggered animation */}
+  <div>Item 3</div>
 </div>
 ```
 
-### Layout Utilities
+### 3D Utilities
 
 ```tsx
-<div className="card-padding">Card padding (p-6)</div>
-<div className="table-cell-padding">Table cell padding (p-4)</div>
+<div className="preserve-3d">Preserves 3D</div>
+<div className="perspective-1000">Perspective</div>
+<div className="rotate-y-180">Rotates 180deg</div>
+<div className="backface-hidden">Hidden backface</div>
+```
+
+### Gradient Text
+
+```tsx
+<h1 className="text-gradient">Gradient Title</h1>
+<h1 className="text-gradient-coral">Coral Gradient</h1>
+<h1 className="text-gradient-turquoise">Turquoise Gradient</h1>
+<h1 className="text-gradient-violet">Violet Gradient</h1>
 ```
 
 ---
@@ -423,6 +401,7 @@ Available in `globals.css`:
 - Use semantic color tokens
 - Keep component styles composable
 - Use `class-variance-authority` for variants
+- Use 2026 trends: glassmorphism, neomorphism, glows
 
 ### DON'T ❌
 
@@ -446,3 +425,41 @@ When migrating old styles to the new system:
 5. Replace `left-[260px]` → `left-[var(--sidebar-width)]`
 6. Replace arbitrary colors with semantic tokens
 7. Add `data-slot` attributes where missing
+8. Consider 2026 glassmorphism/neomorphism for premium feel
+9. Add micro-interactions for better UX
+10. Use fluid typography for responsive text
+
+---
+
+## Accessibility
+
+### Reduced Motion
+
+The system automatically respects `prefers-reduced-motion`:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+### Focus States
+
+Always ensure proper focus states for keyboard navigation:
+
+```tsx
+// Default focus ring
+<Button>Focus me</Button>
+
+// Enhanced glow focus (2026)
+<Input className="focus-glow" />
+```
+
+### Color Contrast
+
+All semantic tokens are designed to meet WCAG 2.1 AA standards.

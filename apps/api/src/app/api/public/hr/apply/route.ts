@@ -150,11 +150,11 @@ export async function POST(req: Request) {
       cvFile.name,
     )}`;
 
-    // Reuse the buffer from validation to avoid reading the file again
-    const buffer = Buffer.from(cvBuffer);
+    // PERFORMANCE FIX: Upload directly from the ArrayBuffer used for validation
+    // instead of creating a second Buffer copy (avoids double memory usage)
     const { error: uploadError } = await admin.storage
       .from(env.storageBucketPrivateCv)
-      .upload(key, buffer, { contentType: cvFile.type, upsert: false });
+      .upload(key, new Uint8Array(cvBuffer), { contentType: cvFile.type, upsert: false });
     if (uploadError) throw new HttpError(500, { code: "INTERNAL_ERROR", message: "Upload failed" });
 
     const { data: inserted, error: insertError } = await admin

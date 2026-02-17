@@ -7,9 +7,8 @@ import {
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
-import { type UserRole } from "@prosektor/contracts";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import { z } from "zod";
@@ -17,21 +16,9 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
-}
-
 const backupSchema = z.object({
     name: z.string().min(1).max(255),
     type: z.enum(["full", "partial", "config"]).optional(),
-});
-
-const backupQuerySchema = z.object({
-    page: z.string().optional(),
-    limit: z.string().optional(),
-    status: z.string().optional(),
 });
 
 // GET /api/admin/backup - List backups
@@ -117,7 +104,6 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
-        const env = getServerEnv();
 
         assertAdminRole(ctx.role);
 

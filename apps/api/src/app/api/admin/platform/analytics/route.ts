@@ -1,45 +1,23 @@
 import {
   platformAnalyticsResponseSchema,
-  type UserRole,
 } from "@prosektor/contracts";
 import {
-  asErrorBody,
-  asStatus,
-  asHeaders,
-  HttpError,
-  jsonError,
   jsonOk,
   mapPostgrestError,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
-import { isSuperAdminRole } from "@/server/auth/permissions";
-import { getServerEnv } from "@/server/env";
-import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { assertSuperAdminRole } from "@/server/admin/access";
+import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function assertSuperAdmin(role: UserRole) {
-  if (!isSuperAdminRole(role)) {
-    throw new HttpError(403, {
-      code: "FORBIDDEN",
-      message: "Bu işlem yalnızca super_admin için yetkilidir.",
-    });
-  }
-}
-
-export async function GET(req: Request) {
-  try {
+export const GET = withAdminErrorHandling(async (req: Request) => {
     const ctx = await requireAuthContext(req);
-    assertSuperAdmin(ctx.role);
+    assertSuperAdminRole(ctx.role);
 
-    const env = getServerEnv();
-    const rateLimit = await enforceRateLimit(
-      ctx.admin,
-      rateLimitAuthKey("platform_analytics", ctx.tenant.id, ctx.user.id),
-      env.dashboardReadRateLimit,
-      env.dashboardReadRateWindowSec,
-    );
+    const rateLimit = await enforceAdminRateLimit(ctx, "platform_analytics", "read");
 
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -175,7 +153,4 @@ export async function GET(req: Request) {
     });
 
     return jsonOk(payload, 200, rateLimitHeaders(rateLimit));
-  } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-  }
-}
+});

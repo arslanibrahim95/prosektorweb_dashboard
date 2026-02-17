@@ -1,48 +1,31 @@
 import {
-    asHeaders,
-    asErrorBody,
-    asStatus,
-    HttpError,
-    jsonError,
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
-import { type UserRole } from "@prosektor/contracts";
 import { getOrSetCachedValue } from "@/server/cache";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
+import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
 import { getServerEnv } from "@/server/env";
-import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PERIOD_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
 
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
-}
-
 function changePct(current: number, previous: number): number {
     if (previous === 0) return current > 0 ? 100 : 0;
     return Math.round(((current - previous) / previous) * 100);
 }
 
-export async function GET(req: Request) {
-    try {
+export const GET = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
         const env = getServerEnv();
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_analytics", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_analytics", "read");
 
         const url = new URL(req.url);
         const period = url.searchParams.get("period") || "30d";
@@ -184,7 +167,4 @@ export async function GET(req: Request) {
         });
 
         return jsonOk(payload, 200, rateLimitHeaders(rateLimit));
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});

@@ -55,6 +55,24 @@ import {
     EyeOff
 } from "lucide-react";
 
+interface ApiKeyItem {
+    id: string;
+    name: string;
+    key_prefix?: string;
+    permissions?: string[];
+    rate_limit?: number;
+    last_used_at?: string | null;
+    is_active?: boolean;
+}
+
+interface ApiKeysResponse {
+    items?: ApiKeyItem[];
+}
+
+interface CreateApiKeyResponse {
+    api_key?: string;
+}
+
 export default function ApiKeysPage() {
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [showApiKey, setShowApiKey] = useState(false);
@@ -70,7 +88,7 @@ export default function ApiKeysPage() {
     const updateApiKey = useUpdateApiKey();
     const deleteApiKey = useDeleteApiKey();
 
-    const apiKeys = (apiKeysData as any)?.items || [];
+    const apiKeys = (apiKeysData as ApiKeysResponse | undefined)?.items ?? [];
 
     const handleCreateApiKey = async () => {
         if (!newKeyName.trim()) {
@@ -87,7 +105,7 @@ export default function ApiKeysPage() {
             });
 
             // Show the API key only once
-            setNewApiKey((result as any).api_key);
+            setNewApiKey((result as CreateApiKeyResponse).api_key ?? null);
             setShowApiKey(true);
             toast.success("API anahtarı oluşturuldu");
             refetch();
@@ -97,7 +115,7 @@ export default function ApiKeysPage() {
             setNewKeyPermissions(["read"]);
             setNewKeyRateLimit(1000);
             setNewKeyExpires("");
-        } catch (error) {
+        } catch {
             toast.error("API anahtarı oluşturulamadı");
         }
     };
@@ -110,7 +128,7 @@ export default function ApiKeysPage() {
             });
             toast.success(currentActive ? "API anahtarı devre dışı bırakıldı" : "API anahtarı etkinleştirildi");
             refetch();
-        } catch (error) {
+        } catch {
             toast.error("API anahtarı güncellenemedi");
         }
     };
@@ -121,7 +139,7 @@ export default function ApiKeysPage() {
             await deleteApiKey.mutateAsync(deleteTarget);
             toast.success("API anahtarı silindi");
             refetch();
-        } catch (error) {
+        } catch {
             toast.error("API anahtarı silinemedi");
         } finally {
             setDeleteTarget(null);
@@ -195,7 +213,7 @@ export default function ApiKeysPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {apiKeys.map((key: any) => (
+                                {apiKeys.map((key) => (
                                     <TableRow key={key.id}>
                                         <TableCell className="font-medium">{key.name}</TableCell>
                                         <TableCell>
@@ -244,7 +262,7 @@ export default function ApiKeysPage() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem
-                                                        onClick={() => handleToggleActive(key.id, key.is_active)}
+                                                        onClick={() => handleToggleActive(key.id, Boolean(key.is_active))}
                                                     >
                                                         {key.is_active ? (
                                                             <>

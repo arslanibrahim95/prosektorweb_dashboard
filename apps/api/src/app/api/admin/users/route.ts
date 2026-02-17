@@ -1,7 +1,6 @@
 import {
     inviteTenantMemberRequestSchema,
     tenantRoleSchema,
-    type UserRole,
 } from "@prosektor/contracts";
 import {
     asHeaders,
@@ -15,18 +14,12 @@ import {
     zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
-}
 
 function normalizeRoleFilter(value: string | undefined): string | undefined {
     if (!value) return undefined;
@@ -108,28 +101,38 @@ export async function GET(req: Request) {
             }
         >();
 
-        await Promise.all(
-            userIds.map(async (userId) => {
-                const { data: userData, error: userError } = await ctx.admin.auth.admin.getUserById(userId);
-                if (userError) return;
+        // PERFORMANCE FIX: Batch user fetches to avoid overwhelming Supabase Admin API rate limits
+        // Process in chunks of 10 to balance parallelism and rate limiting
+        const BATCH_SIZE = 10;
+        for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+            const batch = userIds.slice(i, i + BATCH_SIZE);
+            const results = await Promise.allSettled(
+                batch.map((userId) => ctx.admin.auth.admin.getUserById(userId))
+            );
+
+            for (let j = 0; j < results.length; j++) {
+                const result = results[j];
+                if (result.status !== 'fulfilled') continue;
+                const { data: userData, error: userError } = result.value;
+                if (userError) continue;
                 const user = userData.user;
-                if (!user) return;
+                if (!user) continue;
 
                 const email = user.email ?? undefined;
                 const userMeta = (user.user_metadata ?? {}) as Record<string, unknown>;
                 const avatar_url = userMeta.avatar_url?.toString() || undefined;
                 const name = safeUserName(email, userMeta);
 
-                usersById.set(userId, {
-                    id: userId,
+                usersById.set(batch[j], {
+                    id: batch[j],
                     email,
                     name,
                     avatar_url,
                     invited_at: (user as unknown as { invited_at?: string | null }).invited_at ?? null,
                     last_sign_in_at: (user as unknown as { last_sign_in_at?: string | null }).last_sign_in_at ?? null,
                 });
-            }),
-        );
+            }
+        }
 
         const items = (data ?? []).map((m) => {
             const member = m as {

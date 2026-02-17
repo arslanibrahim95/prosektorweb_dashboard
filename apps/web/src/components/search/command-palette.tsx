@@ -8,15 +8,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Search, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight, HelpCircle, Keyboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { navItems, type NavItem } from '@/components/layout/sidebar';
+import { replayWelcomeTour } from '@/components/onboarding/welcome-modal';
 
 interface FlatItem {
   label: string;
   href: string;
   category: string;
   keywords: string;
+  action?: () => void;
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
 function flattenNavItems(items: NavItem[], parentLabel?: string): FlatItem[] {
@@ -56,7 +59,27 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const allItems = useMemo(() => flattenNavItems(navItems), []);
+  // Help & action items alongside navigation
+  const helpItems: FlatItem[] = useMemo(() => [
+    {
+      label: 'Rehberi Tekrar Oynat',
+      href: '#tour',
+      category: 'Yardım',
+      keywords: 'rehber tur welcome tour yardım help onboarding',
+      action: () => replayWelcomeTour(),
+      icon: HelpCircle,
+    },
+    {
+      label: 'Klavye Kısayolları',
+      href: '#shortcuts',
+      category: 'Yardım',
+      keywords: 'klavye kısayol shortcut keyboard',
+      action: () => document.dispatchEvent(new CustomEvent('open-shortcuts-help')),
+      icon: Keyboard,
+    },
+  ], []);
+
+  const allItems = useMemo(() => [...flattenNavItems(navItems), ...helpItems], [helpItems]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return allItems;
@@ -81,10 +104,14 @@ export function CommandPalette() {
   }, [grouped]);
 
   const navigate = useCallback(
-    (href: string) => {
+    (item: FlatItem) => {
       setOpen(false);
       setQuery('');
-      router.push(href);
+      if (item.action) {
+        item.action();
+      } else {
+        router.push(item.href);
+      }
     },
     [router],
   );
@@ -126,7 +153,7 @@ export function CommandPalette() {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       const item = flatFiltered[selectedIndex];
-      if (item) navigate(item.href);
+      if (item) navigate(item);
     }
   };
 
@@ -180,10 +207,10 @@ export function CommandPalette() {
                   const index = globalIndex;
                   return (
                     <button
-                      key={item.href}
+                      key={`${item.category}-${item.label}`}
                       data-index={index}
                       type="button"
-                      onClick={() => navigate(item.href)}
+                      onClick={() => navigate(item)}
                       onMouseEnter={() => setSelectedIndex(index)}
                       className={cn(
                         'w-full flex items-center justify-between px-3 py-2 text-sm rounded-md mx-1 transition-colors duration-100',
@@ -193,7 +220,10 @@ export function CommandPalette() {
                           : 'text-foreground hover:bg-muted/50',
                       )}
                     >
-                      <span>{item.label}</span>
+                      <span className="flex items-center gap-2">
+                        {item.icon && <item.icon className={cn('h-3.5 w-3.5', selectedIndex === index ? 'text-primary' : 'text-muted-foreground')} />}
+                        {item.label}
+                      </span>
                       {selectedIndex === index && (
                         <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                       )}

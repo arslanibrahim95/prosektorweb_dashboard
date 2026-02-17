@@ -6,9 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Mail, CheckCircle2, X, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { safeLocalStorageGetItem, safeLocalStorageSetItem } from '@/lib/storage';
 
 interface EmailVerificationReminderProps {
     className?: string;
+}
+
+type MaybeUserWithEmailConfirmation = {
+    email?: string;
+    email_confirmed_at?: string | null;
+};
+
+function getEmailConfirmationDate(user: unknown): string | null {
+    if (!user || typeof user !== 'object') {
+        return null;
+    }
+    const value = (user as MaybeUserWithEmailConfirmation).email_confirmed_at;
+    return typeof value === 'string' ? value : null;
 }
 
 export function EmailVerificationReminder({ className }: EmailVerificationReminderProps) {
@@ -17,8 +31,23 @@ export function EmailVerificationReminder({ className }: EmailVerificationRemind
     const [isResending, setIsResending] = useState(false);
 
     const user = auth.me?.user;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const isEmailVerified = (user as any)?.email_confirmed_at;
+    const isEmailVerified = Boolean(getEmailConfirmationDate(user));
+
+    // Check if reminder was previously dismissed
+    useEffect(() => {
+        if (!user || isEmailVerified) {
+            return;
+        }
+        const dismissed = safeLocalStorageGetItem('email_verification_dismissed');
+        if (dismissed) {
+            // Show again after 24 hours
+            const dismissedTime = parseInt(dismissed);
+            const oneDay = 24 * 60 * 60 * 1000;
+            if (Date.now() - dismissedTime < oneDay) {
+                setIsVisible(false);
+            }
+        }
+    }, [user, isEmailVerified]);
 
     // Don't show if user is not logged in or email is already verified
     if (!user || isEmailVerified || !isVisible) {
@@ -48,26 +77,9 @@ export function EmailVerificationReminder({ className }: EmailVerificationRemind
 
     const handleDismiss = () => {
         setIsVisible(false);
-        // Store dismissed state in localStorage
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('email_verification_dismissed', Date.now().toString());
-        }
+        // Store dismissed state in localStorage securely
+        safeLocalStorageSetItem('email_verification_dismissed', Date.now().toString());
     };
-
-    // Check if reminder was previously dismissed
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const dismissed = localStorage.getItem('email_verification_dismissed');
-            if (dismissed) {
-                // Show again after 24 hours
-                const dismissedTime = parseInt(dismissed);
-                const oneDay = 24 * 60 * 60 * 1000;
-                if (Date.now() - dismissedTime < oneDay) {
-                    setIsVisible(false);
-                }
-            }
-        }
-    }, []);
 
     return (
         <Card className={`bg-amber-50 border-amber-200 ${className}`}>
@@ -130,8 +142,7 @@ export function EmailVerificationBanner() {
     const [isVisible, setIsVisible] = useState(true);
 
     const user = auth.me?.user;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const isEmailVerified = (user as any)?.email_confirmed_at;
+    const isEmailVerified = Boolean(getEmailConfirmationDate(user));
 
     if (!user || isEmailVerified || !isVisible) {
         return null;
@@ -171,8 +182,7 @@ export function EmailVerificationBanner() {
 export function EmailVerifiedBadge() {
     const auth = useAuth();
     const user = auth.me?.user;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const isEmailVerified = (user as any)?.email_confirmed_at;
+    const isEmailVerified = Boolean(getEmailConfirmationDate(user));
 
     if (!user || !isEmailVerified) {
         return null;

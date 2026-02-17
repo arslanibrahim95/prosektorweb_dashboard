@@ -28,6 +28,7 @@ export interface OnboardingEventProperties {
 
 /**
  * Track onboarding event
+ * SECURITY FIX: Added error handling to prevent component crashes
  * 
  * @param event - Event name
  * @param properties - Event properties
@@ -47,30 +48,36 @@ export function trackOnboardingEvent(
         console.log('[Onboarding Analytics]', event, eventData);
     }
 
-    // TODO: Integrate with your analytics service
-    // Example integrations:
+    // SECURITY FIX: Wrap analytics calls in try-catch to prevent UI crashes
+    try {
+        // TODO: Integrate with your analytics service
+        // Example integrations:
 
-    // PostHog
-    // if (typeof window !== 'undefined' && window.posthog) {
-    //     window.posthog.capture(event, eventData);
-    // }
+        // PostHog
+        // if (typeof window !== 'undefined' && window.posthog) {
+        //     window.posthog.capture(event, eventData);
+        // }
 
-    // Mixpanel
-    // if (typeof window !== 'undefined' && window.mixpanel) {
-    //     window.mixpanel.track(event, eventData);
-    // }
+        // Mixpanel
+        // if (typeof window !== 'undefined' && window.mixpanel) {
+        //     window.mixpanel.track(event, eventData);
+        // }
 
-    // Google Analytics (gtag)
-    // if (typeof window !== 'undefined' && window.gtag) {
-    //     window.gtag('event', event, eventData);
-    // }
+        // Google Analytics (gtag)
+        // if (typeof window !== 'undefined' && window.gtag) {
+        //     window.gtag('event', event, eventData);
+        // }
 
-    // Custom API endpoint
-    // fetch('/api/analytics/track', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ event, properties: eventData }),
-    // }).catch(console.error);
+        // Custom API endpoint
+        // fetch('/api/analytics/track', {
+        //     method: 'POST',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify({ event, properties: eventData }),
+        // }).catch(console.error);
+    } catch (error) {
+        // Silently fail to prevent breaking the UI
+        console.warn('[Analytics] Tracking failed:', error);
+    }
 }
 
 /**

@@ -1,19 +1,14 @@
 import {
-    asHeaders,
-    asErrorBody,
-    asStatus,
     HttpError,
-    jsonError,
     jsonOk,
     mapPostgrestError,
     zodErrorToDetails,
 } from "@/server/api/http";
-import { type UserRole } from "@prosektor/contracts";
 import { buildSafeIlikeOr, safeSearchParamSchema } from "@/server/api/postgrest-search";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
-import { getServerEnv } from "@/server/env";
-import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { assertAdminRole } from "@/server/admin/access";
+import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -28,25 +23,12 @@ export const adminContentPostsQuerySchema = z
     })
     .strict();
 
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
-}
-
-export async function GET(req: Request) {
-    try {
+export const GET = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
-        const env = getServerEnv();
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_content_posts", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_content_posts", "read");
 
         const url = new URL(req.url);
         const parsedQuery = adminContentPostsQuerySchema.safeParse({
@@ -96,7 +78,4 @@ export async function GET(req: Request) {
             200,
             rateLimitHeaders(rateLimit),
         );
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});

@@ -84,9 +84,12 @@ describe.each(cases)("POST /api/inbox/%s/bulk-read", ({ table, handler }) => {
         name: "Tenant",
         slug: "tenant",
         plan: "pro",
+        status: "active",
       },
       role: "admin",
       permissions: [],
+      activeTenantId: TENANT_ID,
+      availableTenants: [],
     });
 
     const response = await handler(makeRequest({ ids: IDS }));
@@ -117,9 +120,12 @@ describe.each(cases)("POST /api/inbox/%s/bulk-read", ({ table, handler }) => {
         name: "Tenant",
         slug: "tenant",
         plan: "pro",
+        status: "active",
       },
       role: "admin",
       permissions: [],
+      activeTenantId: TENANT_ID,
+      availableTenants: [],
     });
 
     const response = await handler(makeRequest({ ids: [] }));

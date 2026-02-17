@@ -7,22 +7,15 @@ import {
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
-import { type UserRole } from "@prosektor/contracts";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
-import { getCacheStats, clearCacheStore, cacheStore, MAX_CACHE_ENTRIES } from "@/server/cache";
+import { getCacheStats, clearCacheStore, cacheStore } from "@/server/cache";
 import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
-}
 
 const cacheSettingsSchema = z.object({
     auto_purge: z.boolean().optional(),
@@ -162,7 +155,6 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
-        const env = getServerEnv();
 
         assertAdminRole(ctx.role);
 

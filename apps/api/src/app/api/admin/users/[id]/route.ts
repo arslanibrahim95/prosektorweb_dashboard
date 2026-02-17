@@ -11,19 +11,14 @@ import {
 } from "@/server/api/http";
 import {
     updateTenantMemberRequestSchema,
-    type UserRole,
 } from "@prosektor/contracts";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
+import { enforceRateLimit, rateLimitAuthKey } from "@/server/rate-limit";
+import { getServerEnv } from "@/server/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
-}
 
 function safeUserName(email?: string, meta?: Record<string, unknown> | null): string | undefined {
     const nameCandidate = meta?.name?.toString().trim();
@@ -37,6 +32,14 @@ export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string
         const { id } = await ctxRoute.params;
 
         assertAdminRole(ctx.role);
+
+        const env = getServerEnv();
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_users", ctx.tenant.id, ctx.user.id),
+            env.dashboardReadRateLimit,
+            env.dashboardReadRateWindowSec,
+        );
 
         const { data: member, error: memberError } = await ctx.admin
             .from("tenant_members")
@@ -81,6 +84,14 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
         const body = await parseJson(req);
 
         assertAdminRole(ctx.role);
+
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_users_write", ctx.tenant.id, ctx.user.id),
+            10,
+            60,
+        );
+
         if (!body || typeof body !== "object") {
             throw new HttpError(400, {
                 code: "VALIDATION_ERROR",
@@ -145,6 +156,13 @@ export async function DELETE(req: Request, ctxRoute: { params: Promise<{ id: str
         const { id } = await ctxRoute.params;
 
         assertAdminRole(ctx.role);
+
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_users_write", ctx.tenant.id, ctx.user.id),
+            10,
+            60,
+        );
 
         const { data: existing, error: existingError } = await ctx.admin
             .from("tenant_members")

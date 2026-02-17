@@ -40,18 +40,44 @@ export class HttpError extends Error {
   }
 }
 
+/** SECURITY: Standard security headers for all API responses */
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+};
+
+function mergeHeaders(security: Record<string, string>, custom?: HeadersInit): Record<string, string> {
+  const merged = new Headers(custom);
+  for (const [key, value] of Object.entries(security)) {
+    // Enforce security headers even if caller tries to override them.
+    merged.set(key, value);
+  }
+
+  const result: Record<string, string> = {};
+  merged.forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
+}
+
 /**
  * Başarılı JSON yanıtı döndürür
  */
 export function jsonOk<T>(data: T, status: number = 200, headers?: HeadersInit): NextResponse {
-  return NextResponse.json(data, { status, headers });
+  return NextResponse.json(data, { status, headers: mergeHeaders(SECURITY_HEADERS, headers) });
 }
 
 /**
  * Hata JSON yanıtı döndürür
  */
 export function jsonError(body: ErrorBody, status: number, headers?: HeadersInit): NextResponse {
-  return NextResponse.json(body, { status, headers });
+  return NextResponse.json(body, {
+    status,
+    headers: mergeHeaders(
+      { ...SECURITY_HEADERS, 'Cache-Control': 'no-store' },
+      headers,
+    ),
+  });
 }
 
 /**

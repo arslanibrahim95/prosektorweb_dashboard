@@ -126,38 +126,41 @@ describe('File Validation Security', () => {
             const pdfSignature = Buffer.from([0x25, 0x50, 0x44, 0x46]);
             const pdfContent = Buffer.concat([pdfSignature, Buffer.from('-1.4')]);
             const arrayBuffer = pdfContent.buffer.slice(pdfContent.byteOffset, pdfContent.byteOffset + pdfContent.byteLength);
-            expect(validateFileContent(arrayBuffer, 'application/pdf')).toBe(true);
+            const result = validateFileContent(arrayBuffer, 'application/pdf');
+            expect(result.valid).toBe(true);
         });
 
         it('should validate DOC content', () => {
             const docSignature = Buffer.from([0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]);
             const docContent = Buffer.concat([docSignature, Buffer.from('rest')]);
             const arrayBuffer = docContent.buffer.slice(docContent.byteOffset, docContent.byteOffset + docContent.byteLength);
-            expect(validateFileContent(arrayBuffer, 'application/msword')).toBe(true);
+            const result = validateFileContent(arrayBuffer, 'application/msword');
+            expect(result.valid).toBe(true);
         });
 
         it('should validate DOCX content', () => {
             const zipSignature = Buffer.from([0x50, 0x4B, 0x03, 0x04]);
             const docxContent = Buffer.concat([zipSignature, Buffer.from('rest')]);
             const arrayBuffer = docxContent.buffer.slice(docxContent.byteOffset, docxContent.byteOffset + docxContent.byteLength);
-            expect(
-                validateFileContent(
-                    arrayBuffer,
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                )
-            ).toBe(true);
+            const result = validateFileContent(
+                arrayBuffer,
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            );
+            expect(result.valid).toBe(true);
         });
 
         it('should reject PDF with wrong magic bytes', () => {
             const wrongContent = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]); // JPEG
             const arrayBuffer = wrongContent.buffer.slice(wrongContent.byteOffset, wrongContent.byteOffset + wrongContent.byteLength);
-            expect(validateFileContent(arrayBuffer, 'application/pdf')).toBe(false);
+            const result = validateFileContent(arrayBuffer, 'application/pdf');
+            expect(result.valid).toBe(false);
         });
 
         it('should reject unknown MIME types', () => {
             const content = Buffer.from([0x25, 0x50, 0x44, 0x46]);
             const arrayBuffer = content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength);
-            expect(validateFileContent(arrayBuffer, 'application/unknown')).toBe(false);
+            const result = validateFileContent(arrayBuffer, 'application/unknown');
+            expect(result.valid).toBe(false);
         });
     });
 

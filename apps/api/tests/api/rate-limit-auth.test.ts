@@ -9,9 +9,10 @@ import {
 
 describe("rate limit auth helpers", () => {
   it("builds auth-scoped rate limit keys", () => {
-    expect(rateLimitAuthKey("inbox_offers_list", "tenant-1", "user-1")).toBe(
-      "rl:auth:inbox_offers_list:tenant-1:user-1",
-    );
+    // SECURITY: User ID is hashed for privacy (KVKK/GDPR compliance)
+    const key = rateLimitAuthKey("inbox_offers_list", "tenant-1", "user-1");
+    expect(key).toMatch(/^rl:auth:inbox_offers_list:tenant-1:[a-f0-9]{16}$/);
+    expect(key).not.toContain("user-1"); // PII should not be in the key
   });
 
   it("returns metadata when allowed", async () => {

@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createUserClientFromBearer, createAdminClient, getBearerToken } from '@/server/supabase';
 import { createCustomTokenFromSupabase } from '@/server/auth/dual-auth';
 import { createError } from '@/server/errors';
-import { asErrorBody, asStatus, jsonError } from '@/server/api/http';
+import { asErrorBody, asStatus, jsonError, jsonOk } from '@/server/api/http';
 import { enforceRateLimit, getClientIp, hashIp, rateLimitAuthKey } from '@/server/rate-limit';
 import { assertAllowedWebOrigin, getAllowedCorsOrigin } from '@/server/security/origin';
 import { z } from 'zod';
@@ -91,23 +91,36 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Get user's first tenant for rate limiting
+    const { data: membership, error: membershipError } = await admin
+      .from('tenant_members')
+      .select('tenant_id, role')
+      .eq('user_id', userData.user.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    // Use tenant_id if available, otherwise fallback to userId
+    const effectiveTenantId = membership?.tenant_id ?? userData.user.id;
+
     // SECURITY: Additional rate limit by user ID (after authentication)
     // This prevents a single user from generating too many tokens
+    // FIX: Use tenant_id from user metadata instead of userId for the tenant parameter
+    const userTenantId = (userData.user.user_metadata?.tenant_id as string) ?? userData.user.id;
     await enforceRateLimit(
       admin,
-      rateLimitAuthKey('token-exchange', userData.user.id, userData.user.id),
+      rateLimitAuthKey('token-exchange', userTenantId, userData.user.id),
       20, // 20 requests per hour per user
       3600 // 1 hour in seconds
     );
 
     // AUDIT LOG: Log token exchange for security monitoring
+    // SECURITY: No raw PII (email, IP) in logs — use hashed values for KVKK/GDPR
     if (process.env.NODE_ENV === 'production') {
-      // In production, log to your audit system
       console.info('[AUDIT] Token exchange', {
         userId: userData.user.id,
-        email: userData.user.email,
         rememberMe,
-        ip: clientIp,
+        ipHash: ipHash, // Already hashed above, never log raw IP
         timestamp: new Date().toISOString(),
       });
     }
@@ -118,14 +131,17 @@ export async function POST(req: NextRequest) {
       rememberMe
     );
 
-    return NextResponse.json(tokenResponse);
+    // SECURITY: Use jsonOk to include security headers (X-Content-Type-Options, etc.)
+    return jsonOk(tokenResponse);
   } catch (err) {
     // SECURITY: Log failed token exchange attempts for monitoring
+    // SECURITY: No raw IP in logs — use hashed value
     if (process.env.NODE_ENV === 'production') {
       const error = err as Error;
+      const failedIpHash = hashIp(getClientIp(req));
       console.warn('[SECURITY] Token exchange failed', {
         error: error.message,
-        ip: getClientIp(req),
+        ipHash: failedIpHash,
         timestamp: new Date().toISOString(),
       });
     }

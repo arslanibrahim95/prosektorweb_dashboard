@@ -3,6 +3,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseSettings } from './update-env';
 
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu.';
+}
+
 async function getAdminClient() {
     const settings = await getSupabaseSettings();
     if (!settings.url || !settings.serviceRoleKey) {
@@ -27,9 +31,9 @@ export async function listAuthUsers(page: number = 1, perPage: number = 50) {
         if (error) throw error;
 
         return { success: true, data: data.users, total: data.total };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error listing auth users:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -39,8 +43,8 @@ export async function deleteAuthUser(userId: string) {
         const { data, error } = await client.auth.admin.deleteUser(userId);
         if (error) throw error;
         return { success: true, data };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error deleting auth user:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }

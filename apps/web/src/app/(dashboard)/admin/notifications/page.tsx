@@ -11,13 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -60,6 +53,15 @@ type NotificationTemplate = {
     body: string;
     is_active: boolean;
     updated_at: string;
+};
+
+type NotificationTemplateFormData = {
+    name: string;
+    type: NotificationTemplate['type'];
+    trigger_event: string;
+    subject?: string;
+    body: string;
+    is_active: boolean;
 };
 
 const defaultTemplates: NotificationTemplate[] = [
@@ -150,6 +152,11 @@ const defaultTemplates: NotificationTemplate[] = [
         updated_at: '2026-02-03T10:45:00Z',
     },
 ];
+
+function resolveTriggerLabel(triggerEvent: string): string {
+    const existing = defaultTemplates.find((template) => template.trigger_event === triggerEvent);
+    return existing?.trigger_label ?? triggerEvent;
+}
 
 // Mock email history
 const mockEmailHistory = [
@@ -289,12 +296,17 @@ export default function NotificationsPage() {
         toast.success('Şablon silindi');
     };
 
-    const handleSubmitTemplate = async (data: any) => {
+    const handleSubmitTemplate = async (data: NotificationTemplateFormData) => {
         if (selectedTemplate) {
             // Update existing
             setTemplates(prev => prev.map(t =>
                 t.id === selectedTemplate.id
-                    ? { ...t, ...data, updated_at: new Date().toISOString() }
+                    ? {
+                        ...t,
+                        ...data,
+                        trigger_label: resolveTriggerLabel(data.trigger_event),
+                        updated_at: new Date().toISOString(),
+                    }
                     : t
             ));
             toast.success('Şablon güncellendi');
@@ -303,6 +315,7 @@ export default function NotificationsPage() {
             const newTemplate: NotificationTemplate = {
                 id: String(Date.now()),
                 ...data,
+                trigger_label: resolveTriggerLabel(data.trigger_event),
                 is_active: true,
                 updated_at: new Date().toISOString(),
             };
@@ -316,7 +329,7 @@ export default function NotificationsPage() {
         try {
             await updateNotifications.mutateAsync(emailSettings);
             toast.success('E-posta ayarları kaydedildi');
-        } catch (error) {
+        } catch {
             toast.error('E-posta ayarları kaydedilemedi');
         }
     };
@@ -514,7 +527,7 @@ export default function NotificationsPage() {
                                 <div className="space-y-0.5">
                                     <Label htmlFor="slack_notifications">Slack Bildirimleri</Label>
                                     <p className="text-xs text-muted-foreground">
-                                        Slack'e bildirim gönder
+                                        Slack&apos;e bildirim gönder
                                     </p>
                                 </div>
                                 <Switch
@@ -540,7 +553,7 @@ export default function NotificationsPage() {
                                     disabled={!emailSettings.enabled}
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    Bildirimlerin gönderileceği webhook URL'si
+                                    Bildirimlerin gönderileceği webhook URL&apos;si
                                 </p>
                             </div>
 

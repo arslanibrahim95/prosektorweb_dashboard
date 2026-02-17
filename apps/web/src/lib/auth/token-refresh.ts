@@ -3,6 +3,11 @@
  *
  * Proaktif token yenileme mekanizması ile oturum yönetimi.
  * Token süresi dolmadan önce yeniler ve kullanıcıyı uyarır.
+ * 
+ * SECURITY FIXES:
+ * - Request coalescing: Prevents duplicate refresh requests
+ * - Proper error handling for concurrent operations
+ * - Improved state management with better race condition handling
  */
 
 import type { Session } from '@supabase/supabase-js';
@@ -37,6 +42,7 @@ export interface TokenRefreshConfig {
   onSessionExpiring?: (timeUntilExpiry: number) => void;
   onSessionExpired?: () => void;
   onRefreshFailed?: (error: Error) => void;
+  onRefreshSuccess?: (session: Session) => void;
 }
 
 const DEFAULT_CONFIG: TokenRefreshConfig = {
@@ -47,6 +53,9 @@ const DEFAULT_CONFIG: TokenRefreshConfig = {
 
 /**
  * Token Refresh Service class
+ * 
+ * SECURITY: Implements request coalescing to prevent race conditions
+ * and duplicate refresh requests.
  */
 export class TokenRefreshService {
   private state: TokenRefreshState = {
@@ -58,6 +67,12 @@ export class TokenRefreshService {
   private config: TokenRefreshConfig;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private checkTimer: ReturnType<typeof setInterval> | null = null;
+  
+  // SECURITY: Request coalescing - prevents duplicate refresh requests
+  private inflightRefreshPromise: Promise<Session | null> | null = null;
+  
+  // Track last successful session for scheduling
+  private lastSession: Session | null = null;
 
   constructor(config: Partial<TokenRefreshConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -103,12 +118,21 @@ export class TokenRefreshService {
 
   /**
    * Proaktif token yenileme - süre dolmadan önce yeniler.
+   * 
+   * SECURITY FIX: Request coalescing prevents duplicate refresh requests.
+   * If a refresh is already in progress, returns the same promise to all callers.
+   * 
    * Retry mekanizması ile exponential backoff kullanır.
    */
   async refreshAccessToken(): Promise<boolean> {
-    // Eğer zaten yeniliyorsa, başka bir isteğe izin verme
-    if (this.state.isRefreshing) {
-      return false;
+    // SECURITY: Request coalescing - if refresh is in progress, wait for it
+    if (this.inflightRefreshPromise) {
+      try {
+        const session = await this.inflightRefreshPromise;
+        return session !== null;
+      } catch {
+        return false;
+      }
     }
 
     // Max retry aşıldıysa oturumu kapat
@@ -121,25 +145,26 @@ export class TokenRefreshService {
     this.state.isRefreshing = true;
     this.state.lastRefreshAttempt = Date.now();
 
+    // Create the refresh promise
+    this.inflightRefreshPromise = this.performRefresh();
+
     try {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase.auth.refreshSession();
-
-      if (error) {
-        throw error;
-      }
-
-      if (!data.session) {
+      const session = await this.inflightRefreshPromise;
+      
+      if (session) {
+        // Başarılı yenileme - state'i sıfırla
+        this.resetState();
+        this.lastSession = session;
+        
+        // Yeni timer başlat
+        this.scheduleNextRefresh(session);
+        
+        this.config.onRefreshSuccess?.(session);
+        
+        return true;
+      } else {
         throw new Error('No session returned after refresh');
       }
-
-      // Başarılı yenileme - state'i sıfırla
-      this.resetState();
-
-      // Yeni timer başlat
-      this.scheduleNextRefresh(data.session);
-
-      return true;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Refresh failed');
       this.state.retryCount++;
@@ -161,16 +186,58 @@ export class TokenRefreshService {
       }
 
       return false;
+    } finally {
+      // Clear inflight promise after a short delay to prevent immediate retries
+      setTimeout(() => {
+        this.inflightRefreshPromise = null;
+      }, 100);
     }
   }
 
   /**
+   * Performs the actual refresh request
+   */
+  private async performRefresh(): Promise<Session | null> {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase.auth.refreshSession();
+
+    if (error) {
+      throw error;
+    }
+
+    return data.session;
+  }
+
+  /**
+   * Manually triggers a token refresh with request coalescing
+   * Use this when user explicitly wants to extend their session
+   */
+  async extendSession(): Promise<Session | null> {
+    // Cancel any scheduled refresh
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    
+    // Reset retry count for manual extension
+    this.state.retryCount = 0;
+    
+    const success = await this.refreshAccessToken();
+    return success ? this.lastSession : null;
+  }
+
+  /**
    * Session'a göre otomatik yenileme timer'ını başlatır.
+   * 
+   * FIX: Properly handles session updates and prevents duplicate timers
    */
   startAutoRefresh(session: Session | null): void {
+    // Always stop existing timers first
     this.stopAutoRefresh();
 
     if (!session?.expires_at) return;
+
+    this.lastSession = session;
 
     const timeUntilExpiry = this.getTimeUntilExpiry(session);
     if (timeUntilExpiry === null || timeUntilExpiry <= 0) {
@@ -184,17 +251,31 @@ export class TokenRefreshService {
       0
     );
 
+    // Schedule refresh
     this.refreshTimer = setTimeout(() => {
       void this.refreshAccessToken();
     }, refreshDelay);
 
-    // Her dakika session durumunu kontrol et
+    // Her dakika session durumunu kontrol et (for warning display)
+    // Use a ref to avoid stale closure
+    const currentSession = session;
     this.checkTimer = setInterval(() => {
-      const warning = this.getSessionWarning(session);
+      const warning = this.getSessionWarning(currentSession);
       if (warning.show) {
         this.config.onSessionExpiring?.(warning.timeUntilExpiry);
       }
     }, 60 * 1000); // Check every minute
+  }
+
+  /**
+   * Updates the session reference for warning checks
+   * Call this when session changes (e.g., after manual refresh)
+   */
+  updateSession(session: Session | null): void {
+    this.lastSession = session;
+    
+    // Restart auto-refresh with new session
+    this.startAutoRefresh(session);
   }
 
   /**
@@ -246,6 +327,8 @@ export class TokenRefreshService {
   destroy(): void {
     this.stopAutoRefresh();
     this.resetState();
+    this.inflightRefreshPromise = null;
+    this.lastSession = null;
   }
 
   /**
@@ -253,6 +336,13 @@ export class TokenRefreshService {
    */
   getState(): TokenRefreshState {
     return { ...this.state };
+  }
+  
+  /**
+   * Returns whether a refresh is currently in progress
+   */
+  isRefreshInProgress(): boolean {
+    return this.state.isRefreshing || this.inflightRefreshPromise !== null;
   }
 }
 

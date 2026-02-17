@@ -3,6 +3,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseSettings } from './update-env';
 
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu.';
+}
+
 async function getClient() {
     const settings = await getSupabaseSettings();
     if (!settings.url || !settings.anonKey) {
@@ -32,8 +36,8 @@ export async function listTables() {
             message: "Tabloları listelemek için veritabanınızda 'get_tables' isimli bir fonksiyon oluşturmanız gerekmektedir. Lütfen 'Veritabanı' sekmesindeki SQL kodunu Supabase SQL Editor'de çalıştırın."
         };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error listing tables:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }

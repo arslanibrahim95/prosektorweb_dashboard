@@ -14,15 +14,15 @@ import {
     HttpError,
     jsonError,
     mapPostgrestError,
-    zodErrorToDetails,
 } from "@/server/api/http";
-import { buildSafeIlikeOr, safeSearchParamSchema } from "@/server/api/postgrest-search";
-import { requireAuthContext } from "@/server/auth/context";
+import { safeSearchParamSchema } from "@/server/api/postgrest-search";
+import { calculatePaginationRange } from "@/server/api/pagination";
 import { hasPermission } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
-import type { AuthContext } from "@/server/auth/context";
+import { requireAuthContext } from "@/server/auth/context";
 import { parseInboxQueryParams } from "./query-params";
+import { applyInboxFilters, getInboxDbClient, type InboxAdditionalFilters } from "./query-utils";
 
 /**
  * Base export query schema - can be extended by specific routes
@@ -79,8 +79,7 @@ export interface ExportHandlerConfig<TQuery extends BaseExportQuery = BaseExport
      * Optional function to apply additional filters to the query
      * Useful for routes like applications that need job_post_id filtering
      */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    additionalFilters?: (query: any, params: TQuery, ctx: AuthContext) => any;
+    additionalFilters?: InboxAdditionalFilters<TQuery>;
 }
 
 /**
@@ -131,13 +130,11 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
             );
 
             // 4. Calculate pagination
-            const from = (parsed.page - 1) * parsed.limit;
-            const to = from + parsed.limit - 1;
+            const { from, to } = calculatePaginationRange(parsed.page, parsed.limit);
 
             // 5. Build query
-            // Use admin client for super_admin to bypass RLS
-            const dbClient = ctx.role === 'super_admin' ? ctx.admin : ctx.supabase;
-            let query = dbClient
+            const dbClient = getInboxDbClient(ctx);
+            const baseQuery = dbClient
                 .from(tableName)
                 .select(selectFields)
                 .eq("tenant_id", ctx.tenant.id)
@@ -145,38 +142,31 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
                 .order("created_at", { ascending: false })
                 .range(from, to);
 
-            // 6. Apply status filter
-            if (parsed.status === "read") query = query.eq("is_read", true);
-            if (parsed.status === "unread") query = query.eq("is_read", false);
+            // 6. Apply common filters (status/date/search/additional)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const query: any = applyInboxFilters(baseQuery, parsed, searchFields, additionalFilters, ctx);
 
-            // 7. Apply date range filters
-            if (parsed.date_from) query = query.gte("created_at", parsed.date_from);
-            if (parsed.date_to) query = query.lte("created_at", parsed.date_to);
-
-            // 8. Apply search filter
-            if (parsed.search) {
-                query = query.or(buildSafeIlikeOr(searchFields, parsed.search));
-            }
-
-            // 9. Apply additional filters (e.g., job_post_id for applications)
-            if (additionalFilters) {
-                query = additionalFilters(query, parsed, ctx);
-            }
-
-            // 10. Execute query
+            // 7. Execute query
             const { data, error } = await query;
             if (error) throw mapPostgrestError(error);
 
-            // 11. Parse and map items
-            const items = (data ?? []).map((item) => itemSchema.parse(item));
+            // 8. Parse and map items
+            const items = (data ?? []).map((item: unknown) => itemSchema.parse(item));
             const rows = items.map(rowMapper);
 
-            // 12. Generate CSV
+            // 9. Generate CSV
             const csv = toCsv(headers, rows);
-            const today = new Date().toISOString().slice(0, 10);
+            // FIX: Use Turkey timezone instead of UTC to prevent date mismatch at midnight crossing
+            const TURKEY_TIMEZONE = process.env.DEFAULT_TIMEZONE || 'Europe/Istanbul';
+            const today = new Intl.DateTimeFormat('sv-SE', {
+                timeZone: TURKEY_TIMEZONE,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+            }).format(new Date()); // 'sv-SE' locale gives YYYY-MM-DD format
             const filename = `${filenamePrefix}_${parsed.site_id}_${today}.csv`;
 
-            // 13. Return CSV response
+            // 10. Return CSV response
             return new NextResponse(csv, {
                 status: 200,
                 headers: {

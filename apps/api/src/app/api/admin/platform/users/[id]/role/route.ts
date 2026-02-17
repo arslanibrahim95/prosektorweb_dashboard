@@ -1,18 +1,15 @@
-import { type UserRole, uuidSchema } from '@prosektor/contracts';
+import { uuidSchema } from '@prosektor/contracts';
 import { z } from 'zod';
 import {
-  asErrorBody,
-  asHeaders,
-  asStatus,
   HttpError,
-  jsonError,
   jsonOk,
   mapPostgrestError,
   parseJson,
   zodErrorToDetails,
 } from '@/server/api/http';
 import { requireAuthContext } from '@/server/auth/context';
-import { isSuperAdminRole } from '@/server/auth/permissions';
+import { assertSuperAdminRole } from '@/server/admin/access';
+import { withAdminErrorHandling } from '@/server/admin/route-utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,19 +21,12 @@ const superAdminRoleUpdateSchema = z
   })
   .strict();
 
-function assertSuperAdmin(role: UserRole) {
-  if (!isSuperAdminRole(role)) {
-    throw new HttpError(403, {
-      code: 'FORBIDDEN',
-      message: 'Bu işlem yalnızca super_admin için yetkilidir.',
-    });
-  }
-}
-
-export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
-  try {
+export const PATCH = withAdminErrorHandling(async (
+  req: Request,
+  ctxRoute: { params: Promise<{ id: string }> },
+) => {
     const ctx = await requireAuthContext(req);
-    assertSuperAdmin(ctx.role);
+    assertSuperAdminRole(ctx.role);
 
     const { id } = await ctxRoute.params;
     const parsedId = uuidSchema.safeParse(id);
@@ -118,7 +108,4 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
       super_admin: parsedBody.data.super_admin,
       audit_id: auditRow.id,
     });
-  } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-  }
-}
+});

@@ -15,6 +15,7 @@ import {
     zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { getInboxDbClient } from "./query-utils";
 
 /**
  * Creates a generic bulk mark-as-read POST handler
@@ -35,9 +36,17 @@ export function createBulkReadHandler(tableName: string) {
                 });
             }
 
-            // Use admin client for super_admin to bypass RLS
-            const dbClient = ctx.role === 'super_admin' ? ctx.admin : ctx.supabase;
+            // SECURITY: Limit the number of IDs to prevent unbounded operations
+            if (parsed.data.ids.length > 500) {
+                throw new HttpError(400, {
+                    code: "VALIDATION_ERROR",
+                    message: "Tek seferde en fazla 500 öğe işlenebilir.",
+                });
+            }
 
+            const dbClient = getInboxDbClient(ctx);
+
+            // FIX: Use the IDs filter with tenant_id to prevent cross-tenant updates
             const { data, error } = await dbClient
                 .from(tableName)
                 .update({ is_read: true })

@@ -23,6 +23,12 @@ import {
 } from "@/components/ui/select";
 import { Copy, Check } from "lucide-react";
 
+function generateWebhookSecret(): string {
+    // SECURITY: Use crypto.randomUUID for cryptographically secure randomness
+    const uuid = crypto.randomUUID().replace(/-/g, '');
+    return `whsec_${uuid}`;
+}
+
 interface WebhookDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -39,9 +45,7 @@ interface WebhookDialogProps {
 export function WebhookDialog({ open, onOpenChange, webhook }: WebhookDialogProps) {
     const [url, setUrl] = useState(webhook?.url || "");
     const [events, setEvents] = useState<string[]>(webhook?.events || []);
-    const [secret, setSecret] = useState(
-        webhook?.secret || `whsec_${Math.random().toString(36).substring(2, 15)}`
-    );
+    const [secret, setSecret] = useState(() => webhook?.secret || generateWebhookSecret());
     const [active, setActive] = useState(webhook?.active ?? true);
     const [retryCount, setRetryCount] = useState(webhook?.retryCount?.toString() || "3");
     const [copiedSecret, setCopiedSecret] = useState(false);
@@ -80,7 +84,7 @@ export function WebhookDialog({ open, onOpenChange, webhook }: WebhookDialogProp
         if (!webhook) {
             setUrl("");
             setEvents([]);
-            setSecret(`whsec_${Math.random().toString(36).substring(2, 15)}`);
+            setSecret(generateWebhookSecret());
             setActive(true);
             setRetryCount("3");
         }
@@ -188,7 +192,7 @@ export function WebhookDialog({ open, onOpenChange, webhook }: WebhookDialogProp
                         <div className="space-y-0.5">
                             <Label htmlFor="active">Webhook Aktif</Label>
                             <p className="text-xs text-muted-foreground">
-                                Webhook'u etkinleştir veya devre dışı bırak
+                                Webhook&apos;u etkinleştir veya devre dışı bırak
                             </p>
                         </div>
                         <Switch

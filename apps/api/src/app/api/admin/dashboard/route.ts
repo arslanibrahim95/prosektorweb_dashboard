@@ -1,46 +1,32 @@
 import {
-    asHeaders,
-    asErrorBody,
-    asStatus,
-    HttpError,
-    jsonError,
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
-import { type UserRole } from "@prosektor/contracts";
 import { getOrSetCachedValue } from "@/server/cache";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
+import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
 import { getServerEnv } from "@/server/env";
-import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
-}
-
-export async function GET(req: Request) {
-    try {
+export const GET = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
         const env = getServerEnv();
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_dashboard", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_dashboard", "read");
 
-        const cacheKey = ["admin-dashboard", ctx.tenant.id].join("|");
+        // FIX: Include user.id in cache key — different admins may have different
+        // RLS-visible data, so they should not share the same cached dashboard.
+        const cacheKey = ["admin-dashboard", ctx.tenant.id, ctx.user.id].join("|");
         const payload = await getOrSetCachedValue(cacheKey, env.dashboardSummaryCacheTtlSec, async () => {
+            // FIX: Use UTC explicitly to avoid server-timezone dependent results
             const now = new Date();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
 
             // Get stats
             const [usersRes, pagesRes, jobPostsRes, auditLogsRes, todayLogsRes] = await Promise.all([
@@ -130,7 +116,4 @@ export async function GET(req: Request) {
         });
 
         return jsonOk(payload, 200, rateLimitHeaders(rateLimit));
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});

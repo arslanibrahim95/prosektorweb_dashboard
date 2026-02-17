@@ -44,10 +44,10 @@ export interface CreateErrorOptions {
 function sanitizeErrorMessage(message: string): string {
     // Sensitive patterns that should never be exposed to users
     const sensitivePatterns = [
-        /password/i,
-        /secret/i,
-        /key/i,
-        /token/i,
+        /password\s*[:=]/i,
+        /secret\s*[:=]/i,
+        /api[_-]?key\s*[:=]/i,          // Narrowed: catches 'api_key=' but not 'primary key'
+        /access[_-]?token\s*[:=]/i,     // Narrowed: catches 'access_token=' but not 'Token expired'
         /connection.*string/i,
         /\/\/.*\:.*\@/, // URL with credentials
         /stack.*trace/i,
@@ -62,11 +62,11 @@ function sanitizeErrorMessage(message: string): string {
         if (pattern.test(message)) {
             return translateError('INTERNAL_ERROR', 'tr');
         }
+    }
 
-        // Check for file paths that might leak system info
-        if (message.includes('/var/') || message.includes('C:\\') || message.includes('/home/')) {
-            return translateError('INTERNAL_ERROR', 'tr');
-        }
+    // Check for file paths that might leak system info
+    if (message.includes('/var/') || message.includes('C:\\\\') || message.includes('/home/')) {
+        return translateError('INTERNAL_ERROR', 'tr');
     }
 
     return message;
@@ -77,7 +77,10 @@ function sanitizeErrorMessage(message: string): string {
  */
 export function createError(options: CreateErrorOptions): HttpError {
     const status = ErrorCodeToStatus[options.code];
-    const message = options.message ?? translateError(options.code);
+    const rawMessage = options.message ?? translateError(options.code);
+    // SECURITY FIX: Sanitize message to prevent leaking stack traces,
+    // connection strings, or other sensitive data from developer-passed messages.
+    const message = sanitizeErrorMessage(rawMessage);
 
     // Log the original error for debugging (in production, use proper logging)
     if (options.originalError && process.env.NODE_ENV === 'development') {

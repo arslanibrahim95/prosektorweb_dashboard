@@ -68,7 +68,7 @@ export function SkipOnboardingButton({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-amber-500" />
-                        Onboarding'i atlamak istediğinizden emin misiniz?
+                        Onboarding&apos;i atlamak istediğinizden emin misiniz?
                     </DialogTitle>
                     <DialogDescription>
                         Organizasyon oluşturmadan devam edebilirsiniz, ancak platformun tüm özelliklerini kullanmak için

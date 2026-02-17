@@ -1,27 +1,71 @@
 import { NextRequest } from "next/server";
 import {
-    asErrorBody,
     HttpError,
+    parseJson,
     jsonError,
     jsonOk,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
+import { enforceRateLimit, rateLimitAuthKey } from "@/server/rate-limit";
+import { getServerEnv } from "@/server/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const MAX_LIMIT = 100;
+const MAX_PAGE = 1000000;
+
+function parsePositiveIntParam(
+    value: string | null,
+    fallback: number,
+    max: number,
+    field: string
+): number {
+    if (value === null || value.trim() === "") {
+        return fallback;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+        throw new HttpError(400, {
+            code: "VALIDATION_ERROR",
+            message: `${field} must be a positive integer`,
+        });
+    }
+
+    return Math.min(parsed, max);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        throw new HttpError(400, {
+            code: "VALIDATION_ERROR",
+            message: "Request body must be a JSON object",
+        });
+    }
+    return value as Record<string, unknown>;
+}
 
 // Validation schema for creating API key
 const createApiKeySchema = {
     name: (val: unknown) => {
         if (typeof val !== 'string' || val.length < 1 || val.length > 255) {
-            throw new Error('Name must be between 1 and 255 characters');
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Name must be between 1 and 255 characters",
+            });
         }
         return val;
     },
     permissions: (val: unknown) => {
         if (val !== undefined) {
-            if (!Array.isArray(val)) throw new Error('Permissions must be an array');
+            if (!Array.isArray(val) || !val.every((item) => typeof item === "string" && item.length > 0)) {
+                throw new HttpError(400, {
+                    code: "VALIDATION_ERROR",
+                    message: "Permissions must be a non-empty string array",
+                });
+            }
             return val as string[];
         }
         return ['read'];
@@ -30,17 +74,23 @@ const createApiKeySchema = {
         if (val !== undefined) {
             const num = Number(val);
             if (isNaN(num) || num < 1 || num > 10000) {
-                throw new Error('Rate limit must be between 1 and 10000');
+                throw new HttpError(400, {
+                    code: "VALIDATION_ERROR",
+                    message: "Rate limit must be between 1 and 10000",
+                });
             }
             return num;
         }
         return 1000;
     },
     expires_at: (val: unknown) => {
-        if (val !== undefined) {
+        if (val !== undefined && val !== null) {
             const date = new Date(String(val));
             if (isNaN(date.getTime())) {
-                throw new Error('Invalid expires_at date');
+                throw new HttpError(400, {
+                    code: "VALIDATION_ERROR",
+                    message: "Invalid expires_at date",
+                });
             }
             return date.toISOString();
         }
@@ -53,14 +103,26 @@ async function GET(req: NextRequest) {
     try {
         const ctx = await requireAuthContext(req);
 
-        if (!isAdminRole(ctx.role)) {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Admin yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role, "Admin yetkisi gerekli");
+
+        const env = getServerEnv();
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_api_keys", ctx.tenant.id, ctx.user.id),
+            env.dashboardReadRateLimit,
+            env.dashboardReadRateWindowSec,
+        );
 
         const { searchParams } = new URL(req.url);
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '20');
+        const page = parsePositiveIntParam(searchParams.get("page"), 1, MAX_PAGE, "page");
+        const limit = parsePositiveIntParam(searchParams.get("limit"), 20, MAX_LIMIT, "limit");
         const offset = (page - 1) * limit;
+        if (!Number.isSafeInteger(offset)) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Pagination values are out of range",
+            });
+        }
 
         // Get API keys (use service role to bypass RLS)
         const { data: apiKeys, error } = await ctx.admin
@@ -78,10 +140,14 @@ async function GET(req: NextRequest) {
         }
 
         // Get total count
-        const { count } = await ctx.admin
+        const { count, error: countError } = await ctx.admin
             .from('api_keys')
             .select('*', { count: 'exact', head: true })
             .eq('tenant_id', ctx.tenant.id);
+        if (countError) {
+            console.error('Error fetching API key count:', countError);
+            return jsonError({ code: 'FETCH_ERROR', message: 'Failed to fetch API key count' }, 500);
+        }
 
         // Transform keys - mask the full key
         const transformedKeys = (apiKeys || []).map((key: Record<string, unknown>) => ({
@@ -120,11 +186,17 @@ async function POST(req: NextRequest) {
     try {
         const ctx = await requireAuthContext(req);
 
-        if (!isAdminRole(ctx.role)) {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Admin yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role, "Admin yetkisi gerekli");
 
-        const body = await req.json();
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_api_keys_write", ctx.tenant.id, ctx.user.id),
+            10,
+            60,
+        );
+
+        const parsedBody = await parseJson(req);
+        const body = asRecord(parsedBody);
 
         // Validate and parse request body
         const name = createApiKeySchema.name(body.name);
@@ -178,9 +250,6 @@ async function POST(req: NextRequest) {
         console.error('API keys POST error:', error);
         if (error instanceof HttpError) {
             return jsonError(error.body, error.status);
-        }
-        if (error instanceof Error && error.message.includes('Validation')) {
-            return jsonError({ code: 'VALIDATION_ERROR', message: error.message }, 400);
         }
         return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500);
     }

@@ -1,26 +1,47 @@
 import { NextRequest } from "next/server";
 import {
     HttpError,
+    parseJson,
     jsonError,
     jsonOk,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
+import { enforceRateLimit, rateLimitAuthKey } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function asRecord(value: unknown): Record<string, unknown> {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        throw new HttpError(400, {
+            code: "VALIDATION_ERROR",
+            message: "Request body must be a JSON object",
+        });
+    }
+    return value as Record<string, unknown>;
+}
 
 // PATCH /api/admin/api-keys/[id] - Update API key (toggle active, update name)
 async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const ctx = await requireAuthContext(req);
 
-        if (!isAdminRole(ctx.role)) {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Admin yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role, "Admin yetkisi gerekli");
+
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_api_keys_write", ctx.tenant.id, ctx.user.id),
+            10,
+            60,
+        );
 
         const { id } = await params;
-        const body = await req.json();
+        if (!id) {
+            throw new HttpError(400, { code: "VALIDATION_ERROR", message: "API key id is required" });
+        }
+        const parsedBody = await parseJson(req);
+        const body = asRecord(parsedBody);
 
         // Build update object
         const updateData: Record<string, unknown> = {
@@ -92,11 +113,19 @@ async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: stri
     try {
         const ctx = await requireAuthContext(req);
 
-        if (!isAdminRole(ctx.role)) {
-            throw new HttpError(403, { code: "FORBIDDEN", message: "Admin yetkisi gerekli" });
-        }
+        assertAdminRole(ctx.role, "Admin yetkisi gerekli");
+
+        await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("admin_api_keys_write", ctx.tenant.id, ctx.user.id),
+            10,
+            60,
+        );
 
         const { id } = await params;
+        if (!id) {
+            throw new HttpError(400, { code: "VALIDATION_ERROR", message: "API key id is required" });
+        }
 
         // Delete API key
         const { error } = await ctx.admin

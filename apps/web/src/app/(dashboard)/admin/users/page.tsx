@@ -63,6 +63,10 @@ interface UsersResponse {
     total: number;
 }
 
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu';
+}
+
 export default function AdminUsersPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -115,8 +119,8 @@ export default function AdminUsersPage() {
             setInviteDialogOpen(false);
             setInviteEmail('');
             setInviteRole('viewer');
-        } catch (err: any) {
-            toast.error(err.message || 'Davet gönderilemedi');
+        } catch (err: unknown) {
+            toast.error(getErrorMessage(err) || 'Davet gönderilemedi');
         }
     };
 
@@ -149,8 +153,8 @@ export default function AdminUsersPage() {
                 },
                 duration: 10000,
             });
-        } catch (err: any) {
-            toast.error(err.message || 'Rol güncellenemedi');
+        } catch (err: unknown) {
+            toast.error(getErrorMessage(err) || 'Rol güncellenemedi');
         } finally {
             setRoleChangeTarget(null);
         }
@@ -161,8 +165,8 @@ export default function AdminUsersPage() {
         try {
             await deleteMutation.mutateAsync(deleteTarget);
             toast.success('Kullanıcı silindi');
-        } catch (err: any) {
-            toast.error(err.message || 'Kullanıcı silinemedi');
+        } catch (err: unknown) {
+            toast.error(getErrorMessage(err) || 'Kullanıcı silinemedi');
         } finally {
             setDeleteTarget(null);
         }

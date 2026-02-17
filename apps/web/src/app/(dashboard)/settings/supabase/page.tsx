@@ -1,27 +1,19 @@
 'use client';
 
-import { useTransition, useEffect, useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { updateSupabaseSettings, getSupabaseSettings } from '@/actions/update-env';
+import { getSupabaseSettings } from '@/actions/update-env';
 import { listBuckets, createBucket, deleteBucket, listFiles, uploadFile, deleteFile } from '@/actions/supabase-storage';
 import { listTables } from '@/actions/supabase-database';
 import { listAuthUsers, deleteAuthUser } from '@/actions/supabase-auth';
-import { Loader2, Database, HardDrive, Settings, RefreshCw, Trash2, Plus, Folder, File, User, ShieldAlert, Upload, X, FileIcon, ImageIcon } from 'lucide-react';
+import { Loader2, Database, HardDrive, Settings, RefreshCw, Trash2, Plus, Folder, User, ShieldAlert, Upload, X, FileIcon, ImageIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -43,15 +35,38 @@ const formSchema = z.object({
     serviceRoleKey: z.string().optional(),
 });
 
+interface SupabaseBucket {
+    id: string;
+    public: boolean;
+    created_at?: string | null;
+}
+
+interface SupabaseTable {
+    name: string;
+    [key: string]: unknown;
+}
+
+interface SupabaseFileMetadata {
+    mimetype?: string;
+    size?: number;
+}
+
+interface SupabaseFileEntry {
+    id?: string;
+    name: string;
+    metadata?: SupabaseFileMetadata | null;
+}
+
+type SupabaseAuthUser = Pick<SupabaseUser, 'id' | 'email' | 'role' | 'email_confirmed_at'>;
+
 export default function SupabaseSettingsPage() {
-    const [isPending, startTransition] = useTransition();
     const [isLoading, setIsLoading] = useState(true);
-    const [buckets, setBuckets] = useState<any[]>([]);
+    const [buckets, setBuckets] = useState<SupabaseBucket[]>([]);
     const [isLoadingBuckets, setIsLoadingBuckets] = useState(false);
-    const [tables, setTables] = useState<any[]>([]);
+    const [tables, setTables] = useState<SupabaseTable[]>([]);
     const [isLoadingTables, setIsLoadingTables] = useState(false);
     const [tableMessage, setTableMessage] = useState('');
-    const [authUsers, setAuthUsers] = useState<any[]>([]);
+    const [authUsers, setAuthUsers] = useState<SupabaseAuthUser[]>([]);
     const [isLoadingAuth, setIsLoadingAuth] = useState(false);
     const [authError, setAuthError] = useState('');
 
@@ -63,7 +78,7 @@ export default function SupabaseSettingsPage() {
 
     // File explorer state
     const [selectedBucket, setSelectedBucket] = useState<string | null>(null);
-    const [files, setFiles] = useState<any[]>([]);
+    const [files, setFiles] = useState<SupabaseFileEntry[]>([]);
     const [isLoadingFiles, setIsLoadingFiles] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,23 +119,7 @@ export default function SupabaseSettingsPage() {
         loadSettings();
     }, [form]);
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        startTransition(async () => {
-            const result = await updateSupabaseSettings({
-                url: values.url,
-                anonKey: values.anonKey,
-                serviceRoleKey: values.serviceRoleKey,
-            });
-
-            if (result.success) {
-                toast.success(result.message);
-            } else {
-                toast.error(result.message);
-            }
-        });
-    }
-
-    const fetchBuckets = async () => {
+    const fetchBuckets = useCallback(async () => {
         setIsLoadingBuckets(true);
         try {
             const result = await listBuckets();
@@ -129,14 +128,15 @@ export default function SupabaseSettingsPage() {
             } else {
                 toast.error(`Bucket list hatası: ${result.error}`);
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('Failed to fetch buckets:', error);
             toast.error('Bucketlar yüklenemedi.');
         } finally {
             setIsLoadingBuckets(false);
         }
-    };
+    }, []);
 
-    const fetchTables = async () => {
+    const fetchTables = useCallback(async () => {
         setIsLoadingTables(true);
         setTableMessage('');
         try {
@@ -147,14 +147,15 @@ export default function SupabaseSettingsPage() {
             } else {
                 toast.error(`Tablo list hatası: ${result.error}`);
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('Failed to fetch tables:', error);
             toast.error('Tablolar yüklenemedi.');
         } finally {
             setIsLoadingTables(false);
         }
-    };
+    }, []);
 
-    const fetchAuthUsers = async () => {
+    const fetchAuthUsers = useCallback(async () => {
         setIsLoadingAuth(true);
         setAuthError('');
         try {
@@ -162,14 +163,15 @@ export default function SupabaseSettingsPage() {
             if (result.success) {
                 setAuthUsers(result.data || []);
             } else {
-                setAuthError(result.error);
+                setAuthError(result.error || 'Kullanıcılar yüklenemedi. Service Role Key gerekli olabilir.');
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('Failed to fetch auth users:', error);
             setAuthError('Kullanıcılar yüklenemedi. Service Role Key gerekli olabilir.');
         } finally {
             setIsLoadingAuth(false);
         }
-    };
+    }, []);
 
     const handleDeleteAuthUser = async (id: string) => {
         setIsDeleting(true);
@@ -181,7 +183,8 @@ export default function SupabaseSettingsPage() {
             } else {
                 toast.error(`Silme hatası: ${result.error}`);
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('Failed to delete auth user:', error);
             toast.error('Kullanıcı silinemedi.');
         } finally {
             setIsDeleting(false);
@@ -207,7 +210,8 @@ export default function SupabaseSettingsPage() {
             } else {
                 toast.error(`Oluşturma hatası: ${result.error}`);
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('Failed to create bucket:', error);
             toast.error('Bucket oluşturulamadı.');
         } finally {
             setIsCreatingBucket(false);
@@ -224,7 +228,8 @@ export default function SupabaseSettingsPage() {
             } else {
                 toast.error(`Silme hatası: ${result.error}`);
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('Failed to delete bucket:', error);
             toast.error('Bucket silinemedi.');
         } finally {
             setIsDeleting(false);
@@ -242,7 +247,8 @@ export default function SupabaseSettingsPage() {
             } else {
                 toast.error(`Dosya listeleme hatası: ${result.error}`);
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('Failed to fetch files:', error);
             toast.error('Dosyalar yüklenemedi.');
         } finally {
             setIsLoadingFiles(false);
@@ -265,7 +271,8 @@ export default function SupabaseSettingsPage() {
             } else {
                 toast.error(`Yükleme hatası: ${result.error}`);
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('Failed to upload file:', error);
             toast.error('Dosya yüklenemedi.');
         } finally {
             setIsUploading(false);
@@ -284,7 +291,8 @@ export default function SupabaseSettingsPage() {
             } else {
                 toast.error(`Silme hatası: ${result.error}`);
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('Failed to delete file:', error);
             toast.error('Dosya silinemedi.');
         } finally {
             setIsDeleting(false);
@@ -481,7 +489,7 @@ export default function SupabaseSettingsPage() {
                                                     </div>
                                                 </div>
                                                 <div className="text-xs text-muted-foreground mt-2">
-                                                    <p>Oluşturuldu: {new Date(bucket.created_at).toLocaleDateString()}</p>
+                                                    <p>Oluşturuldu: {bucket.created_at ? new Date(bucket.created_at).toLocaleDateString() : '-'}</p>
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -529,7 +537,7 @@ export default function SupabaseSettingsPage() {
                                 ) : (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                         {files.map((file) => (
-                                            <div key={file.id} className="group relative border rounded-md p-3 hover:bg-muted/50 transition-colors flex flex-col items-center gap-2">
+                                            <div key={file.id ?? file.name} className="group relative border rounded-md p-3 hover:bg-muted/50 transition-colors flex flex-col items-center gap-2">
                                                 <div className="h-16 w-16 bg-muted rounded-md flex items-center justify-center">
                                                     {file.metadata?.mimetype?.startsWith('image/') ? (
                                                         <ImageIcon className="h-8 w-8 text-muted-foreground" />
@@ -539,7 +547,7 @@ export default function SupabaseSettingsPage() {
                                                 </div>
                                                 <span className="text-xs text-center truncate w-full" title={file.name}>{file.name}</span>
                                                 <span className="text-[10px] text-muted-foreground">
-                                                    {(file.metadata?.size / 1024).toFixed(1)} KB
+                                                    {((file.metadata?.size ?? 0) / 1024).toFixed(1)} KB
                                                 </span>
 
                                                 <Button
@@ -658,7 +666,7 @@ $$;`}</pre>
                                     Auth Kullanıcıları
                                 </CardTitle>
                                 <CardDescription>
-                                    Supabase Auth ('auth.users') tablosundaki kullanıcılar.
+                                    Supabase Auth (&apos;auth.users&apos;) tablosundaki kullanıcılar.
                                     <br />
                                     <span className="text-xs text-warning">Görüntülemek için Service Role Key gereklidir.</span>
                                 </CardDescription>
@@ -678,7 +686,7 @@ $$;`}</pre>
                                         <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
                                             <ShieldAlert className="h-10 w-10 text-destructive/50" />
                                             <p className="text-muted-foreground max-w-md">{authError}</p>
-                                            <p className="text-xs text-muted-foreground">Lütfen 'Ayarlar' sekmesinden Service Role Key girildiğinden emin olun.</p>
+                                            <p className="text-xs text-muted-foreground">Lütfen &apos;Ayarlar&apos; sekmesinden Service Role Key girildiğinden emin olun.</p>
                                         </div>
                                     ) : authUsers.length > 0 ? (
                                         <div className="space-y-2">
@@ -729,7 +737,7 @@ $$;`}</pre>
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <RLSPolicyGenerator tables={tables} buckets={buckets} />
+                            <RLSPolicyGenerator tables={tables} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -764,21 +772,15 @@ $$;`}</pre>
     );
 }
 
-function RLSPolicyGenerator({ tables }: { tables: any[] }) {
+function RLSPolicyGenerator({ tables }: { tables: SupabaseTable[] }) {
     const [tableName, setTableName] = useState('');
     const [policyType, setPolicyType] = useState('public_read');
-
-    // Auto-select first table if available
-    useEffect(() => {
-        if (tables.length > 0 && !tableName) {
-            setTableName(tables[0].name);
-        }
-    }, [tables, tableName]);
+    const selectedTableName = tableName || tables[0]?.name || '';
 
     const generateSQL = () => {
-        if (!tableName) return '-- Lütfen bir tablo ismi girin.';
+        if (!selectedTableName) return '-- Lütfen bir tablo ismi girin.';
 
-        const safeTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
+        const safeTableName = selectedTableName.replace(/[^a-zA-Z0-9_]/g, '');
         let sql = `-- ${safeTableName} tablosu için RLS Politikası\n`;
         sql += `alter table "${safeTableName}" enable row level security;\n\n`;
 
@@ -828,7 +830,7 @@ with check ( true );`;
                     {tables.length > 0 ? (
                         <select
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            value={tableName}
+                            value={selectedTableName}
                             onChange={(e) => setTableName(e.target.value)}
                         >
                             <option value="">Tablo Seçin</option>
@@ -877,7 +879,7 @@ with check ( true );`;
             </div>
 
             <div className="text-xs text-muted-foreground">
-                <p>Not: Bu SQL kodunu Supabase Dashboard'daki SQL Editor bölümünde çalıştırın.</p>
+                <p>Not: Bu SQL kodunu Supabase Dashboard&apos;daki SQL Editor bölümünde çalıştırın.</p>
             </div>
         </div>
     );

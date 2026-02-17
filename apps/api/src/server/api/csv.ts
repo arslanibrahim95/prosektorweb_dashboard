@@ -5,8 +5,11 @@
 // - Mitigates CSV/Excel formula injection by prefixing with `'` when value starts with
 //   one of `= + - @`.
 
+// Mitigates CSV/Excel formula injection by detecting values that start with
+// characters interpreted as formula indicators by spreadsheet applications.
+// Covers: = + - @ \t \r (tab and CR can also trigger formulas in some apps)
 function isFormulaLike(value: string): boolean {
-  return /^[=+\-@]/.test(value);
+  return /^[=+\-@\t\r]/.test(value);
 }
 
 export function csvCell(value: unknown): string {
@@ -27,15 +30,27 @@ export function csvCell(value: unknown): string {
     }
   }
 
-  // Protect against Excel formula injection when users open the CSV.
-  if (s.length > 0 && isFormulaLike(s)) {
-    s = `'${s}`;
+  // Quote first if needed (RFC 4180 compliance)
+  const mustQuote = /[",\r\n]/.test(s);
+  if (mustQuote) {
+    s = `"${s.replace(/"/g, '""')}"`;
   }
 
-  const mustQuote = /[",\r\n]/.test(s);
-  if (!mustQuote) return s;
+  // SECURITY FIX: Apply formula injection protection AFTER quoting.
+  // Some spreadsheets ignore the prefix inside quoted strings,
+  // so we need to re-check the effective value.
+  // For unquoted values: prefix directly. For quoted: wrap with prefix inside quotes.
+  const effectiveStart = mustQuote && s.length > 1 ? s[1] : s[0];
+  if (effectiveStart && isFormulaLike(effectiveStart)) {
+    if (mustQuote) {
+      // Insert prefix inside the opening quote: "=cmd" -> "'=cmd"
+      s = `"'${s.slice(1)}`;
+    } else {
+      s = `'${s}`;
+    }
+  }
 
-  return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }
 
 export function toCsv(headers: string[], rows: unknown[][]): string {

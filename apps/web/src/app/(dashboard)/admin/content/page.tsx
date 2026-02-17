@@ -428,7 +428,7 @@ export default function AdminContentPage() {
                 <TabsContent value="media" className="space-y-4">
                     <div className="rounded-md border p-12 text-center">
                         <p className="text-muted-foreground">
-                            Medya yönetimi henüz API'ye bağlanmadı. Yakında eklenecek.
+                            Medya yönetimi henüz API&apos;ye bağlanmadı. Yakında eklenecek.
                         </p>
                     </div>
                 </TabsContent>

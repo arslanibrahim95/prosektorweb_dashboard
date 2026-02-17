@@ -2,65 +2,32 @@ import {
   platformTenantSummarySchema,
   platformUpdateTenantRequestSchema,
   uuidSchema,
-  type UserRole,
 } from "@prosektor/contracts";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  asErrorBody,
-  asStatus,
-  asHeaders,
   HttpError,
-  jsonError,
   jsonOk,
   mapPostgrestError,
   parseJson,
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
-import { isSuperAdminRole } from "@/server/auth/permissions";
+import { assertSuperAdminRole } from "@/server/admin/access";
+import { loadPlatformTenantCounts } from "@/server/admin/platform-tenants";
+import { withAdminErrorHandling } from "@/server/admin/route-utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function assertSuperAdmin(role: UserRole) {
-  if (!isSuperAdminRole(role)) {
-    throw new HttpError(403, {
-      code: "FORBIDDEN",
-      message: "Bu işlem yalnızca super_admin için yetkilidir.",
-    });
-  }
-}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function loadTenantCounts(admin: SupabaseClient, tenantId: string) {
-  const [ownersRes, sitesRes] = await Promise.all([
-    admin
-      .from("tenant_members")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .eq("role", "owner"),
-    admin
-      .from("sites")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId),
-  ]);
-
-  if (ownersRes.error) throw mapPostgrestError(ownersRes.error);
-  if (sitesRes.error) throw mapPostgrestError(sitesRes.error);
-
-  return {
-    ownersCount: ownersRes.count ?? 0,
-    sitesCount: sitesRes.count ?? 0,
-  };
-}
-
-export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
-  try {
+export const GET = withAdminErrorHandling(async (
+  req: Request,
+  ctxRoute: { params: Promise<{ id: string }> },
+) => {
     const ctx = await requireAuthContext(req);
-    assertSuperAdmin(ctx.role);
+    assertSuperAdminRole(ctx.role);
 
     const { id } = await ctxRoute.params;
     const parsedId = uuidSchema.safeParse(id);
@@ -78,7 +45,7 @@ export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string
       .single();
     if (error) throw mapPostgrestError(error);
 
-    const counts = await loadTenantCounts(ctx.admin, tenant.id);
+    const counts = await loadPlatformTenantCounts(ctx.admin, tenant.id);
 
     return jsonOk(
       platformTenantSummarySchema.parse({
@@ -87,15 +54,14 @@ export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string
         sites_count: counts.sitesCount,
       }),
     );
-  } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-  }
-}
+});
 
-export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
-  try {
+export const PATCH = withAdminErrorHandling(async (
+  req: Request,
+  ctxRoute: { params: Promise<{ id: string }> },
+) => {
     const ctx = await requireAuthContext(req);
-    assertSuperAdmin(ctx.role);
+    assertSuperAdminRole(ctx.role);
 
     const { id } = await ctxRoute.params;
     const parsedId = uuidSchema.safeParse(id);
@@ -174,7 +140,7 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
       if (auditError) throw mapPostgrestError(auditError);
     }
 
-    const counts = await loadTenantCounts(ctx.admin, existingTenant.id);
+    const counts = await loadPlatformTenantCounts(ctx.admin, existingTenant.id);
 
     return jsonOk(
       platformTenantSummarySchema.parse({
@@ -189,7 +155,4 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
         sites_count: counts.sitesCount,
       }),
     );
-  } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-  }
-}
+});

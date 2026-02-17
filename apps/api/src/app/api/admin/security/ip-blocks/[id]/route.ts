@@ -7,26 +7,17 @@ import {
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
-import { type UserRole } from "@prosektor/contracts";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
-import { getServerEnv } from "@/server/env";
+import { assertAdminRole } from "@/server/admin/access";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function assertAdminRole(role: UserRole) {
-    if (!isAdminRole(role)) {
-        throw new HttpError(403, { code: "FORBIDDEN", message: "Yönetici yetkisi gerekli" });
-    }
-}
-
 // DELETE /api/admin/security/ip-blocks/:id - Delete IP block
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const ctx = await requireAuthContext(req);
-        const env = getServerEnv();
         const { id } = await params;
 
         assertAdminRole(ctx.role);

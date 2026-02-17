@@ -27,7 +27,7 @@ export interface ComponentConfig {
     category: 'hero' | 'content' | 'form' | 'navigation' | 'layout' | 'media' | 'custom';
     icon: string;
     type: string;
-    defaultProps: Record<string, any>;
+    defaultProps: Record<string, unknown>;
     schema: Record<string, {
         type: 'text' | 'textarea' | 'number' | 'color' | 'select' | 'boolean' | 'image' | 'url' | 'range' | 'spacing';
         label: string;
@@ -37,9 +37,15 @@ export interface ComponentConfig {
         step?: number;
         placeholder?: string;
     }>;
-    component: React.ComponentType<any>;
+    component: React.ComponentType<Record<string, unknown>>;
     responsive?: boolean;
     themeable?: boolean;
+}
+
+function asRegistryComponent<TProps extends object>(
+    component: React.ComponentType<TProps>
+): React.ComponentType<Record<string, unknown>> {
+    return component as unknown as React.ComponentType<Record<string, unknown>>;
 }
 
 // ============================================================================
@@ -100,7 +106,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
                 ]
             },
         },
-        component: HeroComponent,
+        component: asRegistryComponent(HeroComponent),
         responsive: true,
         themeable: true,
     },
@@ -153,7 +159,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
             },
             maxWidth: { type: 'text', label: 'Maksimum Genislik', placeholder: 'orn: 800px' },
         },
-        component: TextComponent,
+        component: asRegistryComponent(TextComponent),
         responsive: true,
         themeable: true,
     },
@@ -203,7 +209,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
                 ]
             },
         },
-        component: ImageComponent,
+        component: asRegistryComponent(ImageComponent),
         responsive: true,
         themeable: true,
     },
@@ -239,7 +245,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
             maxWidth: { type: 'text', label: 'Maksimum Genislik', placeholder: 'orn: 1200px' },
             minHeight: { type: 'text', label: 'Minimum Yukseklik', placeholder: 'orn: 200px' },
         },
-        component: ContainerComponent,
+        component: asRegistryComponent(ContainerComponent),
         responsive: true,
         themeable: true,
     },
@@ -273,7 +279,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
                 ]
             },
         },
-        component: GridComponent,
+        component: asRegistryComponent(GridComponent),
         responsive: true,
         themeable: false,
     },
@@ -290,7 +296,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
         schema: {
             height: { type: 'range', label: 'Yukseklik', min: 8, max: 200, step: 4 },
         },
-        component: SpacerComponent,
+        component: asRegistryComponent(SpacerComponent),
         responsive: false,
         themeable: false,
     },
@@ -333,7 +339,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
             },
             fullWidth: { type: 'boolean', label: 'Tam Genislik' },
         },
-        component: ButtonComponent,
+        component: asRegistryComponent(ButtonComponent),
         responsive: true,
         themeable: true,
     },
@@ -356,7 +362,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
             gap: { type: 'text', label: 'Bosluk' },
             lightbox: { type: 'boolean', label: 'Lightbox Etkin' },
         },
-        component: GalleryComponent,
+        component: asRegistryComponent(GalleryComponent),
         responsive: true,
         themeable: true,
     },
@@ -396,7 +402,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
                 ]
             },
         },
-        component: NavComponent,
+        component: asRegistryComponent(NavComponent),
         responsive: true,
         themeable: true,
     },
@@ -439,7 +445,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
             backgroundColor: { type: 'color', label: 'Arka Plan Rengi' },
             textColor: { type: 'color', label: 'Metin Rengi' },
         },
-        component: FooterComponent,
+        component: asRegistryComponent(FooterComponent),
         responsive: true,
         themeable: true,
     },
@@ -472,7 +478,7 @@ export const componentRegistry: Record<string, ComponentConfig> = {
                 ]
             },
         },
-        component: FormComponent,
+        component: asRegistryComponent(FormComponent),
         responsive: true,
         themeable: true,
     },
@@ -509,7 +515,7 @@ export function getCategories(): { id: string; name: string; icon: string }[] {
     ];
 }
 
-export function getDefaultProps(type: string): Record<string, any> {
+export function getDefaultProps(type: string): Record<string, unknown> {
     return componentRegistry[type]?.defaultProps || {};
 }
 

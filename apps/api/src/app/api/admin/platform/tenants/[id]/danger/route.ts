@@ -2,34 +2,21 @@ import {
   platformTenantDangerRequestSchema,
   platformTenantSummarySchema,
   uuidSchema,
-  type UserRole,
 } from "@prosektor/contracts";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  asErrorBody,
-  asStatus,
-  asHeaders,
   HttpError,
-  jsonError,
   jsonOk,
   mapPostgrestError,
   parseJson,
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
-import { isSuperAdminRole } from "@/server/auth/permissions";
+import { assertSuperAdminRole } from "@/server/admin/access";
+import { loadPlatformTenantCounts } from "@/server/admin/platform-tenants";
+import { withAdminErrorHandling } from "@/server/admin/route-utils";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function assertSuperAdmin(role: UserRole) {
-  if (!isSuperAdminRole(role)) {
-    throw new HttpError(403, {
-      code: "FORBIDDEN",
-      message: "Bu işlem yalnızca super_admin için yetkilidir.",
-    });
-  }
-}
 
 function statusForAction(action: "suspend" | "reactivate" | "soft_delete"): "active" | "suspended" | "deleted" {
   if (action === "suspend") return "suspended";
@@ -37,32 +24,12 @@ function statusForAction(action: "suspend" | "reactivate" | "soft_delete"): "act
   return "deleted";
 }
 
-async function loadTenantCounts(admin: SupabaseClient, tenantId: string) {
-  const [ownersRes, sitesRes] = await Promise.all([
-    admin
-      .from("tenant_members")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .eq("role", "owner"),
-    admin
-      .from("sites")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId),
-  ]);
-
-  if (ownersRes.error) throw mapPostgrestError(ownersRes.error);
-  if (sitesRes.error) throw mapPostgrestError(sitesRes.error);
-
-  return {
-    ownersCount: ownersRes.count ?? 0,
-    sitesCount: sitesRes.count ?? 0,
-  };
-}
-
-export async function POST(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
-  try {
+export const POST = withAdminErrorHandling(async (
+  req: Request,
+  ctxRoute: { params: Promise<{ id: string }> },
+) => {
     const ctx = await requireAuthContext(req);
-    assertSuperAdmin(ctx.role);
+    assertSuperAdminRole(ctx.role);
 
     const { id } = await ctxRoute.params;
     const parsedId = uuidSchema.safeParse(id);
@@ -129,7 +96,7 @@ export async function POST(req: Request, ctxRoute: { params: Promise<{ id: strin
       .single();
     if (auditError) throw mapPostgrestError(auditError);
 
-    const counts = await loadTenantCounts(ctx.admin, tenant.id);
+    const counts = await loadPlatformTenantCounts(ctx.admin, tenant.id);
 
     console.info("[platform-danger-action]", {
       actorId: ctx.user.id,
@@ -146,7 +113,4 @@ export async function POST(req: Request, ctxRoute: { params: Promise<{ id: strin
       }),
       audit_id: auditRow.id,
     });
-  } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-  }
-}
+});

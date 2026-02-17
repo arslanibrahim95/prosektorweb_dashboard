@@ -72,7 +72,7 @@ describe("Request ID utilities", () => {
             expect(requestId).toMatch(uuidRegex);
         });
 
-        it("should preserve existing request ID format", () => {
+        it("should preserve existing valid alphanumeric request ID", () => {
             const customId = "custom-request-id-123";
             const headers = new Headers();
             headers.set("x-request-id", customId);
@@ -90,6 +90,64 @@ describe("Request ID utilities", () => {
 
             const requestId = getRequestId(req);
             expect(requestId).toBe(existingId);
+        });
+
+        // SECURITY: Log injection prevention tests
+        it("should reject request IDs containing special characters (log injection)", () => {
+            // Headers.set() already rejects newlines, so test with space-containing IDs
+            // which could still be used for log forgery
+            const maliciousId = "fake-id [ADMIN] unauthorized";
+            const headers = new Headers();
+            headers.set("x-request-id", maliciousId);
+            const req = new Request("https://example.com", { headers });
+
+            const requestId = getRequestId(req);
+            // Space is not in the allowed pattern, so should generate a new UUID
+            expect(requestId).not.toBe(maliciousId);
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            expect(requestId).toMatch(uuidRegex);
+        });
+
+        it("should reject oversized request IDs (DoS prevention)", () => {
+            const oversizedId = "a".repeat(200);
+            const headers = new Headers();
+            headers.set("x-request-id", oversizedId);
+            const req = new Request("https://example.com", { headers });
+
+            const requestId = getRequestId(req);
+            expect(requestId).not.toBe(oversizedId);
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            expect(requestId).toMatch(uuidRegex);
+        });
+
+        it("should reject request IDs with non-ASCII characters", () => {
+            const maliciousId = "req-<%00%0d%0a>-id";
+            const headers = new Headers();
+            headers.set("x-request-id", maliciousId);
+            const req = new Request("https://example.com", { headers });
+
+            const requestId = getRequestId(req);
+            expect(requestId).not.toBe(maliciousId);
+        });
+
+        it("should accept valid dot-separated request IDs", () => {
+            const traceId = "trace.12345.abcdef";
+            const headers = new Headers();
+            headers.set("x-request-id", traceId);
+            const req = new Request("https://example.com", { headers });
+
+            const requestId = getRequestId(req);
+            expect(requestId).toBe(traceId);
+        });
+
+        it("should accept 128-char IDs (at boundary)", () => {
+            const maxId = "a".repeat(128);
+            const headers = new Headers();
+            headers.set("x-request-id", maxId);
+            const req = new Request("https://example.com", { headers });
+
+            const requestId = getRequestId(req);
+            expect(requestId).toBe(maxId);
         });
     });
 

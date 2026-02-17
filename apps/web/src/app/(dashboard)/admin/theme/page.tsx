@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
     Card,
     CardContent,
@@ -42,6 +41,26 @@ interface PresetTheme {
     id: string;
     name: string;
     colors: ThemeColors;
+}
+
+interface ThemeSettingsPayload {
+    colors?: ThemeColors;
+    fontFamily?: string;
+    baseFontSize?: number;
+    headingFont?: string;
+    lineHeight?: string;
+    sidebarWidth?: number;
+    borderRadius?: string;
+    shadowStyle?: string;
+    compactMode?: boolean;
+}
+
+interface AdminSettingsResponse {
+    tenant?: {
+        settings?: {
+            theme?: ThemeSettingsPayload;
+        };
+    };
 }
 
 const presetThemes: PresetTheme[] = [
@@ -132,35 +151,31 @@ const presetThemes: PresetTheme[] = [
 ];
 
 export default function ThemeCustomizationPage() {
-    const [colors, setColors] = useState<ThemeColors>(presetThemes[0].colors);
-    const [fontFamily, setFontFamily] = useState("inter");
-    const [baseFontSize, setBaseFontSize] = useState(16);
-    const [headingFont, setHeadingFont] = useState("inter");
-    const [lineHeight, setLineHeight] = useState("1.5");
-    const [sidebarWidth, setSidebarWidth] = useState(260);
-    const [borderRadius, setBorderRadius] = useState("medium");
-    const [shadowStyle, setShadowStyle] = useState("medium");
-    const [compactMode, setCompactMode] = useState(false);
+    const [colorsOverride, setColorsOverride] = useState<ThemeColors | null>(null);
+    const [fontFamilyOverride, setFontFamilyOverride] = useState<string | null>(null);
+    const [baseFontSizeOverride, setBaseFontSizeOverride] = useState<number | null>(null);
+    const [headingFontOverride, setHeadingFontOverride] = useState<string | null>(null);
+    const [lineHeightOverride, setLineHeightOverride] = useState<string | null>(null);
+    const [sidebarWidthOverride, setSidebarWidthOverride] = useState<number | null>(null);
+    const [borderRadiusOverride, setBorderRadiusOverride] = useState<string | null>(null);
+    const [shadowStyleOverride, setShadowStyleOverride] = useState<string | null>(null);
+    const [compactModeOverride, setCompactModeOverride] = useState<boolean | null>(null);
     const [previewMode, setPreviewMode] = useState<"light" | "dark">("light");
 
-    const { data: settingsData, isLoading } = useAdminSettings();
+    const { data: settingsData } = useAdminSettings();
     const updateSettings = useUpdateAdminSettings();
-    const initializedRef = useRef(false);
 
-    // Initialize from saved settings (one-time sync)
-    const themeSettings = (settingsData as any)?.tenant?.settings?.theme;
-    if (themeSettings && !initializedRef.current) {
-        initializedRef.current = true;
-        if (themeSettings.colors) setColors(themeSettings.colors);
-        if (themeSettings.fontFamily) setFontFamily(themeSettings.fontFamily);
-        if (themeSettings.baseFontSize) setBaseFontSize(themeSettings.baseFontSize);
-        if (themeSettings.headingFont) setHeadingFont(themeSettings.headingFont);
-        if (themeSettings.lineHeight) setLineHeight(themeSettings.lineHeight);
-        if (themeSettings.sidebarWidth) setSidebarWidth(themeSettings.sidebarWidth);
-        if (themeSettings.borderRadius) setBorderRadius(themeSettings.borderRadius);
-        if (themeSettings.shadowStyle) setShadowStyle(themeSettings.shadowStyle);
-        if (themeSettings.compactMode !== undefined) setCompactMode(themeSettings.compactMode);
-    }
+    const themeSettings = (settingsData as AdminSettingsResponse | undefined)?.tenant?.settings?.theme;
+
+    const colors = colorsOverride ?? themeSettings?.colors ?? presetThemes[0].colors;
+    const fontFamily = fontFamilyOverride ?? themeSettings?.fontFamily ?? "inter";
+    const baseFontSize = baseFontSizeOverride ?? themeSettings?.baseFontSize ?? 16;
+    const headingFont = headingFontOverride ?? themeSettings?.headingFont ?? "inter";
+    const lineHeight = lineHeightOverride ?? themeSettings?.lineHeight ?? "1.5";
+    const sidebarWidth = sidebarWidthOverride ?? themeSettings?.sidebarWidth ?? 260;
+    const borderRadius = borderRadiusOverride ?? themeSettings?.borderRadius ?? "medium";
+    const shadowStyle = shadowStyleOverride ?? themeSettings?.shadowStyle ?? "medium";
+    const compactMode = compactModeOverride ?? themeSettings?.compactMode ?? false;
 
     const handleSaveTheme = async () => {
         try {
@@ -184,23 +199,23 @@ export default function ThemeCustomizationPage() {
     };
 
     const handleColorChange = (key: keyof ThemeColors, value: string) => {
-        setColors({ ...colors, [key]: value });
+        setColorsOverride({ ...colors, [key]: value });
     };
 
     const handleApplyPreset = (preset: PresetTheme) => {
-        setColors(preset.colors);
+        setColorsOverride({ ...preset.colors });
     };
 
     const handleReset = () => {
-        setColors(presetThemes[0].colors);
-        setFontFamily("inter");
-        setBaseFontSize(16);
-        setHeadingFont("inter");
-        setLineHeight("1.5");
-        setSidebarWidth(260);
-        setBorderRadius("medium");
-        setShadowStyle("medium");
-        setCompactMode(false);
+        setColorsOverride({ ...presetThemes[0].colors });
+        setFontFamilyOverride("inter");
+        setBaseFontSizeOverride(16);
+        setHeadingFontOverride("inter");
+        setLineHeightOverride("1.5");
+        setSidebarWidthOverride(260);
+        setBorderRadiusOverride("medium");
+        setShadowStyleOverride("medium");
+        setCompactModeOverride(false);
     };
 
     return (
@@ -281,7 +296,7 @@ export default function ThemeCustomizationPage() {
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="fontFamily">Yazı Tipi</Label>
-                                    <Select value={fontFamily} onValueChange={setFontFamily}>
+                                    <Select value={fontFamily} onValueChange={setFontFamilyOverride}>
                                         <SelectTrigger id="fontFamily">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -304,7 +319,7 @@ export default function ThemeCustomizationPage() {
                                             min={12}
                                             max={20}
                                             value={baseFontSize}
-                                            onChange={(e) => setBaseFontSize(Number(e.target.value))}
+                                            onChange={(e) => setBaseFontSizeOverride(Number(e.target.value))}
                                         />
                                         <span className="text-sm text-muted-foreground">px</span>
                                     </div>
@@ -312,7 +327,7 @@ export default function ThemeCustomizationPage() {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="headingFont">Başlık Yazı Tipi</Label>
-                                    <Select value={headingFont} onValueChange={setHeadingFont}>
+                                    <Select value={headingFont} onValueChange={setHeadingFontOverride}>
                                         <SelectTrigger id="headingFont">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -328,7 +343,7 @@ export default function ThemeCustomizationPage() {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="lineHeight">Satır Yüksekliği</Label>
-                                    <Select value={lineHeight} onValueChange={setLineHeight}>
+                                    <Select value={lineHeight} onValueChange={setLineHeightOverride}>
                                         <SelectTrigger id="lineHeight">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -364,7 +379,7 @@ export default function ThemeCustomizationPage() {
                                             min={200}
                                             max={320}
                                             value={sidebarWidth}
-                                            onChange={(e) => setSidebarWidth(Number(e.target.value))}
+                                            onChange={(e) => setSidebarWidthOverride(Number(e.target.value))}
                                             className="flex-1"
                                         />
                                         <span className="w-16 text-sm text-muted-foreground">
@@ -376,7 +391,7 @@ export default function ThemeCustomizationPage() {
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label htmlFor="borderRadius">Köşe Yuvarlaklığı</Label>
-                                        <Select value={borderRadius} onValueChange={setBorderRadius}>
+                                        <Select value={borderRadius} onValueChange={setBorderRadiusOverride}>
                                             <SelectTrigger id="borderRadius">
                                                 <SelectValue />
                                             </SelectTrigger>
@@ -392,7 +407,7 @@ export default function ThemeCustomizationPage() {
 
                                     <div className="space-y-2">
                                         <Label htmlFor="shadowStyle">Gölge Stili</Label>
-                                        <Select value={shadowStyle} onValueChange={setShadowStyle}>
+                                        <Select value={shadowStyle} onValueChange={setShadowStyleOverride}>
                                             <SelectTrigger id="shadowStyle">
                                                 <SelectValue />
                                             </SelectTrigger>
@@ -418,7 +433,7 @@ export default function ThemeCustomizationPage() {
                                     <Switch
                                         id="compactMode"
                                         checked={compactMode}
-                                        onCheckedChange={setCompactMode}
+                                        onCheckedChange={setCompactModeOverride}
                                     />
                                 </div>
                             </div>

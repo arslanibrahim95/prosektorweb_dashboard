@@ -38,6 +38,7 @@ import { AnimatedNumber } from '@/components/ui/animated-number';
 import { formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Celebration } from '@/components/ui/celebration';
+import { OnboardingBanner } from '@/components/onboarding/onboarding-banner';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -132,6 +133,7 @@ export default function HomePage() {
 
   const greetingName = auth.me?.user?.name ?? auth.me?.user?.email ?? 'Kullanıcı';
   const tenantName = auth.me?.tenant?.name ?? '';
+  const hasTenant = !!auth.me?.tenant;
 
   const stats = [
     {
@@ -180,6 +182,11 @@ export default function HomePage() {
     <div className={cn('dashboard-page', 'page-enter', 'stagger-children')}>
       {/* Celebration on 100% checklist completion */}
       <Celebration trigger={isAllComplete && !celebrationFired} variant="confetti" />
+
+      {/* Onboarding Banner - Show if user has no tenant */}
+      {!hasTenant && (
+        <OnboardingBanner />
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">

@@ -25,7 +25,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,6 +48,20 @@ import {
 import { useAdminSettings, useUpdateAdminSettings, useAdminBackups, useCreateBackup, useDeleteBackup } from "@/hooks/use-admin";
 import { toast } from "sonner";
 
+interface BackupItem {
+    id: string;
+    name: string;
+    type?: 'full' | 'partial' | 'config' | string;
+    status?: 'completed' | 'pending' | string;
+    file_size?: number | null;
+    file_url?: string | null;
+    created_at?: string | null;
+}
+
+interface BackupsResponse {
+    items?: BackupItem[];
+}
+
 export default function BackupRestorePage() {
     const [autoBackup, setAutoBackup] = useState(true);
     const [backupFrequency, setBackupFrequency] = useState("daily");
@@ -61,7 +74,7 @@ export default function BackupRestorePage() {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { data: settingsData, isLoading } = useAdminSettings();
+    const { isLoading } = useAdminSettings();
     const updateSettings = useUpdateAdminSettings();
 
     // Backup hooks
@@ -69,7 +82,7 @@ export default function BackupRestorePage() {
     const createBackup = useCreateBackup();
     const deleteBackup = useDeleteBackup();
 
-    const backups = (backupsData as any)?.items || [];
+    const backups = (backupsData as BackupsResponse | undefined)?.items ?? [];
 
     const handleCreateBackup = async (type: 'full' | 'partial', description?: string) => {
         const typeLabels = { full: 'Tam Yedek', partial: 'Kısmi Yedek' };
@@ -78,7 +91,7 @@ export default function BackupRestorePage() {
             await createBackup.mutateAsync({ name, type, description });
             toast.success('Yedekleme başlatıldı');
             refetchBackups();
-        } catch (error) {
+        } catch {
             toast.error('Yedekleme başlatılamadı');
         }
     };
@@ -87,7 +100,7 @@ export default function BackupRestorePage() {
         try {
             await deleteBackup.mutateAsync(id);
             toast.success('Yedek silindi');
-        } catch (error) {
+        } catch {
             toast.error('Yedek silinemedi');
         }
     };
@@ -104,7 +117,7 @@ export default function BackupRestorePage() {
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const formatFileSize = (bytes: number | null) => {
+    const formatFileSize = (bytes?: number | null) => {
         if (!bytes) return '-';
         if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
         if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -128,7 +141,7 @@ export default function BackupRestorePage() {
                 },
             });
             toast.success('Yedekleme ayarları kaydedildi');
-        } catch (error) {
+        } catch {
             toast.error('Ayarlar kaydedilemedi');
         }
     };
@@ -211,7 +224,7 @@ export default function BackupRestorePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {backups.map((backup: any) => (
+                                {backups.map((backup) => (
                                     <TableRow key={backup.id}>
                                         <TableCell className="font-medium">{backup.name}</TableCell>
                                         <TableCell>
@@ -237,7 +250,9 @@ export default function BackupRestorePage() {
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => {
-                                                            window.open(backup.file_url, '_blank');
+                                                            const fileUrl = backup.file_url;
+                                                            if (!fileUrl) return;
+                                                            window.open(fileUrl, '_blank');
                                                             toast.success('İndirme başlatıldı');
                                                         }}
                                                     >

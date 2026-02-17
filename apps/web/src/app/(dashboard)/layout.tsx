@@ -39,22 +39,14 @@ function DashboardGate({ children }: { children: React.ReactNode }) {
         return <AuthLoadingSkeleton />;
     }
 
-    // If user is signed in but has no tenant membership yet
-    if (auth.session && !auth.me) {
-        // Redirect to new onboarding flow
-        router.replace('/onboarding/welcome');
-        return <AuthLoadingSkeleton />;
-    }
-
-    if (!auth.me) {
-        // Redirect effect will handle unauthenticated; keep a skeleton for hydration.
+    if (!auth.session) {
         return <AuthLoadingSkeleton />;
     }
 
     return (
         <AppShell
-            user={auth.me.user}
-            tenant={{ name: auth.me.tenant.name }}
+            user={auth.me?.user}
+            tenant={auth.me?.tenant ? { name: auth.me.tenant.name } : undefined}
         >
             {children}
         </AppShell>

@@ -12,6 +12,7 @@ import {
     Globe,
     Check,
     Building2,
+    HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +31,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useSite } from '@/components/site/site-provider';
 import { useUnreadCount } from '@/hooks/use-unread-count';
+import { replayWelcomeTour } from '@/components/onboarding/welcome-modal';
 
 interface TopbarProps {
     user?: {
@@ -292,6 +294,10 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                             <DropdownMenuItem onClick={() => router.push('/settings/users')}>
                                 <Settings className="mr-2 h-4 w-4" />
                                 Ayarlar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => replayWelcomeTour()}>
+                                <HelpCircle className="mr-2 h-4 w-4" />
+                                Rehberi Tekrar Oynat
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

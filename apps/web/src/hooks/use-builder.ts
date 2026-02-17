@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { api } from '@/server/api';
+import { useMemo } from 'react';
 
 // ============================================================================
 // Types
@@ -333,9 +334,10 @@ export const useBuilderStore = create<BuilderState>()(
                         id
                     );
 
-                    // Insert at new position
+                    // Insert at new position with bounds validation
                     const newComponents = [...componentsWithoutMoved];
-                    newComponents.splice(newIndex, 0, component);
+                    const clampedIndex = Math.max(0, Math.min(newIndex, newComponents.length));
+                    newComponents.splice(clampedIndex, 0, component);
 
                     set({
                         layoutData: {
@@ -356,11 +358,11 @@ export const useBuilderStore = create<BuilderState>()(
                     );
                     if (!component) return;
 
-                    const duplicated: BuilderComponent = {
-                        ...component,
-                        id: `${component.type}-${Date.now()}`,
-                        name: `${component.name} (Kopya)`,
-                    };
+                    // SECURITY: Use crypto.randomUUID() instead of Date.now() to prevent ID collisions
+                    // Deep clone with structuredClone to avoid shared children/props references
+                    const duplicated: BuilderComponent = structuredClone(component);
+                    duplicated.id = crypto.randomUUID();
+                    duplicated.name = `${component.name} (Kopya)`;
 
                     const index = state.layoutData.components.findIndex(
                         (c) => c.id === id
@@ -426,9 +428,8 @@ export const useBuilderStore = create<BuilderState>()(
                 pushHistory: (description) => {
                     const state = get();
                     const newEntry: HistoryEntry = {
-                        layoutData: JSON.parse(
-                            JSON.stringify(state.layoutData)
-                        ),
+                        // Use structuredClone for proper deep copy (handles Date, undefined, etc.)
+                        layoutData: structuredClone(state.layoutData),
                         timestamp: Date.now(),
                         description,
                     };
@@ -583,41 +584,73 @@ export const useBuilderStore = create<BuilderState>()(
 
 /**
  * useBuilder - Ana builder hook'u
+ * PERFORMANCE FIX: Returns the full store but callers should prefer
+ * granular hooks (useBuilderLayout, useBuilderActions, etc.) to avoid
+ * unnecessary re-renders.
  */
 export function useBuilder() {
     return useBuilderStore();
 }
 
 /**
+ * Granular selector hooks — subscribe only to the slice you need.
+ */
+export function useBuilderLayout() {
+    return useBuilderStore((s) => s.layoutData);
+}
+
+export function useBuilderLoading() {
+    return useBuilderStore((s) => s.isLoading);
+}
+
+export function useBuilderSelection() {
+    return useBuilderStore((s) => ({
+        selectedComponentId: s.selectedComponentId,
+        selectedRegion: s.selectedRegion,
+        setSelectedComponent: s.setSelectedComponent,
+    }));
+}
+
+/**
  * useSelectedComponent - Seçili bileşen
+ * PERFORMANCE FIX: useMemo for referential stability — downstream
+ * components only re-render when the actual selected component changes.
  */
 export function useSelectedComponent(): BuilderComponent | null {
-    const { layoutData, selectedComponentId } = useBuilderStore();
+    // Use Zustand selectors to prevent re-renders on unrelated state changes
+    const selectedComponentId = useBuilderStore((s) => s.selectedComponentId);
+    const components = useBuilderStore((s) => s.layoutData.components);
 
-    if (!selectedComponentId) return null;
+    return useMemo(() => {
+        if (!selectedComponentId) return null;
 
-    const findComponent = (
-        components: BuilderComponent[],
-        id: string
-    ): BuilderComponent | null => {
-        for (const component of components) {
-            if (component.id === id) return component;
-            if (component.children) {
-                const found = findComponent(component.children, id);
-                if (found) return found;
+        const findComponent = (
+            comps: BuilderComponent[],
+            id: string
+        ): BuilderComponent | null => {
+            for (const component of comps) {
+                if (component.id === id) return component;
+                if (component.children) {
+                    const found = findComponent(component.children, id);
+                    if (found) return found;
+                }
             }
-        }
-        return null;
-    };
+            return null;
+        };
 
-    return findComponent(layoutData.components, selectedComponentId);
+        return findComponent(components, selectedComponentId);
+    }, [components, selectedComponentId]);
 }
 
 /**
  * useHistory - Undo/redo kontrolü
+ * PERFORMANCE FIX: Granular selectors instead of full store subscription.
  */
 export function useHistory() {
-    const { canUndo, canRedo, undo, redo } = useBuilderStore();
+    const canUndo = useBuilderStore((s) => s.canUndo);
+    const canRedo = useBuilderStore((s) => s.canRedo);
+    const undo = useBuilderStore((s) => s.undo);
+    const redo = useBuilderStore((s) => s.redo);
     return { canUndo, canRedo, undo, redo };
 }
 
