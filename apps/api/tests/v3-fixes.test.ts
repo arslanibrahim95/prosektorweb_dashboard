@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { getOrSetCachedValue, clearCacheStore } from '@/server/cache';
-// @ts-ignore - accessing private members for testing
+// accessing private members for testing
 import { originDecisionCache, pruneCache, ORIGIN_CACHE_MAX_ENTRIES } from '@/server/security/origin';
 
 import { parseInboxQueryParams } from '@/server/inbox/query-params';
@@ -37,7 +37,7 @@ describe('V3 Code Review Fixes', () => {
 
             try {
                 await getOrSetCachedValue(key, 60, slowLoader, 50);
-            } catch (e) {
+            } catch {
                 // ignore timeout error
             }
 

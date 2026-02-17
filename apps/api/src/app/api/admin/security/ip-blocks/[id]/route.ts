@@ -1,33 +1,30 @@
 import {
-    asHeaders,
-    asErrorBody,
-    asStatus,
     HttpError,
-    jsonError,
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
-import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // DELETE /api/admin/security/ip-blocks/:id - Delete IP block
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
+export const DELETE = withAdminErrorHandling(async (
+    req: Request,
+    { params }: { params: Promise<{ id: string }> },
+) => {
         const ctx = await requireAuthContext(req);
         const { id } = await params;
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_ip_blocks", ctx.tenant.id, ctx.user.id),
-            10,
-            60,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_ip_blocks", {
+            limit: 10,
+            windowSeconds: 60,
+        });
 
         // Get the IP block
         const { data: block, error: blockError } = await ctx.admin
@@ -77,7 +74,4 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             200,
             rateLimitHeaders(rateLimit),
         );
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});

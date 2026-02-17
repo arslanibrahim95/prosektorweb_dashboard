@@ -386,22 +386,24 @@ components: {
 ### CV Upload (`/api/public/hr/apply`)
 
 **Validation Rules:**
-- **File type**: PDF only (`.pdf`)
+- **File type**: PDF, DOC, DOCX (`.pdf`, `.doc`, `.docx`)
 - **Max size**: 5 MB
-- **Content validation**: File content is validated to ensure it's a valid PDF
-- **Virus scanning**: Files are scanned for malware (in production)
+- **Content validation**: MIME + magic-bytes verification with structure checks
+- **Malware scanning**:
+  - Built-in signature check (defense-in-depth)
+  - Optional ClamAV scan when `AV_SCAN_ENABLED=true`
 
 **Example:**
 
 ```bash
 curl -X POST http://localhost:3001/api/public/hr/apply \
-  -F "site_id=<uuid>" \
+  -F "site_token=<token>" \
   -F "job_post_id=<uuid>" \
   -F "full_name=John Doe" \
   -F "email=john@example.com" \
   -F "phone=+1234567890" \
-  -F "cv=@/path/to/resume.pdf" \
-  -F "cover_letter=I am interested in this position..."
+  -F "kvkk_consent=true" \
+  -F "cv_file=@/path/to/resume.pdf"
 ```
 
 See [`CV_UPLOAD_VALIDATION.md`](./security/CV_UPLOAD_VALIDATION.md) for detailed security information.

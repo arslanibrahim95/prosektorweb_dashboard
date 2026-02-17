@@ -230,6 +230,15 @@ describe('File Validation Security', () => {
             expect(result.error).toContain('file type');
         });
 
+        it('should reject valid content when extension is not allowed', async () => {
+            const pdfSignature = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34]);
+            const file = new File([pdfSignature], 'resume.txt', { type: 'application/pdf' });
+            const arrayBuffer = pdfSignature.buffer.slice(pdfSignature.byteOffset, pdfSignature.byteOffset + pdfSignature.byteLength);
+            const result = await validateCVFile(file, arrayBuffer);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('extension');
+        });
+
         it('should reject oversized file', async () => {
             const largeContent = Buffer.alloc(MAX_CV_FILE_SIZE + 1);
             const file = new File([largeContent], 'large.pdf', { type: 'application/pdf' });
@@ -244,6 +253,19 @@ describe('File Validation Security', () => {
             const result = await validateCVFile(file, jpegSignature.buffer);
             expect(result.valid).toBe(false);
             expect(result.error).toContain('content');
+        });
+
+        it('should reject files containing malware signature patterns', async () => {
+            const eicar = 'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
+            const pdfPayload = Buffer.concat([
+                Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37]), // %PDF-1.7
+                Buffer.from(eicar, 'utf8'),
+            ]);
+            const file = new File([pdfPayload], 'infected.pdf', { type: 'application/pdf' });
+            const arrayBuffer = pdfPayload.buffer.slice(pdfPayload.byteOffset, pdfPayload.byteOffset + pdfPayload.byteLength);
+            const result = await validateCVFile(file, arrayBuffer);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('malware');
         });
 
         it('should accept valid DOCX file', async () => {

@@ -108,12 +108,12 @@ function extractForwardedIp(forwardedFor: string): string | null {
  * The chain format is: client, proxy1, proxy2, ..., last_proxy
  * 
  * @param forwardedFor - X-Forwarded-For header value
- * @param trustedProxies - Number of trusted proxies between client and app (default: 1)
+ * @param trustedProxies - Number of trusted proxy hops to skip from the right (default: 0)
  * @returns The most trustworthy IP or null
  */
 function extractTrustedForwardedIp(
   forwardedFor: string,
-  trustedProxies: number = 1
+  trustedProxies: number = 0
 ): string | null {
   const chain = forwardedFor
     .split(",")
@@ -158,12 +158,18 @@ function extractClientIpFromHeaders(req: Request): ClientIpInfo | null {
     };
   }
 
-  // Priority 2: X-Forwarded-For (BACKWARD COMPATIBILITY: X-Real-IP intentionally not supported) (use with caution, can be spoofed)
-  // BACKWARD COMPATIBILITY: Using extractForwardedIp (first entry) for test compatibility
-  // SECURITY: Consider using extractTrustedForwardedIp in production
+  // Priority 2: X-Forwarded-For (X-Real-IP intentionally not supported)
+  // SECURITY: In production, use trusted-hop extraction to reduce spoofing risk.
+  // BACKWARD COMPATIBILITY: In non-production, keep first-entry behavior.
   const forwardedFor = req.headers.get("x-forwarded-for");
   if (forwardedFor) {
-    const forwardedIp = extractForwardedIp(forwardedFor);
+    const trustedProxiesRaw = Number.parseInt(process.env.TRUSTED_PROXY_COUNT ?? "0", 10);
+    const trustedProxies = Number.isFinite(trustedProxiesRaw) && trustedProxiesRaw >= 0
+      ? trustedProxiesRaw
+      : 0;
+    const forwardedIp = process.env.NODE_ENV === "production"
+      ? extractTrustedForwardedIp(forwardedFor, trustedProxies)
+      : extractForwardedIp(forwardedFor);
     if (forwardedIp) {
       return {
         ip: forwardedIp,

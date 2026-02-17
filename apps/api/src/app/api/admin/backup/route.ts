@@ -1,16 +1,12 @@
 import {
-    asHeaders,
-    asErrorBody,
-    asStatus,
     HttpError,
-    jsonError,
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
-import { getServerEnv } from "@/server/env";
-import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -22,19 +18,12 @@ const backupSchema = z.object({
 });
 
 // GET /api/admin/backup - List backups
-export async function GET(req: Request) {
-    try {
+export const GET = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
-        const env = getServerEnv();
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_backup", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_backup", "read");
 
         const url = new URL(req.url);
         const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
@@ -95,24 +84,18 @@ export async function GET(req: Request) {
             200,
             rateLimitHeaders(rateLimit),
         );
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});
 
 // POST /api/admin/backup - Create a new backup
-export async function POST(req: Request) {
-    try {
+export const POST = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_backup", ctx.tenant.id, ctx.user.id),
-            5, // Very restrictive for create operations
-            300, // 5 minutes
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_backup", {
+            limit: 5,
+            windowSeconds: 300,
+        });
 
         const body = await req.json();
         const parsed = backupSchema.safeParse(body);
@@ -175,24 +158,18 @@ export async function POST(req: Request) {
             201,
             rateLimitHeaders(rateLimit),
         );
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});
 
 // DELETE /api/admin/backup?id=<uuid> - Delete a backup
-export async function DELETE(req: Request) {
-    try {
+export const DELETE = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_backup", ctx.tenant.id, ctx.user.id),
-            5,
-            300,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_backup", {
+            limit: 5,
+            windowSeconds: 300,
+        });
 
         const url = new URL(req.url);
         const backupId = url.searchParams.get("id");
@@ -240,7 +217,4 @@ export async function DELETE(req: Request) {
         });
 
         return jsonOk({ success: true, id: backupId }, 200, rateLimitHeaders(rateLimit));
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});

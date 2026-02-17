@@ -338,7 +338,7 @@ export async function getOrSetCachedValue<T>(
   // Use a Map to track in-flight requests for the same key.
   // This prevents multiple concurrent requests from hitting the loader function
   // when cache is empty (thundering herd problem).
-  let pending = inFlightRequests.get(key);
+  const pending = inFlightRequests.get(key);
   if (pending) {
     // Another request is already loading this key - wait for it
     return pending as Promise<T>;

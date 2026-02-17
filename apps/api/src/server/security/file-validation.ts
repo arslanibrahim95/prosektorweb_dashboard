@@ -1,3 +1,6 @@
+import { timingSafeEqual } from "crypto";
+import { getAvScanConfig, scanBufferWithClamAv } from "./av-scan";
+
 /**
  * File Validation Security Utilities
  * 
@@ -52,6 +55,16 @@ const ZIP_SIGNATURES = [
     Buffer.from([0x50, 0x4B, 0x05, 0x06]),
     Buffer.from([0x50, 0x4B, 0x07, 0x08]),
 ];
+
+/**
+ * Known malware test signatures (defense-in-depth).
+ * NOTE: This is a basic signature check and should complement, not replace,
+ * dedicated AV scanning infrastructure.
+ */
+const EICAR_TEST_SIGNATURE = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+const KNOWN_MALWARE_SIGNATURES = [
+    Buffer.from(EICAR_TEST_SIGNATURE, "utf8"),
+] as const;
 
 /**
  * Allowed MIME types for CV uploads
@@ -187,17 +200,13 @@ export function checkMagicBytes(buffer: ArrayBuffer, expectedSignatures: readonl
         const sample = fileBuffer.slice(0, signature.length);
 
         // timingSafeEqual prevents timing-based side-channel attacks
-        try {
-            return require('crypto').timingSafeEqual(sample, signature);
-        } catch {
-            // Fallback for environments without crypto (shouldn't happen server-side)
-            let match = true;
-            for (let i = 0; i < signature.length; i++) {
-                match = match && (fileBuffer[i] === signature[i]);
-            }
-            return match;
-        }
+        return timingSafeEqual(sample, signature);
     });
+}
+
+function containsKnownMalwareSignature(buffer: ArrayBuffer): boolean {
+    const fileBuffer = Buffer.from(new Uint8Array(buffer));
+    return KNOWN_MALWARE_SIGNATURES.some((signature) => fileBuffer.includes(signature));
 }
 
 /**
@@ -553,9 +562,15 @@ export async function validateCVFile(
         };
     }
 
-    // Extension check - just warn, don't fail (for backward compatibility)
+    // Enforce extension whitelist to prevent type confusion on downstream systems.
     if (!validateFileExtension(file.name)) {
-        console.warn('[FileValidation] Unusual file extension:', file.name);
+        return {
+            valid: false,
+            error: 'Invalid file extension. Only .pdf, .doc, and .docx extensions are allowed.',
+            details: {
+                extension: getFileExtension(file.name),
+            },
+        };
     }
 
     // SECURITY: Detect actual MIME type from content (MIME sniffing)
@@ -593,9 +608,36 @@ export async function validateCVFile(
         console.warn('[FileValidation] Filename sanitized:', file.name, '->', sanitizedFilename);
     }
 
-    // TODO: Add virus scanning integration here
-    // Example: const scanResult = await scanWithClamAV(buffer);
-    // if (!scanResult.clean) return { valid: false, error: 'Virus detected' };
+    // Defense-in-depth basic malware signature check.
+    if (containsKnownMalwareSignature(buffer)) {
+        return {
+            valid: false,
+            error: 'Potential malware signature detected in file content.',
+        };
+    }
+
+    // Optional production AV scan (ClamAV). Controlled via env flags.
+    const avConfig = getAvScanConfig();
+    if (avConfig.enabled) {
+        const avResult = await scanBufferWithClamAv(buffer, avConfig);
+        if (avResult.unavailable) {
+            if (avConfig.failClosed) {
+                return {
+                    valid: false,
+                    error: 'File could not be scanned for malware. Please try again later.',
+                };
+            }
+
+            console.warn('[FileValidation] AV scan unavailable, fail-open policy applied', {
+                reason: avResult.reason,
+            });
+        } else if (!avResult.clean) {
+            return {
+                valid: false,
+                error: 'Potential malware detected in file content.',
+            };
+        }
+    }
 
     return {
         valid: true,

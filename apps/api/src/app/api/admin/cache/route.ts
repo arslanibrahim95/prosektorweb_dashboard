@@ -1,16 +1,12 @@
 import {
-    asHeaders,
-    asErrorBody,
-    asStatus,
     HttpError,
-    jsonError,
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
-import { getServerEnv } from "@/server/env";
-import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 import { getCacheStats, clearCacheStore, cacheStore } from "@/server/cache";
 import { z } from "zod";
 
@@ -25,19 +21,12 @@ const cacheSettingsSchema = z.object({
 });
 
 // GET /api/admin/cache - Get cache stats and settings
-export async function GET(req: Request) {
-    try {
+export const GET = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
-        const env = getServerEnv();
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_cache", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_cache", "read");
 
         // Get cache settings from database
         const { data: settings, error: settingsError } = await ctx.admin
@@ -84,25 +73,15 @@ export async function GET(req: Request) {
             200,
             rateLimitHeaders(rateLimit),
         );
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});
 
 // PATCH /api/admin/cache - Update cache settings
-export async function PATCH(req: Request) {
-    try {
+export const PATCH = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
-        const env = getServerEnv();
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_cache", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_cache", "read");
 
         const body = await req.json();
         const parsed = cacheSettingsSchema.safeParse(body);
@@ -141,10 +120,7 @@ export async function PATCH(req: Request) {
         });
 
         return jsonOk({ settings }, 200, rateLimitHeaders(rateLimit));
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});
 
 // Legacy PUT handler (same as PATCH)
 export async function PUT(req: Request) {
@@ -152,18 +128,15 @@ export async function PUT(req: Request) {
 }
 
 // DELETE /api/admin/cache - Clear cache
-export async function DELETE(req: Request) {
-    try {
+export const DELETE = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_cache", ctx.tenant.id, ctx.user.id),
-            10, // More restrictive for destructive operations
-            60,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_cache", {
+            limit: 10,
+            windowSeconds: 60,
+        });
 
         const url = new URL(req.url);
         const clearType = url.searchParams.get("type") || "all";
@@ -202,7 +175,4 @@ export async function DELETE(req: Request) {
             200,
             rateLimitHeaders(rateLimit),
         );
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});

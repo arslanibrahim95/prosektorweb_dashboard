@@ -11,6 +11,7 @@ This document describes the comprehensive file validation security measures impl
 - Oversized file uploads
 - Unsupported file types
 - Path traversal attacks via filenames
+- Malware payload uploads
 
 ## Implementation
 
@@ -49,6 +50,7 @@ Created a reusable security utility at [`apps/api/src/server/security/file-valid
 - Comprehensive validation combining all checks
 - Returns detailed error messages for failures
 - Single function for complete file validation
+- Includes optional ClamAV scan when enabled by environment variables
 
 ### 2. Error Codes
 
@@ -96,7 +98,10 @@ Modified [`apps/api/src/app/api/public/hr/apply/route.ts`](../../src/app/api/pub
 4. validateCVFile() performs:
    - File type whitelist check
    - File size limit check (5MB)
+   - File extension whitelist check
    - Magic bytes verification
+   - Known malware signature check (EICAR test signature)
+   - Optional ClamAV scan (if `AV_SCAN_ENABLED=true`)
    ↓
 5. If validation fails:
    - Return specific error code
@@ -113,8 +118,8 @@ Modified [`apps/api/src/app/api/public/hr/apply/route.ts`](../../src/app/api/pub
 ### 1. **Extension Spoofing Prevention**
 Magic bytes verification ensures that a file claiming to be a PDF actually contains PDF content, preventing attackers from uploading executables disguised as documents.
 
-### 2. **File Type Whitelist**
-Only PDF, DOC, and DOCX files are accepted, reducing attack surface significantly.
+### 2. **File Type + Extension Whitelist**
+Only PDF, DOC, and DOCX files are accepted, and the filename extension must match the allowed set (`.pdf`, `.doc`, `.docx`).
 
 ### 3. **Size Limit Enforcement**
 5MB limit prevents:
@@ -133,26 +138,33 @@ Prevents:
 - User-friendly messages in multiple languages
 - No sensitive information leakage
 
+### 6. **Malware Detection Layers**
+- Built-in signature-based detection for known test malware signatures (defense-in-depth)
+- Optional runtime integration with ClamAV (`INSTREAM`) for production scanning
+- Configurable fail-open / fail-closed behavior when AV service is unavailable
+
 ## Testing
 
-Comprehensive test suite at [`apps/api/tests/security/file-validation.test.ts`](../../tests/security/file-validation.test.ts) with 36 tests covering:
+Comprehensive test suite at [`apps/api/tests/security/file-validation.test.ts`](../../tests/security/file-validation.test.ts) with 38 tests covering:
 
 - File type validation (6 tests)
 - File size validation (4 tests)
 - Magic bytes detection (6 tests)
 - File content validation (5 tests)
 - Filename sanitization (9 tests)
-- Integration tests (6 tests)
+- Integration tests (8 tests)
 
 **Test Coverage:**
 - ✅ Valid PDF, DOC, DOCX files
 - ✅ Invalid file types (executables, images)
 - ✅ Oversized files
 - ✅ Extension spoofing attempts
+- ✅ Invalid extension rejection
 - ✅ Unicode characters in filenames
 - ✅ Path traversal attempts
 - ✅ Empty files
 - ✅ Special characters in filenames
+- ✅ Malware signature rejection (EICAR test pattern)
 
 ## Usage Example
 
@@ -191,16 +203,25 @@ export const MAX_CV_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 export const MAX_FILENAME_LENGTH = 80;
 ```
 
+Environment flags for optional ClamAV integration:
+
+```bash
+AV_SCAN_ENABLED=false
+AV_SCAN_FAIL_CLOSED=false
+CLAMAV_HOST=127.0.0.1
+CLAMAV_PORT=3310
+CLAMAV_TIMEOUT_MS=2500
+```
+
 ## Future Enhancements
 
 Potential improvements for future iterations:
 
-1. **Virus Scanning**: Integrate with ClamAV or similar for malware detection
-2. **Content Analysis**: Validate document structure (e.g., PDF structure validation)
+1. **Quarantine Workflow**: Store uploads in quarantine bucket until async AV confirmation
+2. **Multi-Engine Scanning**: Add secondary scanner for higher detection confidence
 3. **Rate Limiting**: Per-user upload limits
-4. **File Quarantine**: Temporary storage before final validation
-5. **Audit Logging**: Log all upload attempts for security monitoring
-6. **Additional Formats**: Support for RTF, TXT if needed
+4. **Audit Logging**: Log upload verdicts and AV scanner telemetry
+5. **Additional Formats**: Support for RTF, TXT if needed
 
 ## References
 

@@ -25,6 +25,11 @@ This checklist ensures all security fixes are properly deployed to production wi
   - `DASHBOARD_READ_RL_LIMIT`
   - `DASHBOARD_SEARCH_RL_LIMIT`
   - `DASHBOARD_EXPORT_RL_LIMIT`
+  - `TRUSTED_PROXY_COUNT`
+  - `AV_SCAN_ENABLED`
+  - `AV_SCAN_FAIL_CLOSED`
+  - `CLAMAV_HOST`
+  - `CLAMAV_PORT`
 
 ### 2. Security Validation
 
@@ -37,7 +42,10 @@ This checklist ensures all security fixes are properly deployed to production wi
   - Dashboard read: 120 requests per minute per user
   - Dashboard search: 30 requests per minute per user
   - Dashboard export: 3 requests per 10 minutes per user
+- [ ] Verify `TRUSTED_PROXY_COUNT` matches real reverse-proxy hop count in production
 - [ ] Validate CORS settings restrict origins to approved domains only
+- [ ] If CV upload is public in production, enable AV scanning (`AV_SCAN_ENABLED=true`)
+- [ ] Decide AV policy: fail-open (`AV_SCAN_FAIL_CLOSED=false`) vs fail-closed (`AV_SCAN_FAIL_CLOSED=true`)
 - [ ] Review and update `.gitleaksignore` for new secrets
 - [ ] Run secret scanning: `docker run zricethezav/gitleaks:latest detect`
 

@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user's first tenant for rate limiting
-    const { data: membership, error: membershipError } = await admin
+    const { data: membership } = await admin
       .from('tenant_members')
       .select('tenant_id, role')
       .eq('user_id', userData.user.id)
@@ -100,16 +100,15 @@ export async function POST(req: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    // Use tenant_id if available, otherwise fallback to userId
+    // Use tenant_id from trusted membership data (not user_metadata).
+    // Fallback to userId keeps per-user throttling stable even without membership row.
     const effectiveTenantId = membership?.tenant_id ?? userData.user.id;
 
     // SECURITY: Additional rate limit by user ID (after authentication)
     // This prevents a single user from generating too many tokens
-    // FIX: Use tenant_id from user metadata instead of userId for the tenant parameter
-    const userTenantId = (userData.user.user_metadata?.tenant_id as string) ?? userData.user.id;
     await enforceRateLimit(
       admin,
-      rateLimitAuthKey('token-exchange', userTenantId, userData.user.id),
+      rateLimitAuthKey('token-exchange', effectiveTenantId, userData.user.id),
       20, // 20 requests per hour per user
       3600 // 1 hour in seconds
     );

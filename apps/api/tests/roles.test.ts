@@ -232,7 +232,6 @@ describe("Kullanıcı Rolleri ve Yetkilendirme Sistemi", () => {
             const viewerPerms = permissionsForRole("viewer").length;
             const editorPerms = permissionsForRole("editor").length;
             const adminPerms = permissionsForRole("admin").length;
-            const ownerPerms = permissionsForRole("owner").length;
 
             // Viewer en az izne sahip olmalı
             expect(viewerPerms).toBeLessThanOrEqual(editorPerms);
@@ -242,7 +241,6 @@ describe("Kullanıcı Rolleri ve Yetkilendirme Sistemi", () => {
 
         it("super_admin tüm izinlere sahip olmalı", () => {
             const superAdminPerms = permissionsForRole("super_admin");
-            const ownerPerms = permissionsForRole("owner");
 
             // super_admin *, yani tüm izinlere sahip
             expect(superAdminPerms).toContain("*");

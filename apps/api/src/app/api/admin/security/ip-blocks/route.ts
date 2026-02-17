@@ -1,16 +1,12 @@
 import {
-    asHeaders,
-    asErrorBody,
-    asStatus,
     HttpError,
-    jsonError,
     jsonOk,
     mapPostgrestError,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
-import { getServerEnv } from "@/server/env";
-import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 import { z } from "zod";
 import { isIP } from "net";
 
@@ -66,19 +62,10 @@ const ipBlockSchema = z.object({
 });
 
 // GET /api/admin/security/ip-blocks - List IP blocks
-export async function GET(req: Request) {
-    try {
+export const GET = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
-        const env = getServerEnv();
-
         assertAdminRole(ctx.role);
-
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_ip_blocks", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_ip_blocks", "read");
 
         const url = new URL(req.url);
         const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
@@ -132,24 +119,18 @@ export async function GET(req: Request) {
             200,
             rateLimitHeaders(rateLimit),
         );
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});
 
 // POST /api/admin/security/ip-blocks - Create IP block
-export async function POST(req: Request) {
-    try {
+export const POST = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_ip_blocks_write", ctx.tenant.id, ctx.user.id),
-            10, // More restrictive for write operations
-            60,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_ip_blocks_write", {
+            limit: 10,
+            windowSeconds: 60,
+        });
 
         const body = await req.json();
         const parsed = ipBlockSchema.safeParse(body);
@@ -204,24 +185,18 @@ export async function POST(req: Request) {
         });
 
         return jsonOk({ block }, 201, rateLimitHeaders(rateLimit));
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});
 
 // PATCH /api/admin/security/ip-blocks?id=<uuid> - Update IP block
-export async function PATCH(req: Request) {
-    try {
+export const PATCH = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_ip_blocks_write", ctx.tenant.id, ctx.user.id),
-            10,
-            60,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_ip_blocks_write", {
+            limit: 10,
+            windowSeconds: 60,
+        });
 
         const url = new URL(req.url);
         const blockId = url.searchParams.get("id");
@@ -305,24 +280,18 @@ export async function PATCH(req: Request) {
         });
 
         return jsonOk({ block }, 200, rateLimitHeaders(rateLimit));
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});
 
 // DELETE /api/admin/security/ip-blocks?id=<uuid> - Remove IP block
-export async function DELETE(req: Request) {
-    try {
+export const DELETE = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role);
 
-        const rateLimit = await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_ip_blocks_write", ctx.tenant.id, ctx.user.id),
-            10,
-            60,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_ip_blocks_write", {
+            limit: 10,
+            windowSeconds: 60,
+        });
 
         const url = new URL(req.url);
         const blockId = url.searchParams.get("id");
@@ -371,7 +340,4 @@ export async function DELETE(req: Request) {
         });
 
         return jsonOk({ success: true, id: blockId }, 200, rateLimitHeaders(rateLimit));
-    } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
-    }
-}
+});
