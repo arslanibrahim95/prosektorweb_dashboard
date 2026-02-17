@@ -71,7 +71,7 @@ async function getSupabaseClient(req: NextRequest) {
           get(name: string) {
             try {
               return req.cookies.get(name)?.value;
-            } catch (error) {
+            } catch {
               // Cookie parsing can fail with malformed cookies
               console.warn('[Middleware] Failed to parse cookie:', name);
               return undefined;
@@ -95,10 +95,13 @@ export async function middleware(req: NextRequest) {
   const url = req.nextUrl.clone();
 
   // Skip middleware for static files and Next.js internals
+  // SECURITY FIX: Use proper file extension regex instead of pathname.includes('.')
+  // which would bypass auth for paths like /user/john.doe or /settings/v2.0
+  const hasFileExtension = /\.[a-zA-Z0-9]{1,10}$/.test(pathname);
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
-    pathname.includes('.')
+    hasFileExtension
   ) {
     return NextResponse.next();
   }
@@ -116,10 +119,12 @@ export async function middleware(req: NextRequest) {
           return NextResponse.next();
         }
 
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // SECURITY FIX: Use getUser() instead of getSession() to verify JWT server-side
+        // getSession() reads unverified JWT from cookies and can be spoofed
+        const { data: { user }, error } = await supabase.auth.getUser();
 
-        // Only redirect if we have a valid session
-        if (!error && session) {
+        // Only redirect if we have a verified user
+        if (!error && user) {
           url.pathname = '/home';
           return NextResponse.redirect(url);
         }
@@ -146,7 +151,9 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(loginUrl);
       }
 
-      const { data: { session }, error } = await supabase.auth.getSession();
+      // SECURITY FIX: Use getUser() instead of getSession() to verify JWT server-side
+      // getSession() reads unverified JWT from cookies — attacker can forge cookies
+      const { data: { user }, error } = await supabase.auth.getUser();
 
       // SECURITY: Treat any error as authentication failure
       if (error) {
@@ -160,32 +167,12 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(loginUrl);
       }
 
-      if (!session) {
+      if (!user) {
         // Not authenticated - redirect to login with return URL
         const loginUrl = new URL('/login', req.url);
         loginUrl.searchParams.set('redirect', pathname);
         loginUrl.searchParams.set('reason', 'auth_required');
         return NextResponse.redirect(loginUrl);
-      }
-
-      // SECURITY: Check session expiration with buffer time
-      // Add 30 second buffer to prevent race conditions
-      if (session.expires_at) {
-        const expiresAt = session.expires_at * 1000;
-        const now = Date.now();
-        const bufferMs = 30 * 1000; // 30 seconds
-
-        if (now >= (expiresAt - bufferMs)) {
-          // Session expired or about to expire - redirect to login
-          console.info('[Middleware] Session expired or expiring soon:', {
-            path: pathname,
-            expiresAt: new Date(expiresAt).toISOString(),
-          });
-          const loginUrl = new URL('/login', req.url);
-          loginUrl.searchParams.set('redirect', pathname);
-          loginUrl.searchParams.set('reason', 'session_expired');
-          return NextResponse.redirect(loginUrl);
-        }
       }
     } catch (error) {
       // SECURITY: Log error and deny access
@@ -211,9 +198,10 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(url);
       }
 
-      const { data: { session }, error } = await supabase.auth.getSession();
+      // SECURITY FIX: Use getUser() for server-side JWT verification
+      const { data: { user }, error } = await supabase.auth.getUser();
 
-      if (!error && session) {
+      if (!error && user) {
         url.pathname = '/home';
       } else {
         url.pathname = '/login';

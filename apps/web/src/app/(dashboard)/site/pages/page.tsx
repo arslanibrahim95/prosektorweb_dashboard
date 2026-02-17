@@ -1,8 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { z } from 'zod';
-import { pageSchema } from '@prosektor/contracts';
 import {
   Table,
   TableBody,
@@ -50,8 +48,6 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { usePages, useCreatePage } from '@/hooks/use-pages';
 
-type Page = z.infer<typeof pageSchema>;
-
 export default function SitePagesPage() {
   const site = useSite();
   const siteId = site.currentSiteId;
@@ -64,7 +60,7 @@ export default function SitePagesPage() {
   const { data, isLoading } = usePages(siteId);
   const createMutation = useCreatePage(siteId);
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
 
   const filteredPages = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

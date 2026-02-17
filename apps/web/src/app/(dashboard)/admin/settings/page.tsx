@@ -1,17 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AdminPageHeader } from '@/features/admin/components/admin-page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -31,15 +29,10 @@ import {
     FormDescription,
 } from '@/components/ui/form';
 import {
-    Settings,
     Globe,
-    Shield,
-    Code,
-    HardDrive,
     AlertTriangle,
     Save,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useAdminSettings, useUpdateAdminSettings } from '@/hooks/use-admin';
 import { toast } from 'sonner';
 
@@ -73,13 +66,32 @@ const timezoneOptions = [
     { value: 'Asia/Tokyo', label: 'Tokyo (UTC+9)' },
 ];
 
+interface SettingsSite {
+    id?: string;
+    name?: string;
+    description?: string;
+    url?: string;
+    logo_url?: string;
+    favicon_url?: string;
+    default_language?: string;
+    timezone?: string;
+    maintenance_mode?: boolean;
+}
+
+interface AdminSettingsResponse {
+    tenant?: {
+        name?: string;
+    };
+    sites?: SettingsSite[];
+}
+
 export default function SettingsPage() {
     const { data: settingsData, isLoading } = useAdminSettings();
     const updateSettings = useUpdateAdminSettings();
 
-    const tenant = (settingsData as any)?.tenant || {};
-    const sites = (settingsData as any)?.sites || [];
-    const site = sites[0] || {};
+    const settingsResponse = settingsData as AdminSettingsResponse | undefined;
+    const tenantName = settingsResponse?.tenant?.name ?? '';
+    const site = settingsResponse?.sites?.[0];
 
     // General Settings Form
     const generalForm = useForm<GeneralSettingsValues>({
@@ -98,19 +110,21 @@ export default function SettingsPage() {
 
     // Update form when data loads
     useEffect(() => {
-        if (tenant && site) {
-            generalForm.reset({
-                site_name: tenant.name || site.name || '',
-                site_description: site.description || '',
-                site_url: site.url || '',
-                logo_url: site.logo_url || '',
-                favicon_url: site.favicon_url || '',
-                default_language: site.default_language || 'tr',
-                timezone: site.timezone || 'Europe/Istanbul',
-                maintenance_mode: site.maintenance_mode || false,
-            });
+        if (!site && !tenantName) {
+            return;
         }
-    }, [tenant, site, generalForm]);
+
+        generalForm.reset({
+            site_name: tenantName || site?.name || '',
+            site_description: site?.description || '',
+            site_url: site?.url || '',
+            logo_url: site?.logo_url || '',
+            favicon_url: site?.favicon_url || '',
+            default_language: site?.default_language || 'tr',
+            timezone: site?.timezone || 'Europe/Istanbul',
+            maintenance_mode: site?.maintenance_mode || false,
+        });
+    }, [generalForm, site, tenantName]);
 
     const handleGeneralSubmit = async (data: GeneralSettingsValues) => {
         try {
@@ -119,7 +133,7 @@ export default function SettingsPage() {
                     name: data.site_name,
                 },
                 site: {
-                    id: site.id,
+                    id: site?.id,
                     settings: {
                         description: data.site_description,
                         url: data.site_url,
@@ -132,12 +146,15 @@ export default function SettingsPage() {
                 },
             });
             toast.success('Ayarlar başarıyla kaydedildi');
-        } catch (error) {
+        } catch {
             toast.error('Ayarlar kaydedilemedi');
         }
     };
 
-    const maintenanceMode = generalForm.watch('maintenance_mode');
+    const maintenanceMode = useWatch({
+        control: generalForm.control,
+        name: 'maintenance_mode',
+    });
 
     if (isLoading) {
         return (

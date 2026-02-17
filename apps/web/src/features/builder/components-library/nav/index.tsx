@@ -60,6 +60,7 @@ export function NavComponent({
                     {/* Logo */}
                     <div className="flex-shrink-0">
                         {logo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={logo} alt={logoText} className="h-8 w-auto" />
                         ) : (
                             <span className="text-xl font-bold">{logoText}</span>

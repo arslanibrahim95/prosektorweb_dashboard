@@ -80,6 +80,7 @@ export function GalleryComponent({
                         className="gallery-item aspect-square overflow-hidden rounded-md cursor-pointer"
                         onClick={() => handleImageClick(index)}
                     >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                             src={src}
                             alt={`Gallery image ${index + 1}`}
@@ -118,6 +119,7 @@ export function GalleryComponent({
                     )}
 
                     {/* Image */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src={images[selectedIndex]}
                         alt={`Gallery image ${selectedIndex + 1}`}

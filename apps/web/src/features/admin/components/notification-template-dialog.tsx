@@ -32,7 +32,6 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 
 const notificationTemplateSchema = z.object({
     name: z.string().min(2, 'Şablon adı en az 2 karakter olmalıdır'),

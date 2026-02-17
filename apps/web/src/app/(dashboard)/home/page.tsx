@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/preserve-manual-memoization */
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Card,
   CardAction,
@@ -27,7 +27,6 @@ import {
   Briefcase,
   Plus,
   Send,
-  Mail,
   Inbox,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -38,6 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import { formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { Celebration } from '@/components/ui/celebration';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -163,18 +163,24 @@ export default function HomePage() {
     },
   ];
 
-  const checklist = [
-    { id: '1', label: 'Teklif modülünü aç', completed: false, href: '/modules/offer' },
-    { id: '2', label: 'İletişim bilgilerini güncelle', completed: false, href: '/modules/contact' },
-    { id: '3', label: 'Domain ekle', completed: false, href: '/site/domains' },
+  // Dynamic checklist - derives completion from actual data
+  const checklist = useMemo(() => [
+    { id: '1', label: 'Teklif modülünü aç', completed: offerTotal > 0, href: '/modules/offer' },
+    { id: '2', label: 'İletişim bilgilerini güncelle', completed: contactTotal > 0, href: '/modules/contact' },
+    { id: '3', label: 'Domain ekle', completed: !!primaryDomainStatus, href: '/site/domains' },
     { id: '4', label: 'Siteyi staging\'e yayınla', completed: currentSite?.status === 'staging' || currentSite?.status === 'published', href: '/site/publish' },
     { id: '5', label: 'Siteyi production\'a al', completed: currentSite?.status === 'published', href: '/site/publish' },
-  ];
+  ], [offerTotal, contactTotal, primaryDomainStatus, currentSite?.status]);
   const completedCount = checklist.filter((c) => c.completed).length;
   const completionPercent = Math.round((completedCount / checklist.length) * 100);
+  const [celebrationFired] = useState(false);
+  const isAllComplete = completionPercent === 100 && !isLoading;
 
   return (
     <div className={cn('dashboard-page', 'page-enter', 'stagger-children')}>
+      {/* Celebration on 100% checklist completion */}
+      <Celebration trigger={isAllComplete && !celebrationFired} variant="confetti" />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -365,10 +371,14 @@ export default function HomePage() {
         </Card>
 
         {/* Checklist */}
-        <Card className="glass border-border/50 shadow-sm">
+        <Card className={cn('glass border-border/50 shadow-sm', isAllComplete && 'border-success/30')}>
           <CardHeader>
-            <CardTitle className="text-base">Kurulum Checklist</CardTitle>
-            <CardDescription>Sitenizi yayınlamadan önce tamamlayın</CardDescription>
+            <CardTitle className="text-base">
+              {isAllComplete ? 'Tebrikler! Kurulum Tamamlandı' : 'Kurulum Checklist'}
+            </CardTitle>
+            <CardDescription>
+              {isAllComplete ? 'Tüm adımları başarıyla tamamladınız' : 'Sitenizi yayınlamadan önce tamamlayın'}
+            </CardDescription>
             <CardAction>
               <div className="relative flex items-center justify-center">
                 <ProgressRing percent={completionPercent} size={48} />

@@ -5,14 +5,13 @@ import { SiteProvider } from '@/components/site/site-provider';
 import { useAuth } from '@/components/auth/auth-provider';
 import { InlineSessionWarning } from '@/components/auth/session-timeout-alert';
 import { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AuthLoadingSkeleton } from '@/components/auth/auth-loading-skeleton';
 
 function DashboardGate({ children }: { children: React.ReactNode }) {
     const auth = useAuth();
     const router = useRouter();
-    const pathname = usePathname();
 
     useEffect(() => {
         if (auth.status === 'unauthenticated') {

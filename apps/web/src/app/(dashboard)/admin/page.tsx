@@ -15,7 +15,6 @@ import {
     TrendingUp,
     Search,
     Shield,
-    Database,
     ScrollText,
     BarChart3,
     ArrowRight,

@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
     DndContext,
     DragOverlay,
@@ -15,9 +15,7 @@ import {
     PointerSensor,
     useSensor,
     useSensors,
-    DragStartEvent,
     DragEndEvent,
-    DragOverEvent,
 } from '@dnd-kit/core';
 import {
     arrayMove,
@@ -27,7 +25,7 @@ import {
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useBuilderStore, BuilderComponent, getEffectiveProps, isComponentVisible } from '@/hooks/use-builder';
+import { useBuilderStore, BuilderComponent, isComponentVisible } from '@/hooks/use-builder';
 import { componentRegistry } from '../components-library/registry';
 import { cn } from '@/lib/utils';
 import { DevicePreviewToolbar, type DeviceType } from './DevicePreviewToolbar';
@@ -64,14 +62,6 @@ function SortableComponent({ component, isSelected, onSelect, onRemove, currentD
 
     // Check visibility for current device
     const isVisible = isComponentVisible(component.visibility, currentDevice);
-
-    // Get effective props for current device
-    const effectiveProps = getEffectiveProps(
-        component.props,
-        component.deviceProps,
-        currentDevice,
-        undefined
-    );
 
     // Don't render if not visible
     if (!isVisible) {
@@ -195,7 +185,6 @@ export function BuilderCanvas({ onDragStart, onDragEnd }: BuilderCanvasProps) {
         setSelectedComponent,
         addComponent,
         removeComponent,
-        moveComponent,
         updateComponents,
         currentDevice,
         setCurrentDevice,
@@ -224,7 +213,7 @@ export function BuilderCanvas({ onDragStart, onDragEnd }: BuilderCanvasProps) {
     );
 
     // Handle drag start
-    const handleDragStart = useCallback((event: DragStartEvent) => {
+    const handleDragStart = useCallback(() => {
         onDragStart?.();
     }, [onDragStart]);
 

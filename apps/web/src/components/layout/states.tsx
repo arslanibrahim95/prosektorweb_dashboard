@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Loader2, WifiOff, Lock, ServerCrash } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 

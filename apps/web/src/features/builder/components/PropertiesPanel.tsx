@@ -8,7 +8,7 @@
 
 import React, { useCallback } from 'react';
 import { useBuilderStore, useSelectedComponent, DeviceType } from '@/hooks/use-builder';
-import { componentRegistry } from '../components-library/registry';
+import { componentRegistry, type ComponentConfig } from '../components-library/registry';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,25 +25,31 @@ import { cn } from '@/lib/utils';
 // ============================================================================
 
 interface PropertyFieldProps {
-    value: any;
-    onChange: (value: any) => void;
-    config: {
-        type: 'text' | 'textarea' | 'number' | 'color' | 'select' | 'boolean' | 'image' | 'url' | 'range' | 'spacing';
-        label: string;
-        options?: { value: string; label: string }[];
-        min?: number;
-        max?: number;
-        step?: number;
-        placeholder?: string;
-    };
+    value: unknown;
+    onChange: (value: unknown) => void;
+    config: ComponentConfig['schema'][string];
+}
+
+type SpacingValue = {
+    top?: number;
+    bottom?: number;
+};
+
+function asSpacingValue(value: unknown): SpacingValue {
+    if (typeof value === 'object' && value !== null) {
+        return value as SpacingValue;
+    }
+    return {};
 }
 
 function PropertyField({ value, onChange, config }: PropertyFieldProps) {
+    const spacingValue = asSpacingValue(value);
+
     switch (config.type) {
         case 'text':
             return (
                 <Input
-                    value={value || ''}
+                    value={typeof value === 'string' ? value : ''}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={config.placeholder}
                 />
@@ -52,7 +58,7 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
         case 'textarea':
             return (
                 <Textarea
-                    value={value || ''}
+                    value={typeof value === 'string' ? value : ''}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={config.placeholder}
                     rows={3}
@@ -63,7 +69,7 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
             return (
                 <Input
                     type="number"
-                    value={value || 0}
+                    value={typeof value === 'number' ? value : 0}
                     onChange={(e) => onChange(Number(e.target.value))}
                 />
             );
@@ -73,12 +79,12 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
                 <div className="flex gap-2">
                     <Input
                         type="color"
-                        value={value || '#000000'}
+                        value={typeof value === 'string' ? value : '#000000'}
                         onChange={(e) => onChange(e.target.value)}
                         className="w-10 h-10 p-1"
                     />
                     <Input
-                        value={value || '#000000'}
+                        value={typeof value === 'string' ? value : '#000000'}
                         onChange={(e) => onChange(e.target.value)}
                         className="flex-1"
                     />
@@ -87,7 +93,10 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
 
         case 'select':
             return (
-                <Select value={value} onValueChange={onChange}>
+                <Select
+                    value={typeof value === 'string' ? value : ''}
+                    onValueChange={(nextValue) => onChange(nextValue)}
+                >
                     <SelectTrigger>
                         <SelectValue placeholder="Seçin..." />
                     </SelectTrigger>
@@ -112,8 +121,9 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
         case 'image':
             return (
                 <div className="space-y-2">
-                    {value && (
+                    {typeof value === 'string' && value.length > 0 && (
                         <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={value}
                                 alt="Preview"
@@ -123,7 +133,7 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
                     )}
                     <Input
                         type="url"
-                        value={value || ''}
+                        value={typeof value === 'string' ? value : ''}
                         onChange={(e) => onChange(e.target.value)}
                         placeholder="Resim URL'i girin"
                     />
@@ -134,7 +144,7 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
             return (
                 <Input
                     type="url"
-                    value={value || ''}
+                    value={typeof value === 'string' ? value : ''}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="https://..."
                 />
@@ -144,7 +154,7 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
             return (
                 <div className="space-y-2">
                     <Slider
-                        value={[value || 0]}
+                        value={[typeof value === 'number' ? value : 0]}
                         min={config.min || 0}
                         max={config.max || 100}
                         step={config.step || 1}
@@ -152,7 +162,7 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>{config.min || 0}</span>
-                        <span>{value || 0}</span>
+                        <span>{typeof value === 'number' ? value : 0}</span>
                         <span>{config.max || 100}</span>
                     </div>
                 </div>
@@ -165,16 +175,16 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
                         <Label className="text-xs">Üst</Label>
                         <Input
                             type="number"
-                            value={value?.top || 0}
-                            onChange={(e) => onChange({ ...value, top: Number(e.target.value) })}
+                            value={spacingValue.top ?? 0}
+                            onChange={(e) => onChange({ ...spacingValue, top: Number(e.target.value) })}
                         />
                     </div>
                     <div>
                         <Label className="text-xs">Alt</Label>
                         <Input
                             type="number"
-                            value={value?.bottom || 0}
-                            onChange={(e) => onChange({ ...value, bottom: Number(e.target.value) })}
+                            value={spacingValue.bottom ?? 0}
+                            onChange={(e) => onChange({ ...spacingValue, bottom: Number(e.target.value) })}
                         />
                     </div>
                 </div>
@@ -183,7 +193,7 @@ function PropertyField({ value, onChange, config }: PropertyFieldProps) {
         default:
             return (
                 <Input
-                    value={value || ''}
+                    value={typeof value === 'string' || typeof value === 'number' ? value : ''}
                     onChange={(e) => onChange(e.target.value)}
                 />
             );
@@ -205,7 +215,7 @@ export function PropertiesPanel() {
         updateComponentVisibility,
     } = useBuilderStore();
 
-    const handleChange = useCallback((key: string, value: any) => {
+    const handleChange = useCallback((key: string, value: unknown) => {
         if (selectedComponent) {
             updateComponentProps(selectedComponent.id, { [key]: value });
         }
@@ -254,6 +264,7 @@ export function PropertiesPanel() {
 
     const config = componentRegistry[selectedComponent.type];
     const schema = config?.schema || {};
+    const schemaEntries = Object.entries(schema) as Array<[string, ComponentConfig['schema'][string]]>;
 
     return (
         <div className="w-80 bg-background border-l flex flex-col h-full">
@@ -269,18 +280,18 @@ export function PropertiesPanel() {
             <ScrollArea className="flex-1">
                 <div className="p-4 space-y-6">
                     {/* Content Section */}
-                    {Object.entries(schema).filter(([_, config]) =>
-                        ['text', 'textarea', 'image', 'url'].includes(config.type)
+                    {schemaEntries.filter(([, fieldConfig]) =>
+                        ['text', 'textarea', 'image', 'url'].includes(fieldConfig.type)
                     ).length > 0 && (
                             <div className="space-y-4">
                                 <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                     İçerik
                                 </h3>
-                                {Object.entries(schema)
-                                    .filter(([_, config]) =>
-                                        ['text', 'textarea', 'image', 'url'].includes(config.type)
+                                {schemaEntries
+                                    .filter(([, fieldConfig]) =>
+                                        ['text', 'textarea', 'image', 'url'].includes(fieldConfig.type)
                                     )
-                                    .map(([key, fieldConfig]: [string, any]) => (
+                                    .map(([key, fieldConfig]) => (
                                         <div key={key} className="space-y-2">
                                             <Label>{fieldConfig.label}</Label>
                                             <PropertyField
@@ -294,8 +305,8 @@ export function PropertiesPanel() {
                         )}
 
                     {/* Layout Section */}
-                    {Object.entries(schema).filter(([_, config]) =>
-                        ['select', 'number', 'range'].includes(config.type)
+                    {schemaEntries.filter(([, fieldConfig]) =>
+                        ['select', 'number', 'range'].includes(fieldConfig.type)
                     ).length > 0 && (
                             <>
                                 <Separator />
@@ -303,11 +314,11 @@ export function PropertiesPanel() {
                                     <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                         Düzen
                                     </h3>
-                                    {Object.entries(schema)
-                                        .filter(([_, config]) =>
-                                            ['select', 'number', 'range'].includes(config.type)
+                                    {schemaEntries
+                                        .filter(([, fieldConfig]) =>
+                                            ['select', 'number', 'range'].includes(fieldConfig.type)
                                         )
-                                        .map(([key, fieldConfig]: [string, any]) => (
+                                        .map(([key, fieldConfig]) => (
                                             <div key={key} className="space-y-2">
                                                 <Label>{fieldConfig.label}</Label>
                                                 <PropertyField
@@ -322,8 +333,8 @@ export function PropertiesPanel() {
                         )}
 
                     {/* Style Section */}
-                    {Object.entries(schema).filter(([_, config]) =>
-                        config.type === 'color'
+                    {schemaEntries.filter(([, fieldConfig]) =>
+                        fieldConfig.type === 'color'
                     ).length > 0 && (
                             <>
                                 <Separator />
@@ -331,9 +342,9 @@ export function PropertiesPanel() {
                                     <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                         Stil
                                     </h3>
-                                    {Object.entries(schema)
-                                        .filter(([_, config]) => config.type === 'color')
-                                        .map(([key, fieldConfig]: [string, any]) => (
+                                    {schemaEntries
+                                        .filter(([, fieldConfig]) => fieldConfig.type === 'color')
+                                        .map(([key, fieldConfig]) => (
                                             <div key={key} className="space-y-2">
                                                 <Label>{fieldConfig.label}</Label>
                                                 <PropertyField
@@ -348,8 +359,8 @@ export function PropertiesPanel() {
                         )}
 
                     {/* Boolean Section */}
-                    {Object.entries(schema).filter(([_, config]) =>
-                        config.type === 'boolean'
+                    {schemaEntries.filter(([, fieldConfig]) =>
+                        fieldConfig.type === 'boolean'
                     ).length > 0 && (
                             <>
                                 <Separator />
@@ -357,9 +368,9 @@ export function PropertiesPanel() {
                                     <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                         Ayarlar
                                     </h3>
-                                    {Object.entries(schema)
-                                        .filter(([_, config]) => config.type === 'boolean')
-                                        .map(([key, fieldConfig]: [string, any]) => (
+                                    {schemaEntries
+                                        .filter(([, fieldConfig]) => fieldConfig.type === 'boolean')
+                                        .map(([key, fieldConfig]) => (
                                             <div key={key} className="flex items-center justify-between">
                                                 <Label>{fieldConfig.label}</Label>
                                                 <PropertyField

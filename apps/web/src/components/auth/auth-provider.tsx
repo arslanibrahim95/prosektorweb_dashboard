@@ -26,6 +26,64 @@ import {
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 const ACTIVE_TENANT_STORAGE_KEY = 'prosektor.active_tenant_id';
 
+/**
+ * Safely gets item from localStorage with error handling
+ * SECURITY FIX: Handles Safari private mode, quota exceeded, and other localStorage errors
+ */
+function safeLocalStorageGetItem(key: string): string | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem(key);
+  } catch (err) {
+    // Common errors: quota exceeded, private mode, security restrictions
+    console.warn('[AuthProvider] Failed to read from localStorage:', err);
+    return null;
+  }
+}
+
+/**
+ * Safely sets item in localStorage with error handling
+ * SECURITY FIX: Handles quota exceeded and other localStorage errors
+ */
+function safeLocalStorageSetItem(key: string, value: string): boolean {
+  try {
+    if (typeof window === 'undefined') return false;
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch (err) {
+    // Common errors: quota exceeded, private mode
+    console.warn('[AuthProvider] Failed to write to localStorage:', err);
+    return false;
+  }
+}
+
+/**
+ * Safely removes item from localStorage with error handling
+ */
+function safeLocalStorageRemoveItem(key: string): boolean {
+  try {
+    if (typeof window === 'undefined') return false;
+    window.localStorage.removeItem(key);
+    return true;
+  } catch (err) {
+    console.warn('[AuthProvider] Failed to remove from localStorage:', err);
+    return false;
+  }
+}
+
+/**
+ * Defers persistence to idle time to prevent blocking main thread
+ * PERFORMANCE FIX: Uses requestIdleCallback or setTimeout to avoid UI freezing
+ */
+function deferPersistence(fn: () => void): void {
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    window.requestIdleCallback(fn, { timeout: 1000 });
+  } else {
+    // Fallback to setTimeout with 0 delay
+    setTimeout(fn, 0);
+  }
+}
+
 export interface AuthContextValue {
   // Existing
   status: AuthStatus;
@@ -96,24 +154,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     level: 'none',
     timeUntilExpiry: 0,
   });
-  const [tokenRefreshState, setTokenRefreshState] = useState<TokenRefreshState>({
+  const [tokenRefreshState] = useState<TokenRefreshState>({
     isRefreshing: false,
     lastRefreshAttempt: 0,
     retryCount: 0,
   });
   const [activeTenantId, setActiveTenantId] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY);
+    // SECURITY FIX: Use safe localStorage accessor
+    return safeLocalStorageGetItem(ACTIVE_TENANT_STORAGE_KEY);
   });
   const [isSwitchingTenant, setIsSwitchingTenant] = useState(false);
 
   const persistActiveTenantId = useCallback((tenantId: string | null) => {
-    if (typeof window === 'undefined') return;
-    if (tenantId) {
-      localStorage.setItem(ACTIVE_TENANT_STORAGE_KEY, tenantId);
-      return;
-    }
-    localStorage.removeItem(ACTIVE_TENANT_STORAGE_KEY);
+    // PERFORMANCE FIX: Defer persistence to avoid blocking main thread
+    deferPersistence(() => {
+      if (tenantId) {
+        safeLocalStorageSetItem(ACTIVE_TENANT_STORAGE_KEY, tenantId);
+      } else {
+        safeLocalStorageRemoveItem(ACTIVE_TENANT_STORAGE_KEY);
+      }
+    });
   }, []);
 
   const supabase = useMemo(() => {
@@ -226,7 +286,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       window.location.href = '/login?reason=session_expired';
     }
-  }, [supabase]);
+  }, [persistActiveTenantId, supabase]);
 
   useEffect(() => {
     if (!supabase) {
@@ -287,7 +347,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     void refreshMe();
-  }, [activeTenantId, refreshMe, session?.access_token, supabase]);
+  }, [activeTenantId, refreshMe, session, supabase]);
 
   // Update time until expiry periodically
   useEffect(() => {

@@ -60,6 +60,7 @@ export function FooterComponent({
                     {/* Logo & Description */}
                     <div className="col-span-1 md:col-span-1">
                         {logo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={logo} alt={logoText} className="h-8 w-auto mb-4" />
                         ) : (
                             <h3 className="text-xl font-bold mb-4">{logoText}</h3>

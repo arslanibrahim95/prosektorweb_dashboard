@@ -34,7 +34,6 @@ function LoginForm() {
   const auth = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [reason, setReason] = useState<LoginReason | null>(null);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -57,7 +56,6 @@ function LoginForm() {
 
     // Set reason message
     if (reasonParam && reasonParam in reasonMessages) {
-      setReason(reasonParam);
       toast.error(reasonMessages[reasonParam]);
     }
 

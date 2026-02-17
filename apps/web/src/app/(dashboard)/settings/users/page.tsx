@@ -108,7 +108,7 @@ export default function UsersPage() {
   const updateRoleMutation = useUpdateMemberRole();
   const removeMutation = useRemoveMember();
 
-  const members = data?.items ?? [];
+  const members = useMemo(() => data?.items ?? [], [data?.items]);
   const isBusy = isLoading || inviteMutation.isPending || updateRoleMutation.isPending || removeMutation.isPending;
 
   const canInvite = auth.me?.role === 'owner' || auth.me?.role === 'admin' || auth.me?.role === 'super_admin';

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
     Card,
     CardContent,
@@ -38,7 +37,7 @@ import {
     Download,
     Search,
 } from "lucide-react";
-import { useAdminSettings, useUpdateAdminSettings } from "@/hooks/use-admin";
+import { useUpdateAdminSettings } from "@/hooks/use-admin";
 import { toast } from "sonner";
 
 interface Language {
@@ -121,10 +120,9 @@ export default function LocalizationPage() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState("");
-    const [languages, setLanguages] = useState<Language[]>(mockLanguages);
+    const [languages] = useState<Language[]>(mockLanguages);
     const [translations, setTranslations] = useState<Translation[]>(mockTranslations);
 
-    const { data: settingsData, isLoading } = useAdminSettings();
     const updateSettings = useUpdateAdminSettings();
 
     const getStatusBadge = (status: string) => {

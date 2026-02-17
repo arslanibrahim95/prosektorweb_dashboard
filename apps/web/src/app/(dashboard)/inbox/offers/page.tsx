@@ -27,7 +27,6 @@ import {
 } from '@/components/inbox';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import {
-  SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,

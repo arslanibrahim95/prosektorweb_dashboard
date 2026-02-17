@@ -54,7 +54,7 @@ export default function OfferModulePage() {
   const saveMutation = useSaveModule(siteId);
 
   const isLoading = modulesLoading || kvkkLoading;
-  const kvkkTexts = kvkkData?.items ?? [];
+  const kvkkTexts = useMemo(() => kvkkData?.items ?? [], [kvkkData?.items]);
 
   const serverForm = useMemo<OfferFormState>(() => {
     const offerModule = modules?.find((module) => module.module_key === 'offer');

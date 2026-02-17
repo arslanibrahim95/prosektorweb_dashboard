@@ -40,7 +40,6 @@ export function InboxFilterBar({
     dateRange,
     onDateRangeChange,
     showDateRange = true,
-    unreadCount = 0,
     onExport,
     onBulkMarkRead,
     selectedCount = 0,

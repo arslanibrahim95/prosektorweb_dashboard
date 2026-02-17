@@ -162,7 +162,6 @@ export function createJobMetadata(
   seoSettings?: SEOSettings
 ): Metadata {
   const settings = { ...DEFAULT_SEO, ...seoSettings };
-  const domain = site.primary_domain ?? "prosektorweb.com";
 
   const title = `${jobTitle} İlanı`;
   const description = jobLocation

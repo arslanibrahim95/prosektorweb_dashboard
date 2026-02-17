@@ -51,7 +51,7 @@ export default function DomainsPage() {
   const setPrimaryMutation = useSetPrimaryDomain(siteId);
   const deleteMutation = useDeleteDomain(siteId);
 
-  const domains = data?.items ?? [];
+  const domains = useMemo(() => data?.items ?? [], [data?.items]);
   const isSubmitting = createMutation.isPending || setPrimaryMutation.isPending || deleteMutation.isPending;
   const primaryDomain = useMemo(() => domains.find((d) => d.is_primary), [domains]);
 

@@ -5,12 +5,8 @@
  * Using direct route handler testing with real validation.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
-    testRouteHandler,
-    testRateLimit,
-    createMockRequest,
-    createFormDataRequest,
     testFiles,
 } from './api-test-helper';
 import {

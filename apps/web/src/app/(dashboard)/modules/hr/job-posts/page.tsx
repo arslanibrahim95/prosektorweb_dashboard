@@ -66,7 +66,7 @@ export default function HrJobPostsPage() {
   const updateMutation = useUpdateJobPost(site.currentSiteId);
   const deleteMutation = useDeleteJobPost(site.currentSiteId);
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
 
   const openCreate = () => {
     setEditing(null);

@@ -96,7 +96,7 @@ function ApplicationsInboxContent() {
   });
   const markAsReadMutation = useMarkAsRead('applications', site.currentSiteId);
   const bulkMarkAsReadMutation = useBulkMarkAsRead('applications', site.currentSiteId);
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
 
   const jobApplications = useMemo(() => data?.items ?? [], [data?.items]);
   const total = data?.total ?? 0;
@@ -381,7 +381,7 @@ function ApplicationsInboxContent() {
                 onClick={() => void openCv(application.id)}
               >
                 <FileText className="mr-2 h-4 w-4" />
-                CV'yi Görüntüle / İndir
+                CV&apos;yi Görüntüle / İndir
               </Button>
             </div>
 

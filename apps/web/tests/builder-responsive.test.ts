@@ -4,7 +4,7 @@
  * Test file for verifying responsive features work correctly
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
     isComponentVisible,
     getEffectiveProps,
