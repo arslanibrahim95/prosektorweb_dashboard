@@ -8,6 +8,7 @@ This checklist ensures all security fixes are properly deployed to production wi
 
 ### 1. Environment Configuration
 
+- [ ] Apply [`PRODUCTION_ENV_PROFILE.md`](./PRODUCTION_ENV_PROFILE.md) values for proxy trust and AV scanning
 - [ ] Generate `CUSTOM_JWT_SECRET` using cryptographically secure method:
   ```bash
   openssl rand -base64 32
