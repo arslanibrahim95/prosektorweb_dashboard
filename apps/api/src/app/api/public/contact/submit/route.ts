@@ -1,5 +1,6 @@
 import { publicContactSubmitSchema, publicSubmitSuccessSchema } from "@prosektor/contracts";
 import { NextResponse } from "next/server";
+import DOMPurify from "isomorphic-dompurify";
 import {
   asHeaders,
   asErrorBody,
@@ -18,6 +19,27 @@ import { getServerEnv } from "@/server/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * SECURITY: HTML sanitizer using DOMPurify to prevent XSS attacks
+ * Removes all HTML tags and dangerous content from user input
+ * 
+ * DOMPurify is a proven XSS sanitizer used by major organizations
+ * More secure than regex-based sanitization
+ */
+function sanitizeHtml(input: string): string {
+  if (!input || typeof input !== 'string') return '';
+
+  // Use DOMPurify to remove all HTML tags and sanitize content
+  const sanitized = DOMPurify.sanitize(input, {
+    ALLOWED_TAGS: [], // Strip all HTML tags
+    ALLOWED_ATTR: [], // Strip all attributes
+    KEEP_CONTENT: true, // Keep text content
+  });
+
+  // Additional length limit as defense in depth
+  return sanitized.trim().slice(0, 10000); // Max 10k characters
+}
 
 export async function POST(req: Request) {
   try {
@@ -75,16 +97,21 @@ export async function POST(req: Request) {
 
     const nowIso = new Date().toISOString();
 
+    // Sanitize inputs to prevent XSS and injection attacks
+    const sanitizedFullName = sanitizeHtml(parsed.data.full_name.trim());
+    const sanitizedMessage = sanitizeHtml(parsed.data.message.trim());
+    const sanitizedSubject = parsed.data.subject ? sanitizeHtml(parsed.data.subject.trim()) : null;
+
     const { data: inserted, error: insertError } = await admin
       .from("contact_messages")
       .insert({
         tenant_id: site.tenant_id,
         site_id: site.id,
-        full_name: parsed.data.full_name,
+        full_name: sanitizedFullName,
         email: parsed.data.email,
-        phone: parsed.data.phone,
-        subject: parsed.data.subject ?? null,
-        message: parsed.data.message,
+        phone: parsed.data.phone ?? null,
+        subject: sanitizedSubject,
+        message: sanitizedMessage,
         kvkk_accepted_at: nowIso,
         source: {},
         is_read: false,

@@ -183,18 +183,20 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                 .range(from, to);
 
             // 6. Apply common filters (status, date range, search, additional)
-            const dataQuery = applyInboxFilters(
+            // Type-safe query builder - using explicit type for Supabase compatibility
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const dataQuery: any = applyInboxFilters(
                 baseDataQuery,
                 parsed,
                 searchFields,
                 additionalFilters,
                 ctx
-            ) as any;
+            );
 
             // 7. Execute data query
             const { data, error } = await dataQuery;
             if (error) {
-                throw mapPostgrestError(error);
+                throw mapPostgrestError(error as unknown as import('@supabase/supabase-js').PostgrestError);
             }
 
             // 11. Build cache key for count query
@@ -228,28 +230,53 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                         .eq("site_id", parsed.site_id);
 
                     // Apply same filters using shared helper
-                    const countQuery = applyInboxFilters(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const countQuery: any = applyInboxFilters(
                         baseCountQuery,
                         parsed,
                         searchFields,
                         additionalFilters,
                         ctx
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    ) as any;
+                    );
 
                     const { error: countError, count } = await countQuery;
                     if (countError) {
-                        throw mapPostgrestError(countError);
+                        throw mapPostgrestError(countError as unknown as import('@supabase/supabase-js').PostgrestError);
                     }
                     return count ?? 0;
                 }
             );
 
-            // 13. Parse and validate response
-            const response = responseSchema.parse({
-                items: (data ?? []).map((item: any) => itemSchema.parse(item)),
+            // 13. Parse and validate response (safeParse to avoid unhandled throws)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const parsedItems = (data ?? []).map((item: any) => {
+                const result = itemSchema.safeParse(item);
+                if (!result.success) {
+                    console.error('[Inbox] Item validation failed:', {
+                        errors: result.error.issues,
+                        itemId: item?.id,
+                    });
+                    return null;
+                }
+                return result.data;
+            }).filter(Boolean);
+
+            const responseParsed = responseSchema.safeParse({
+                items: parsedItems,
                 total,
             });
+
+            if (!responseParsed.success) {
+                console.error('[Inbox] Response schema validation failed:', {
+                    errors: responseParsed.error.issues,
+                });
+                throw new HttpError(500, {
+                    code: 'INTERNAL_ERROR',
+                    message: 'Veri formatı beklenenden farklı.',
+                });
+            }
+
+            const response = responseParsed.data;
 
             // 14. Return successful response with rate limit headers
             return jsonOk(response, 200, rateLimitHeaders(rateLimit));

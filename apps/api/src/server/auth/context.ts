@@ -22,6 +22,17 @@ interface TenantSummary {
 
 export interface AuthContext {
   supabase: SupabaseClient;
+  /**
+   * Admin client that bypasses RLS.
+   *
+   * SECURITY POLICY:
+   * - Use ONLY for: rate limiting, audit logs, super-admin operations, and
+   *   cross-tenant queries that are permission-gated.
+   * - For normal data access, ALWAYS prefer `supabase` (user client) which
+   *   respects RLS policies.
+   * - Use `getDataClient(ctx)` helper for data queries that need RLS bypass
+   *   only for super_admin.
+   */
   admin: SupabaseClient;
   user: {
     id: string;
@@ -42,6 +53,15 @@ export interface AuthContext {
   availableTenants: TenantSummary[];
   role: UserRole;
   permissions: string[];
+}
+
+/**
+ * Returns the appropriate database client for data queries.
+ * - super_admin → admin client (RLS bypassed)
+ * - all other roles → user client (RLS enforced)
+ */
+export function getDataClient(ctx: AuthContext): SupabaseClient {
+  return ctx.role === "super_admin" ? ctx.admin : ctx.supabase;
 }
 
 /**
@@ -160,9 +180,10 @@ async function getTenantMemberships(
   }
 
   if (!data || data.length === 0) {
+    // SECURITY: Use generic message to prevent user/tenant enumeration
     throw createError({
-      code: 'NO_TENANT',
-      message: 'Bu hesaba bağlı bir workspace bulunmuyor.',
+      code: 'UNAUTHORIZED',
+      message: 'Erişim reddedildi.',
     });
   }
 
@@ -312,13 +333,14 @@ async function resolveSuperAdminTenant(
       availableTenants[0];
   }
 
-  if (requestedTenantId) {
-    console.info("[super-admin-tenant-switch]", {
-      userId,
-      requestedTenantId,
-      resolvedTenantId: activeTenant.id,
-    });
-  }
+  // SECURITY: Audit log all super admin tenant access
+  console.info("[super-admin-tenant-access]", {
+    userId,
+    requestedTenantId,
+    resolvedTenantId: activeTenant.id,
+    action: requestedTenantId ? "explicit_switch" : "auto_resolve",
+    timestamp: new Date().toISOString(),
+  });
 
   await ensureSuperAdminMirrorMembership(admin, userId, activeTenant.id);
 
@@ -387,7 +409,29 @@ export async function requireAuthContext(req: Request): Promise<AuthContext> {
       .filter((t): t is NonNullable<typeof t> => t !== undefined);
 
     // Get the selected tenant directly from the map
-    tenant = tenantMap.get(selectedMembership.tenant_id) ?? await getTenantById(supabase, selectedMembership.tenant_id);
+    const cachedTenant = tenantMap.get(selectedMembership.tenant_id);
+
+    if (cachedTenant) {
+      tenant = cachedTenant;
+    } else {
+      // Fallback: fetch directly (e.g. if list was partial or paginated in future)
+      try {
+        tenant = await getTenantById(supabase, selectedMembership.tenant_id);
+      } catch (error) {
+        throw createError({
+          code: "NO_TENANT",
+          message: "Workspace bulunamadı veya erişim reddedildi.",
+          originalError: error,
+        });
+      }
+    }
+
+    if (tenant.status === 'deleted' || tenant.status === 'suspended') {
+      throw createError({
+        code: "FORBIDDEN",
+        message: "Bu workspace erişime kapatılmıştır.",
+      });
+    }
     role = selectedMembership.role as UserRole;
   }
 
