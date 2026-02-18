@@ -70,6 +70,7 @@ Asagidaki durumlar stage ilerlemesini bloklar:
 
 Detayli severity politikasi:
 - `docs/agent-ops/severity-policy.md`
+- `docs/agent-ops/implementation-plan.md`
 
 ## 5. Handover Kurali
 

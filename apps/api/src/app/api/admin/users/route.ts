@@ -13,6 +13,7 @@ import {
     parseJson,
     zodErrorToDetails,
 } from "@/server/api/http";
+import { canAssignRole } from "@/server/admin/utils";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
 import { getServerEnv } from "@/server/env";
@@ -186,6 +187,15 @@ export async function POST(req: Request) {
                 code: "VALIDATION_ERROR",
                 message: "Validation failed",
                 details: zodErrorToDetails(parsed.error),
+            });
+        }
+
+        // Privilege escalation prevention: actor cannot assign a role
+        // equal to or higher than their own (unless owner/super_admin)
+        if (!canAssignRole(ctx.role, parsed.data.role)) {
+            throw new HttpError(403, {
+                code: "FORBIDDEN",
+                message: "Kendi yetki seviyenize eşit veya daha yüksek bir rol atayamazsınız",
             });
         }
 

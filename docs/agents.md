@@ -178,6 +178,7 @@ Agent zincirinin operasyonel kullanımı için aşağıdaki dokümanlar referans
 - Handover şablonları: `docs/handoff/agent-stage-templates.md`
 - Severity/Blocking politikası: `docs/agent-ops/severity-policy.md`
 - Quality gates: `docs/agent-ops/quality-gates.md`
+- Uygulama plani (production ready): `docs/agent-ops/implementation-plan.md`
 - Pilot retrospektif: `docs/agent-ops/pilot-retrospective-template.md`
 - Haftalık metrik şablonu: `docs/agent-ops/weekly-metrics-template.md`
 

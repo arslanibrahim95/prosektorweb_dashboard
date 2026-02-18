@@ -45,9 +45,10 @@ export {
     useDeleteIpBlock,
 } from './use-admin-sessions';
 
-// Cache
+// Cache & Health
 export {
     useAdminCache,
+    useAdminHealth,
     useUpdateAdminCacheSettings,
     useClearAdminCache,
 } from './use-admin-cache';

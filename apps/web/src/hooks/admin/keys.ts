@@ -26,4 +26,5 @@ export const adminKeys = {
     platformAnalytics: () => [...adminKeys.all, 'platform', 'analytics'] as const,
     platformSettings: () => [...adminKeys.all, 'platform', 'settings'] as const,
     cache: () => [...adminKeys.all, 'cache'] as const,
+    health: () => [...adminKeys.all, 'health'] as const,
 };

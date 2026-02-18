@@ -1,5 +1,5 @@
 /**
- * Admin Cache Hooks
+ * Admin Cache & Health Hooks
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,15 @@ export function useAdminCache() {
         queryKey: adminKeys.cache(),
         queryFn: () => api.get('/admin/cache'),
         staleTime: 30 * 1000,
+    });
+}
+
+export function useAdminHealth() {
+    return useQuery({
+        queryKey: adminKeys.health(),
+        queryFn: () => api.get('/admin/health'),
+        staleTime: 60 * 1000,
+        refetchInterval: 60 * 1000,
     });
 }
 
@@ -37,3 +46,4 @@ export function useClearAdminCache() {
         },
     });
 }
+

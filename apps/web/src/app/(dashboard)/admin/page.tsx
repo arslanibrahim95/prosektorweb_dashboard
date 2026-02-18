@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import {
     Card,
     CardContent,
@@ -18,10 +19,15 @@ import {
     ScrollText,
     BarChart3,
     ArrowRight,
+    CheckCircle2,
+    AlertTriangle,
+    XCircle,
+    Loader2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
-import { useAdminDashboard } from '@/hooks/use-admin';
+import { useRouter } from 'next/navigation';
+import { useAdminDashboard, useAdminHealth } from '@/hooks/use-admin';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -46,14 +52,70 @@ interface DashboardData {
     recentUsers: Array<{
         id: string;
         user_id: string;
+        user_name?: string;
+        user_email?: string;
         role: string;
         created_at: string;
     }>;
 }
 
+interface HealthData {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    database: { status: string; latency_ms: number };
+    api: { status: string; uptime: string };
+    cache: { status: string };
+    timestamp: string;
+}
+
+function StatusIcon({ status }: { status: string }) {
+    if (status === 'connected' || status === 'running' || status === 'active' || status === 'healthy') {
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+    }
+    if (status === 'degraded') {
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+    }
+    return <XCircle className="h-4 w-4 text-destructive" />;
+}
+
+function statusLabel(status: string): string {
+    const labels: Record<string, string> = {
+        connected: 'Bağlı',
+        running: 'Çalışıyor',
+        active: 'Aktif',
+        healthy: 'Sağlıklı',
+        degraded: 'Kısmen Çalışıyor',
+        disconnected: 'Bağlantı Kesildi',
+        unhealthy: 'Sağlıksız',
+        unavailable: 'Kullanılamıyor',
+        unknown: 'Bilinmiyor',
+    };
+    return labels[status] ?? status;
+}
+
+function statusColor(status: string): string {
+    if (status === 'connected' || status === 'running' || status === 'active' || status === 'healthy') {
+        return 'text-green-500';
+    }
+    if (status === 'degraded') return 'text-yellow-500';
+    return 'text-destructive';
+}
+
 export default function AdminOverviewPage() {
     const { data, isLoading, error } = useAdminDashboard();
+    const { data: healthRaw, isLoading: healthLoading } = useAdminHealth();
     const dashboardData = data as DashboardData | undefined;
+    const healthData = healthRaw as HealthData | undefined;
+    const router = useRouter();
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const handleSearch = useCallback(
+        (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter' && searchQuery.trim()) {
+                router.push(`/admin/users?search=${encodeURIComponent(searchQuery.trim())}`);
+            }
+        },
+        [searchQuery, router],
+    );
 
     if (error) {
         return (
@@ -89,8 +151,11 @@ export default function AdminOverviewPage() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                             type="search"
-                            placeholder="Ara..."
+                            placeholder="Kullanıcı ara (Enter ile)"
                             className="w-[200px] pl-9 lg:w-[300px]"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={handleSearch}
                         />
                     </div>
                 </div>
@@ -318,7 +383,7 @@ export default function AdminOverviewPage() {
                                 <div key={user.id} className="flex items-center justify-between">
                                     <div className="space-y-1">
                                         <p className="text-sm font-medium">
-                                            Kullanıcı ID: {user.user_id}
+                                            {user.user_name ?? user.user_email ?? `Kullanıcı #${user.user_id.slice(0, 8)}`}
                                         </p>
                                         <p className="text-xs text-muted-foreground capitalize">
                                             Rol: {user.role}
@@ -337,35 +402,55 @@ export default function AdminOverviewPage() {
                 </Card>
             )}
 
-            {/* System Status - Static for now */}
+            {/* System Status — Live */}
             <Card>
                 <CardHeader>
                     <CardTitle>Sistem Durumu</CardTitle>
                     <CardDescription>
-                        Sunucu ve veritabanı metrikleri (statik).
+                        Sunucu ve veritabanı metrikleri (canlı).
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">API Durumu</span>
-                                <span className="font-medium text-green-500">Çalışıyor</span>
+                    {healthLoading ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Durum kontrol ediliyor…
+                        </div>
+                    ) : healthData ? (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">API Durumu</span>
+                                    <span className={`flex items-center gap-1.5 font-medium ${statusColor(healthData.api.status)}`}>
+                                        <StatusIcon status={healthData.api.status} />
+                                        {statusLabel(healthData.api.status)}
+                                        <span className="text-xs text-muted-foreground font-normal">({healthData.api.uptime})</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Veritabanı</span>
+                                    <span className={`flex items-center gap-1.5 font-medium ${statusColor(healthData.database.status)}`}>
+                                        <StatusIcon status={healthData.database.status} />
+                                        {statusLabel(healthData.database.status)}
+                                        <span className="text-xs text-muted-foreground font-normal">({healthData.database.latency_ms}ms)</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Cache</span>
+                                    <span className={`flex items-center gap-1.5 font-medium ${statusColor(healthData.cache.status)}`}>
+                                        <StatusIcon status={healthData.cache.status} />
+                                        {statusLabel(healthData.cache.status)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Veritabanı</span>
-                                <span className="font-medium text-green-500">Bağlı</span>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Cache</span>
-                                <span className="font-medium text-green-500">Aktif</span>
-                            </div>
-                        </div>
-                    </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Sistem durumu yüklenemedi.</p>
+                    )}
                 </CardContent>
             </Card>
         </div>
