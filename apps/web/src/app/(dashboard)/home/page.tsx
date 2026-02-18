@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/preserve-manual-memoization */
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Card,
   CardAction,
@@ -25,9 +25,9 @@ import {
   ExternalLink,
   ArrowUpRight,
   Briefcase,
-  Plus,
   Send,
   Inbox,
+  Wand2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -134,6 +134,7 @@ export default function HomePage() {
   const greetingName = auth.me?.user?.name ?? auth.me?.user?.email ?? 'Kullanıcı';
   const tenantName = auth.me?.tenant?.name ?? '';
   const hasTenant = !!auth.me?.tenant;
+  const hasVibeBrief = Boolean((currentSite?.settings as Record<string, unknown> | undefined)?.['vibe_brief']);
 
   const stats = [
     {
@@ -167,21 +168,33 @@ export default function HomePage() {
 
   // Dynamic checklist - derives completion from actual data
   const checklist = useMemo(() => [
-    { id: '1', label: 'Teklif modülünü aç', completed: offerTotal > 0, href: '/modules/offer' },
+    { id: '1', label: 'Vibe briefini tamamla', completed: hasVibeBrief, href: '/site/generate' },
     { id: '2', label: 'İletişim bilgilerini güncelle', completed: contactTotal > 0, href: '/modules/contact' },
     { id: '3', label: 'Domain ekle', completed: !!primaryDomainStatus, href: '/site/domains' },
     { id: '4', label: 'Siteyi staging\'e yayınla', completed: currentSite?.status === 'staging' || currentSite?.status === 'published', href: '/site/publish' },
     { id: '5', label: 'Siteyi production\'a al', completed: currentSite?.status === 'published', href: '/site/publish' },
-  ], [offerTotal, contactTotal, primaryDomainStatus, currentSite?.status]);
+  ], [contactTotal, hasVibeBrief, primaryDomainStatus, currentSite?.status]);
   const completedCount = checklist.filter((c) => c.completed).length;
   const completionPercent = Math.round((completedCount / checklist.length) * 100);
-  const [celebrationFired] = useState(false);
+  const CELEBRATION_KEY = 'prosektor.checklist.celebration_fired';
+  const [celebrationFired, setCelebrationFired] = useState(() => {
+    try { return localStorage.getItem(CELEBRATION_KEY) === '1'; } catch { return false; }
+  });
   const isAllComplete = completionPercent === 100 && !isLoading;
+  const shouldCelebrate = isAllComplete && !celebrationFired;
+
+  // Persist the celebration-fired flag so confetti doesn't retrigger on re-mount
+  useEffect(() => {
+    if (shouldCelebrate) {
+      setCelebrationFired(true);
+      try { localStorage.setItem(CELEBRATION_KEY, '1'); } catch { /* ignore */ }
+    }
+  }, [shouldCelebrate]);
 
   return (
     <div className={cn('dashboard-page', 'page-enter', 'stagger-children')}>
-      {/* Celebration on 100% checklist completion */}
-      <Celebration trigger={isAllComplete && !celebrationFired} variant="confetti" />
+      {/* Celebration on 100% checklist completion - fires once per session */}
+      <Celebration trigger={shouldCelebrate} variant="confetti" />
 
       {/* Onboarding Banner - Show if user has no tenant */}
       {!hasTenant && (
@@ -200,8 +213,8 @@ export default function HomePage() {
           asChild
           className="gradient-primary border-0 text-primary-foreground hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
         >
-          <Link href="/site/pages">
-            Sayfalar
+          <Link href="/site/publish">
+            Yayin Ayarlari
             <ExternalLink className="ml-2 h-4 w-4" />
           </Link>
         </Button>
@@ -210,7 +223,7 @@ export default function HomePage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
         {[
-          { label: 'Sayfa Ekle', icon: Plus, href: '/site/pages', gradient: 'gradient-primary' },
+          { label: 'Vibe Uretim', icon: Wand2, href: '/site/generate', gradient: 'gradient-primary' },
           { label: 'İlan Oluştur', icon: Briefcase, href: '/modules/hr/job-posts', gradient: 'gradient-success' },
           { label: 'Mesajları Gör', icon: Inbox, href: '/inbox/contact', gradient: 'gradient-info' },
           { label: 'Siteyi Yayınla', icon: Send, href: '/site/publish', gradient: 'gradient-accent' },

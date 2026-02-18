@@ -14,7 +14,9 @@ import { replayWelcomeTour } from '@/components/onboarding/welcome-modal';
 
 export function ShortcutsHelp() {
   const [open, setOpen] = useState(false);
-  const shortcuts = useKeyboardShortcuts(() => setOpen(true));
+  const shortcuts = useKeyboardShortcuts(() =>
+    window.dispatchEvent(new CustomEvent('open-help-sheet'))
+  );
 
   // Listen for custom event from command palette
   useEffect(() => {

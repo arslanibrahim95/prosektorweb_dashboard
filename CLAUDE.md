@@ -1,6 +1,7 @@
 # CLAUDE.md - ProsektorWeb Dashboard Anayasası
 
-> **Versiyon:** 1.0.0 | **Son Güncelleme:** 2026-02-18
+> **Versiyon:** 2.0.0 | **Son Güncelleme:** 2026-02-18
+> **Vizyon:** Vibe Coding + Özel Siteler (Her firma için benzersiz)
 > **Bu dosya, Claude'un bu projeyle çalışırken uyması gereken temel kuralları içerir.**
 
 ---
@@ -8,9 +9,25 @@
 ## 🎯 Proje Kimliği
 
 **Proje Adı:** ProsektorWeb Dashboard  
-**Tip:** Multi-tenant CMS Dashboard (OSGB'ler için)  
+**Tip:** Multi-tenant Yönetim Paneli (OSGB'ler için)  
 **Teknoloji Stack:** Next.js 15 (App Router) + Supabase + Tailwind CSS v4 + shadcn/ui  
 **Hedef:** Ship edilebilir MVP
+
+### ⚠️ ÖNEMLİ: Vibe Coding Vizyonu
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  site-engine (Ayrı Repo)    │  Dashboard (Bu Repo)          │
+│  ─────────────────────────  │  ─────────────────────────    │
+│  ✅ AI ile site üretimi     │  ✅ Site yönetimi              │
+│  ✅ Vibe coding             │  ✅ Inbox (Teklif, İletişim)   │
+│  ✅ Custom tasarım          │  ✅ HR (İlan + Başvuru)        │
+│  ✅ Unique içerik           │  ✅ Domain & SSL               │
+│                             │  ✅ Publish kontrolü           │
+│  ❌ YOK: Şablon             │  ❌ YOK: Page Builder          │
+│  ❌ YOK: Blok editör        │  ❌ YOK: Şablon sistemi        │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -18,8 +35,8 @@
 
 ### 1. MVP Prensibi
 ```
-❌ YAPMA: MVP dışı özellik ekleme
-✅ YAP: Sabit formlar + inbox; HR minimal (ilan + başvuru toplama)
+❌ YAPMA: Page Builder, Blok Editör, Şablon Sistemi
+✅ YAP: Inbox + Domain + HR + Basit düzenleme
 ❌ YAPMA: Pipeline/CRM özellikleri ekleme
 ```
 
@@ -88,6 +105,8 @@ KONUŞMA UZADIĞINDA → Memory Bank'a bak
 │ ✅ API Routes                                               │
 │ ✅ UI Components (shadcn/ui)                                │
 │ ✅ Form Validation (Zod, React Hook Form)                   │
+│ ❌ Site üretimi (site-engine repo'sunda)                    │
+│ ❌ AI/Vibe Coding (site-engine repo'sunda)                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -146,6 +165,7 @@ KONUŞMA UZADIĞINDA → Memory Bank'a bak
 📝 "Her önemli adımda progress.md güncelle"
 🎯 "Odaklan - sadece bir şey yap"
 ✅ "Bitmiş = Çalışıyor + Test Edildi + Dokümante Edildi"
+🎨 "Site üretimi site-engine'de, Dashboard sadece yönetim"
 ```
 
 ---
@@ -154,6 +174,7 @@ KONUŞMA UZADIĞINDA → Memory Bank'a bak
 
 Detaylı bilgi için:
 - **Teknik Spesifikasyon:** `docs/agents.md`
+- **Sistem Mimarisi:** `docs/architecture.md`
 - **API Kontratları:** `docs/api/`
 - **Veritabanı Şeması:** `docs/db/schema.md`
 - **UX/Dizayn:** `docs/ux/`

@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { useSite } from '@/components/site/site-provider';
 import { cn } from '@/lib/utils';
 import { useModules, useKvkkTexts, useSaveModule } from '@/hooks/use-modules';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 
 interface ContactFormState {
   isFormEnabled: boolean;
@@ -106,6 +107,8 @@ export default function ContactModulePage() {
   }, [activeDraft, serverForm]);
 
   const hasDraftChanges = Boolean(siteId && activeDraft);
+
+  useUnsavedChanges(hasDraftChanges);
 
   const updateDraft = useCallback(<K extends keyof ContactFormState>(key: K, value: ContactFormState[K]) => {
     if (!siteId) return;

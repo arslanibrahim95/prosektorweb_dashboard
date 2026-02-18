@@ -10,6 +10,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { assertPageEditableByPanelRole, getPageOriginForTenant } from "@/server/pages/origin-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +29,9 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
         details: zodErrorToDetails(parsed.error),
       });
     }
+
+    const page = await getPageOriginForTenant(ctx, id);
+    assertPageEditableByPanelRole(page.origin, ctx.role);
 
     const { data, error } = await ctx.supabase
       .from("pages")

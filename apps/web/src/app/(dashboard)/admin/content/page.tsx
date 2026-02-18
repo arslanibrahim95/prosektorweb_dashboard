@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
     Table,
     TableBody,
@@ -27,7 +28,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MoreHorizontal, Search, FileText, Filter, Eye } from 'lucide-react';
+import { MoreHorizontal, Search, FileText, Filter, Eye, Lock, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAdminContentPages, useAdminContentPosts } from '@/hooks/use-admin';
@@ -38,8 +39,8 @@ interface ContentItem {
     id: string;
     title: string;
     slug: string;
-    is_published?: boolean;
     status?: string;
+    origin?: 'panel' | 'site_engine' | 'unknown';
     updated_at: string;
     created_at: string;
 }
@@ -49,22 +50,28 @@ interface ContentResponse {
     total: number;
 }
 
+function originLabel(origin?: ContentItem['origin']): string {
+    if (origin === 'panel') return 'Panel';
+    if (origin === 'site_engine') return 'Site Engine';
+    return 'Unknown';
+}
+
 export default function AdminContentPage() {
     const [activeTab, setActiveTab] = useState('pages');
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [page, setPage] = useState(1);
 
     const { data: pagesData, isLoading: pagesLoading, error: pagesError } = useAdminContentPages({
         search: searchTerm || undefined,
-        status: statusFilter || undefined,
+        status: statusFilter === 'all' ? undefined : statusFilter,
         page,
         limit: 20,
     });
 
     const { data: postsData, isLoading: postsLoading, error: postsError } = useAdminContentPosts({
         search: searchTerm || undefined,
-        status: statusFilter || undefined,
+        status: statusFilter === 'all' ? undefined : statusFilter,
         page,
         limit: 20,
     });
@@ -118,7 +125,7 @@ export default function AdminContentPage() {
                                 <SelectValue placeholder="Tüm Durumlar" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Tüm Durumlar</SelectItem>
+                                <SelectItem value="all">Tüm Durumlar</SelectItem>
                                 <SelectItem value="published">Yayında</SelectItem>
                                 <SelectItem value="draft">Taslak</SelectItem>
                             </SelectContent>
@@ -137,6 +144,7 @@ export default function AdminContentPage() {
                                 <TableRow>
                                     <TableHead>Başlık</TableHead>
                                     <TableHead>Slug</TableHead>
+                                    <TableHead>Kaynak</TableHead>
                                     <TableHead>Durum</TableHead>
                                     <TableHead>Son Güncelleme</TableHead>
                                     <TableHead className="text-right">İşlemler</TableHead>
@@ -156,6 +164,9 @@ export default function AdminContentPage() {
                                                 <Skeleton className="h-4 w-32" />
                                             </TableCell>
                                             <TableCell>
+                                                <Skeleton className="h-5 w-20" />
+                                            </TableCell>
+                                            <TableCell>
                                                 <Skeleton className="h-5 w-16" />
                                             </TableCell>
                                             <TableCell>
@@ -168,7 +179,7 @@ export default function AdminContentPage() {
                                     ))
                                 ) : !items || items.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">
+                                        <TableCell colSpan={6} className="h-24 text-center">
                                             Sayfa bulunamadı.
                                         </TableCell>
                                     </TableRow>
@@ -185,15 +196,20 @@ export default function AdminContentPage() {
                                                 <code className="text-xs">{item.slug}</code>
                                             </TableCell>
                                             <TableCell>
+                                                <Badge variant={item.origin === 'panel' ? 'default' : 'outline'}>
+                                                    {originLabel(item.origin)}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
                                                 <Badge
                                                     variant="outline"
                                                     className={
-                                                        item.is_published
+                                                        item.status === 'published'
                                                             ? 'bg-green-500/15 text-green-700 border-green-200'
                                                             : 'bg-gray-500/15 text-gray-700 border-gray-200'
                                                     }
                                                 >
-                                                    {item.is_published ? 'Yayında' : 'Taslak'}
+                                                    {item.status === 'published' ? 'Yayında' : 'Taslak'}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
@@ -220,7 +236,19 @@ export default function AdminContentPage() {
                                                             <Eye className="mr-2 h-4 w-4" />
                                                             Görüntüle
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem>Düzenle</DropdownMenuItem>
+                                                        {item.origin === 'panel' ? (
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/site/builder?pageId=${item.id}`}>
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    Düzenle
+                                                                </Link>
+                                                            </DropdownMenuItem>
+                                                        ) : (
+                                                            <DropdownMenuItem disabled>
+                                                                <Lock className="mr-2 h-4 w-4" />
+                                                                Read-only
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem className="text-red-600">
                                                             Sil
@@ -280,7 +308,7 @@ export default function AdminContentPage() {
                                 <SelectValue placeholder="Tüm Durumlar" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Tüm Durumlar</SelectItem>
+                                <SelectItem value="all">Tüm Durumlar</SelectItem>
                                 <SelectItem value="published">Yayında</SelectItem>
                                 <SelectItem value="draft">Taslak</SelectItem>
                             </SelectContent>
@@ -350,12 +378,12 @@ export default function AdminContentPage() {
                                                 <Badge
                                                     variant="outline"
                                                     className={
-                                                        item.is_published
+                                                        item.status === 'published'
                                                             ? 'bg-green-500/15 text-green-700 border-green-200'
                                                             : 'bg-gray-500/15 text-gray-700 border-gray-200'
                                                     }
                                                 >
-                                                    {item.is_published ? 'Yayında' : 'Taslak'}
+                                                    {item.status === 'published' ? 'Yayında' : 'Taslak'}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>

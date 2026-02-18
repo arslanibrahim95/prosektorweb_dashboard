@@ -30,5 +30,30 @@ export function useCreatePage(siteId: string | null) {
                 void queryClient.invalidateQueries({ queryKey: pageKeys.list(siteId) });
             }
         },
+  });
+}
+
+export function useUpdatePage(siteId: string | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (data: {
+            id: string;
+            title?: string;
+            slug?: string;
+            seo?: {
+                title?: string;
+                description?: string;
+                og_image?: string;
+            };
+        }) => {
+            const { id, ...payload } = data;
+            return api.patch(`/pages/${id}`, payload, pageSchema);
+        },
+        onSuccess: () => {
+            if (siteId) {
+                void queryClient.invalidateQueries({ queryKey: pageKeys.list(siteId) });
+            }
+        },
     });
 }

@@ -75,6 +75,7 @@ export async function POST(req: Request) {
       site_id: parsed.data.site_id,
       title: parsed.data.title,
       slug: parsed.data.slug,
+      origin: ctx.role === "super_admin" ? "site_engine" : "panel",
     };
     if (parsed.data.seo !== undefined) insertRow.seo = parsed.data.seo;
     if (parsed.data.order_index !== undefined) insertRow.order_index = parsed.data.order_index;

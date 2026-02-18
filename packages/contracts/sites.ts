@@ -39,6 +39,46 @@ export const getSiteTokenResponseSchema = z.object({
   expires_at: isoDateTimeSchema,
 });
 
+export const vibeBriefSchema = z
+  .object({
+    business_name: z.string().min(2).max(120),
+    business_summary: z.string().min(20).max(1200),
+    target_audience: z.string().min(5).max(300),
+    tone_keywords: z.array(z.string().min(2).max(30)).min(1).max(8),
+    goals: z.array(z.string().min(2).max(120)).min(1).max(6),
+    must_have_sections: z.array(z.string().min(2).max(120)).min(1).max(10),
+    primary_cta: z.string().min(2).max(120),
+    updated_at: isoDateTimeSchema,
+  })
+  .strict();
+
+export type VibeBrief = z.infer<typeof vibeBriefSchema>;
+
+export const saveVibeBriefRequestSchema = z
+  .object({
+    business_name: z.string().min(2).max(120),
+    business_summary: z.string().min(20).max(1200),
+    target_audience: z.string().min(5).max(300),
+    tone_keywords: z.array(z.string().min(2).max(30)).min(1).max(8),
+    goals: z.array(z.string().min(2).max(120)).min(1).max(6),
+    must_have_sections: z.array(z.string().min(2).max(120)).min(1).max(10),
+    primary_cta: z.string().min(2).max(120),
+    create_panel_homepage: z.boolean().default(true),
+  })
+  .strict();
+
+export const saveVibeBriefResponseSchema = z
+  .object({
+    site: siteSchema,
+    homepage: z
+      .object({
+        id: uuidSchema,
+        origin: z.enum(["panel", "site_engine", "unknown"]),
+      })
+      .nullable(),
+  })
+  .strict();
+
 // ---------------------------------------------------------------------------
 // SEO Settings
 // ---------------------------------------------------------------------------
@@ -60,4 +100,3 @@ export const getSEOSettingsResponseSchema = seoSettingsSchema;
 export const updateSEOSettingsRequestSchema = seoSettingsSchema
   .partial()
   .strict();
-

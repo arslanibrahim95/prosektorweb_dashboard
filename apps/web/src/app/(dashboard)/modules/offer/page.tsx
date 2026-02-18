@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { useSite } from '@/components/site/site-provider';
 import { cn } from '@/lib/utils';
 import { useModules, useKvkkTexts, useSaveModule } from '@/hooks/use-modules';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 
 interface OfferFormState {
   isEnabled: boolean;
@@ -90,6 +91,8 @@ export default function OfferModulePage() {
   }, [activeDraft, serverForm]);
 
   const hasDraftChanges = Boolean(siteId && activeDraft);
+
+  useUnsavedChanges(hasDraftChanges);
 
   const updateDraft = useCallback(<K extends keyof OfferFormState>(key: K, value: OfferFormState[K]) => {
     if (!siteId) return;

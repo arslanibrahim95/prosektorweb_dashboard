@@ -10,7 +10,7 @@ import { useUnreadCount } from '@/hooks/use-unread-count';
 const mobileNavItems = [
   { label: 'Ana Sayfa', href: '/home', icon: Home },
   { label: 'Gelen Kutusu', href: '/inbox/offers', icon: Inbox, matchPrefix: '/inbox' },
-  { label: 'Site', href: '/site/pages', icon: Globe, matchPrefix: '/site' },
+  { label: 'Site', href: '/site/generate', icon: Globe, matchPrefix: '/site' },
   { label: 'Modüller', href: '/modules/offer', icon: Package, matchPrefix: '/modules' },
   { label: 'Analitik', href: '/analytics', icon: BarChart2 },
   { label: 'Ayarlar', href: '/settings/users', icon: Settings, matchPrefix: '/settings' },

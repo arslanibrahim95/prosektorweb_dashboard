@@ -51,7 +51,7 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         // Build query
         let query = ctx.admin
             .from("pages")
-            .select("*", { count: "exact" })
+            .select("id, title, slug, status, origin, updated_at, created_at", { count: "exact" })
             .eq("tenant_id", ctx.tenant.id)
             .is("deleted_at", null);
 
@@ -60,9 +60,9 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         }
 
         if (status === "published") {
-            query = query.eq("is_published", true);
+            query = query.eq("status", "published");
         } else if (status === "draft") {
-            query = query.eq("is_published", false);
+            query = query.eq("status", "draft");
         }
 
         query = query.order("updated_at", { ascending: false }).range(offset, offset + limit - 1);

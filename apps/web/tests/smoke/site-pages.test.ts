@@ -136,29 +136,39 @@ describe('site/publish/page.tsx smoke test', () => {
   });
 });
 
-// — Builder Sayfası (placeholder) —
+// — Builder Sayfası —
 describe('site/builder/page.tsx smoke test', () => {
   const source = readFileSync(path.join(SITE_DIR, 'builder/page.tsx'), 'utf8');
 
-  it('export default function var', () => {
-    expect(source).toContain('export default function');
+  it("'use client' direktifi var", () => {
+    expect(source).toContain("'use client'");
   });
-});
-
-// — Media Sayfası (placeholder) —
-describe('site/media/page.tsx smoke test', () => {
-  const source = readFileSync(path.join(SITE_DIR, 'media/page.tsx'), 'utf8');
 
   it('export default function var', () => {
     expect(source).toContain('export default function');
   });
 });
 
-// — Menus Sayfası (placeholder) —
-describe('site/menus/page.tsx smoke test', () => {
-  const source = readFileSync(path.join(SITE_DIR, 'menus/page.tsx'), 'utf8');
+// — Vibe Uretim Sayfası —
+describe('site/generate/page.tsx smoke test', () => {
+  const source = readFileSync(path.join(SITE_DIR, 'generate/page.tsx'), 'utf8');
 
-  it('export default function var', () => {
-    expect(source).toContain('export default function');
+  it("'use client' direktifi var", () => {
+    expect(source).toContain("'use client'");
+  });
+
+  it('useSite provider kullaniliyor', () => {
+    expect(source).toContain('useSite');
+    expect(source).toContain("from '@/components/site/site-provider'");
+  });
+
+  it('useSaveVibeBrief hook kullaniliyor', () => {
+    expect(source).toContain('useSaveVibeBrief');
+    expect(source).toContain("from '@/hooks/use-site-vibe'");
+  });
+
+  it('ham API cagrisi yok', () => {
+    expect(source).not.toMatch(/api\.post\s*\(/);
+    expect(source).not.toMatch(/fetch\s*\(/);
   });
 });

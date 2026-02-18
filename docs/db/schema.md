@@ -38,6 +38,8 @@ Modules:
 - `job_posts`
 - `job_applications` (`cv_path`, `kvkk_accepted_at`)
 - `legal_texts`
+- `ab_tests`
+- `ab_test_metrics`
 
 Audit:
 - `audit_logs`

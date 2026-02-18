@@ -5,7 +5,7 @@ import {
     parseJson,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
-import { assertAdminRole, assertOwnerRole } from "@/server/admin/access";
+import { assertAdminRole } from "@/server/admin/access";
 import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
 import { rateLimitHeaders } from "@/server/rate-limit";
 
@@ -50,7 +50,7 @@ export const PATCH = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
         const body = await parseJson(req);
 
-        assertOwnerRole(ctx.role);
+        assertAdminRole(ctx.role, "Yönetici yetkisi gerekli");
 
         if (!body || typeof body !== "object") {
             throw new HttpError(400, {

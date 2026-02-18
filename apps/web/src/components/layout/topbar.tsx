@@ -13,6 +13,7 @@ import {
     Check,
     Building2,
     HelpCircle,
+    Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +33,8 @@ import Image from 'next/image';
 import { useSite } from '@/components/site/site-provider';
 import { useUnreadCount } from '@/hooks/use-unread-count';
 import { replayWelcomeTour } from '@/components/onboarding/welcome-modal';
+import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 
 interface TopbarProps {
     user?: {
@@ -64,6 +67,16 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
     const initials = user?.name
         ? user.name.split(' ').map(n => n[0]).join('').toUpperCase()
         : 'U';
+
+    // Tenant switch: show toast on completion
+    const prevSwitching = useRef(false);
+    useEffect(() => {
+        if (prevSwitching.current && !auth.isSwitchingTenant) {
+            const name = currentTenant?.name ?? 'Tenant';
+            toast.success(`${name} hesabına geçildi`);
+        }
+        prevSwitching.current = auth.isSwitchingTenant;
+    }, [auth.isSwitchingTenant, currentTenant?.name]);
 
     return (
         <header className={`fixed top-0 right-0 left-0 z-30 h-[var(--topbar-height)] border-b border-border/50 bg-background/80 backdrop-blur-xl transition-[left] duration-300 ease-[var(--ease-smooth)] ${sidebarCollapsed
@@ -176,6 +189,17 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                             {site.sites[0].name}
                         </Badge>
                     ) : null}
+
+                    {/* Help */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-help-sheet'))}
+                        aria-label="Yardım"
+                    >
+                        <HelpCircle className="h-5 w-5" />
+                    </Button>
 
                     {/* Theme toggle */}
                     <Button
@@ -316,6 +340,14 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
             </div>
             {/* Gradient border for visual depth */}
             <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+
+            {/* Tenant switch loading overlay */}
+            {auth.isSwitchingTenant && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center gap-2 bg-background/70 backdrop-blur-sm">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-sm font-medium text-primary">Hesap değiştiriliyor...</span>
+                </div>
+            )}
         </header>
     );
 }

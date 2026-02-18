@@ -9,6 +9,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { CommandPalette } from '@/components/search/command-palette';
 import { ShortcutsHelp } from './shortcuts-help';
 import { WelcomeModal } from '@/components/onboarding/welcome-modal';
+import { HelpSheet } from '@/components/help/help-sheet';
 import { MobileNav } from './mobile-nav';
 import { safeLocalStorageGetItem, safeLocalStorageSetItem } from '@/lib/storage';
 
@@ -108,6 +109,7 @@ export function AppShell({ children, user, tenant }: AppShellProps) {
 
                 <CommandPalette />
                 <ShortcutsHelp />
+                <HelpSheet />
                 <WelcomeModal />
                 <Toaster richColors position="bottom-right" />
             </div>

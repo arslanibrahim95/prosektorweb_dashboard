@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import {
     asErrorBody,
     asStatus,
@@ -9,6 +8,7 @@ import {
     parseJson,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { assertPageEditableByPanelRole, getPageOriginForTenant } from "@/server/pages/origin-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export async function GET(req: Request, { params }: RouteParams) {
         // Get page info
         const { data: page, error: pageError } = await ctx.supabase
             .from('pages')
-            .select('id, tenant_id, site_id, slug, title')
+            .select('id, tenant_id, site_id, slug, title, origin')
             .eq('id', pageId)
             .eq('tenant_id', ctx.tenant.id)
             .single();
@@ -80,17 +80,8 @@ export async function PUT(req: Request, { params }: RouteParams) {
         const { pageId } = await params;
         const body = await parseJson(req) as Record<string, unknown>;
 
-        // Verify page exists
-        const { data: page, error: pageError } = await ctx.supabase
-            .from('pages')
-            .select('id')
-            .eq('id', pageId)
-            .eq('tenant_id', ctx.tenant.id)
-            .single();
-
-        if (pageError || !page) {
-            throw new HttpError(404, { code: "NOT_FOUND", message: "Sayfa bulunamadı" });
-        }
+        const page = await getPageOriginForTenant(ctx, pageId);
+        assertPageEditableByPanelRole(page.origin, ctx.role);
 
         const layout_data = body.layout_data as Record<string, unknown> | undefined;
         const preview_data = body.preview_data as Record<string, unknown> | undefined;
@@ -166,6 +157,9 @@ export async function POST(req: Request, { params }: RouteParams) {
     try {
         const ctx = await requireAuthContext(req);
         const { pageId } = await params;
+
+        const page = await getPageOriginForTenant(ctx, pageId);
+        assertPageEditableByPanelRole(page.origin, ctx.role);
 
         // Get current layout
         const { data: layout, error: layoutError } = await ctx.supabase

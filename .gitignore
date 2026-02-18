@@ -51,6 +51,8 @@ yarn-error.log*
 .pnpm-debug.log*
 logs/
 *.log
+# Allow admin API logs route (but not general logs)
+!apps/api/src/app/api/admin/logs/
 
 # ─────────────────────────────────────────────────────────────
 # Supabase

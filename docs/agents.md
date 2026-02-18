@@ -1,6 +1,21 @@
 # ProsektorWeb Dashboard - Technical Specification
 
-> **Version:** 1.1.0 | **Date:** 2026-02-18 | **Status:** MVP Specification
+> **Version:** 2.0.0 | **Date:** 2026-02-18 | **Status:** Vibe Coding Vision
+> **Vizyon:** AI ile her firma için benzersiz site (site-engine) + Dashboard sadece yönetim
+
+---
+
+## 🎯 Önemli: Vibe Coding Vizyonu
+
+**Bu dashboard, site üretimi YAPMAZ.** Site üretimi `site-engine` repo'sunda AI ile yapılır.
+
+| Repo | Rol |
+|------|-----|
+| **site-engine** | AI ile custom site üretimi (vibe coding) |
+| **Dashboard (bu repo)** | Sadece yönetim: Inbox, Domain, Publish, HR |
+
+**❌ YOK:** Page Builder, Blok Editör, Şablon Sistemi
+**✅ VAR:** Inbox, Domain & SSL, HR, Basit Düzenleme
 
 ---
 
@@ -27,8 +42,9 @@ KONUŞMA UZADIĞINDA → Memory Bank'a bak → activeContext.md oku
 
 | Kural | Açıklama |
 |-------|----------|
-| **Hedef** | ProsektorWeb Dashboard (tenant + super admin) için ship edilebilir MVP |
-| **MVP Prensibi** | Sabit formlar + inbox; HR minimal (ilan + başvuru toplama). Pipeline/CRM **YOK** |
+| **Hedef** | ProsektorWeb Dashboard - Site yönetimi ve inbox için ship edilebilir MVP |
+| **MVP Prensibi** | Inbox + Domain + HR + Basit düzenleme. Page Builder/Şablon **YOK** |
+| **Vizyon** | Her site AI ile unique (vibe coding) - Dashboard sadece yönetim |
 | **Repo Yönetimi** | Tek repo, çok iş paketi: PR'lar küçük, izole, geri alınabilir |
 | **Bitmiş Tanımı** | "Çalışıyor" ≠ "Bitmiş". Her iş paketinin DoD (Definition of Done) checklist'i var |
 
@@ -147,11 +163,17 @@ Her iş paketi için:
 ## 1. Overview
 
 ### 1.1 Product Vision
-ProsektorWeb Dashboard, OSGB'lere (Ortak Sağlık Güvenlik Birimleri) hızlı kurulum ve satış odaklı web sitesi platformu sunan bir multi-tenant yönetim panelidir.
+ProsektorWeb Dashboard, AI ile üretilen özel sitelerin yönetildiği bir multi-tenant platformdur.
+
+**Vibe Coding Yaklaşımı:**
+- Her firma için **benzersiz** site (şablon YOK)
+- AI (site-engine) ile custom tasarım ve içerik
+- Dashboard sadece yönetim için
 
 ### 1.2 Business Model
-- **Platform Sahibi (Super Admin):** 7 gün içinde demo site kurulumu → onay → ücretli paket
-- **Tenant (OSGB):** Kendi sitesini blok tabanlı editör ile yönetir
+- **site-engine (Ayrı repo):** AI ile custom site üretimi
+- **Dashboard (Bu repo):** Site yönetimi, Inbox, Domain, HR
+- **Tenant (OSGB):** Inbox'tan gelen mesajları/başvuruları yönetir
 
 ### 1.3 Technical Stack
 | Layer | Technology |
@@ -189,14 +211,10 @@ C = Create | R = Read | U = Update | D = Delete | - = No Access
 |-------------------|-------------|--------------|--------------|--------|--------|
 | **Tenants** | CRUD | R (own) | R (own) | - | - |
 | **Sites** | CRUD | CRUD | CRUD | R | R |
-| **Pages** | CRUD | CRUD | CRUD | CRUD | R |
-| **Page Builder** | CRUD | CRUD | CRUD | CRUD | R |
-| **Theme/Branding** | CRUD | CRUD | CRUD | RU | R |
-| **Menus** | CRUD | CRUD | CRUD | CRUD | R |
-| **Media Library** | CRUD | CRUD | CRUD | CRUD | R |
+| **Site Settings** | CRUD | CRUD | CRU | R | R |
 | **Domains/SSL** | CRUD | CRUD | CRU | R | R |
-| **SEO Settings** | CRUD | CRUD | CRUD | CRUD | R |
-| **Publish** | CRUD | CRUD | CRUD | R | R |
+| **SEO Settings** | CRUD | CRUD | CRU | RU | R |
+| **Publish** | CRUD | CRUD | CRU | R | R |
 | **Offer Module** | CRUD | CRUD | CRUD | R | R |
 | **Contact Module** | CRUD | CRUD | CRUD | R | R |
 | **HR Module** | CRUD | CRUD | CRUD | CRUD | R |
@@ -239,13 +257,9 @@ C = Create | R = Read | U = Update | D = Delete | - = No Access
 📊 Home (Özet)
 │
 ├── 🌐 Site
-│   ├── Pages
-│   ├── Page Builder
-│   ├── Theme & Branding
-│   ├── Menus & Navigation
-│   ├── Media Library
+│   ├── Overview
+│   ├── SEO Settings
 │   ├── Domains & SSL
-│   ├── SEO
 │   └── Publish
 │
 ├── 📦 Modules
@@ -266,6 +280,8 @@ C = Create | R = Read | U = Update | D = Delete | - = No Access
     ├── Notifications
     └── Billing & Plan (Owner only)
 ```
+
+**Not:** Site tasarım ve içerik AI ile üretilir (site-engine). Dashboard'da Page Builder YOK.
 
 ### 3.2 Super Admin Navigation
 
@@ -326,21 +342,21 @@ flowchart TD
 
 ---
 
-### 4.2 Site Build & Publish (Tenant)
+### 4.2 Site Publish (Dashboard)
 
 ```mermaid
 flowchart TD
-    A[Edit Page in Builder] --> B[Auto-save Draft]
-    B --> C[Preview]
-    C --> D[SEO Checklist]
-    D --> E{Checklist Pass?}
-    E -->|Yes| F[Publish to Staging]
-    E -->|No| G[Fix Issues]
-    G --> D
-    F --> H[Review Staging]
-    H --> I[Promote to Production]
-    I --> J[Create Revision]
+    A[site-engine: AI Site Üret] --> B[Preview & QA]
+    B --> C{Onaylandı mı?}
+    C -->|Evet| D[Publish to Staging]
+    C -->|Hayır| E[Düzenle site-engine'de]
+    E --> A
+    D --> F[Review Staging]
+    F --> G[Promote to Production]
+    G --> H[Update Dashboard Status]
 ```
+
+**Not:** Site düzenleme site-engine'de yapılır. Dashboard'da sadece publish kontrolü var.
 
 **Quality Gates (Pre-publish):**
 - [ ] Homepage has meta title (≤60 chars) and description (≤160 chars)
@@ -464,114 +480,46 @@ flowchart TD
 
 ---
 
-### 5.2 Site > Pages
+### 5.2 Site > Overview
 
 | Attribute | Value |
 |-----------|-------|
-| **Purpose** | Sayfa listesi, CRUD, sıralama |
-| **Primary CTA** | "Yeni Sayfa" button |
-| **URL** | `/site/pages` |
-| **Permissions** | Owner, Admin, Editor (CRUD), Viewer (R) |
+| **Purpose** | Site durumu, publish kontrolü |
+| **Primary CTA** | "Publish" button |
+| **URL** | `/site` |
+| **Permissions** | Owner, Admin (CRU), Editor (R), Viewer (R) |
 
 **Layout:**
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Pages                                    [+ Yeni Sayfa]     │
+│ Site Overview                                               │
 ├─────────────────────────────────────────────────────────────┤
-│ Search: [________________]  Filter: [Status ▼] [Sort ▼]    │
-├─────────────────────────────────────────────────────────────┤
-│ ☰ Anasayfa          /              Published  ✏️ 🗑️       │
-│ ☰ Hakkımızda        /hakkimizda    Published  ✏️ 🗑️       │
-│ ☰ Hizmetler         /hizmetler     Draft      ✏️ 🗑️       │
-│ ☰ İletişim          /iletisim      Published  ✏️ 🗑️       │
-│ ☰ Kariyer           /kariyer       Published  ✏️ 🗑️       │
+│ Site: ABC OSGB                                              │
+│ Status: Published                                           │
+│ Domain: abc-osgb.com.tr                                     │
+│                                                             │
+│ ┌───────────────────────────────────────────────────────┐  │
+│ │ Publish Kontrolü                                       │  │
+│ │ Staging: ✅ Güncel (2 saat önce)                      │  │
+│ │ Production: ✅ Güncel (1 gün önce)                    │  │
+│ │                                                       │  │
+│ │ [Staging'e Al]  [Production'a Al]                     │  │
+│ └───────────────────────────────────────────────────────┘  │
+│                                                             │
+│ ┌───────────────────────────────────────────────────────┐  │
+│ │ Hızlı Erişim                                           │  │
+│ │ • Inbox: 3 yeni mesaj                                  │  │
+│ │ • Başvurular: 5 bekleyen                               │  │
+│ │ • Domain: Aktif                                        │  │
+│ └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Data:** `GET /api/pages?site_id={id}`
-
-**Features:**
-- Drag-drop reorder (updates `order_index`)
-- Status badges (Draft/Published/Scheduled)
-- Quick actions: Edit, Duplicate, Delete (soft)
-
-**Empty State:**
-> 🎨 Henüz sayfa oluşturmadınız.
-> [+ İlk Sayfanı Oluştur]
+**Not:** Site tasarım/içerik düzenleme site-engine'de yapılır.
 
 ---
 
-### 5.3 Site > Page Builder
-
-| Attribute | Value |
-|-----------|-------|
-| **Purpose** | Blok tabanlı görsel sayfa editörü |
-| **Primary CTA** | "Yayınla" sticky button |
-| **URL** | `/site/builder` |
-| **Permissions** | Owner, Admin, Editor (CRUD), Viewer (R) |
-
-**Layout:**
-```
-┌─────────────────────────────────────────────────────────────┐
-│ ← Sayfalar  |  Anasayfa  |  [Preview] [Save Draft] [Publish]│
-├────────────────────┬────────────────────────┬───────────────┤
-│                    │                        │               │
-│   Block Picker     │      Canvas            │   Inspector   │
-│                    │                        │               │
-│   [Hero]           │   ┌──────────────┐     │  Block Props  │
-│   [Text]           │   │   Hero       │     │               │
-│   [Image]          │   └──────────────┘     │  Title: ___   │
-│   [Gallery]        │   ┌──────────────┐     │  Subtitle: _  │
-│   [CTA]            │   │   Features   │     │  BG Image: _  │
-│   [Features]       │   └──────────────┘     │  CTA Text: _  │
-│   [Testimonials]   │   ┌──────────────┐     │               │
-│   [Contact Form]   │   │   Contact    │     │  [Advanced]   │
-│   [Map]            │   └──────────────┘     │               │
-│                    │                        │               │
-├────────────────────┴────────────────────────┴───────────────┤
-│ [📱 Mobile] [💻 Tablet] [🖥️ Desktop]  |  Draft saved 2m ago │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**3 Modes:**
-1. **Structure:** Block order + hierarchy
-2. **Content:** Text, images, links
-3. **Design:** Colors, spacing, typography
-
-**Features:**
-- Drag-drop blocks
-- Keyboard reorder (↑↓ + ⌘)
-- Auto-save every 30 seconds
-- Revision history access
-- Responsive preview (mobile/tablet/desktop)
-- Undo/Redo (⌘Z / ⌘⇧Z)
-
-**Data:**
-- `GET /api/pages/:id`
-- `PATCH /api/pages/:id`
-- `POST /api/pages/:id/revisions`
-
----
-
-### 5.4 Site > Theme & Branding
-
-| Attribute | Value |
-|-----------|-------|
-| **Purpose** | Site geneli görsel ayarlar |
-| **Primary CTA** | "Değişiklikleri Kaydet" |
-| **URL** | `/admin/theme` |
-| **Permissions** | Owner, Admin (CRUD), Editor (RU), Viewer (R) |
-
-**Sections:**
-1. **Logo:** Light/Dark variants, favicon
-2. **Colors:** Primary, secondary, accent, text, background
-3. **Typography:** Heading font, body font, base size
-4. **Header/Footer:** Layout options, social links
-5. **Global CSS:** Custom CSS injection (advanced)
-
----
-
-### 5.5 Site > Menus
+### 5.3 Site > SEO Settings
 
 | Attribute | Value |
 |-----------|-------|
@@ -580,77 +528,32 @@ flowchart TD
 | **URL** | `/site/menus` |
 | **Permissions** | Owner, Admin, Editor (CRUD), Viewer (R) |
 
-**Features:**
-- Multiple menus (header, footer, mobile)
-- Nested items (max 2 levels)
-- Link types: Page, URL, Anchor
-- Drag-drop reorder
+**Sections:**
+1. **Site-wide:** Default title template, meta description, OG image
+2. **Technical:** robots.txt, sitemap.xml (auto-generated)
+
+**Not:** Sayfa bazlı SEO site-engine'de yapılır.
 
 ---
 
-### 5.6 Site > Media Library
+### 5.5 Site > SEO
 
 | Attribute | Value |
 |-----------|-------|
-| **Purpose** | Görsel/dosya yönetimi |
-| **Primary CTA** | "Yükle" |
-| **URL** | `/site/media` |
-| **Permissions** | All except Viewer |
-
-**Features:**
-- Grid/List view toggle
-- Folder organization
-- Image optimization on upload
-- Used/Unused filter
-- Bulk delete (MVP: single delete only)
-
-**Limits:**
-- Max file: 10MB (images), 5MB (CV)
-- Allowed: jpg, png, webp, gif, svg, pdf, doc, docx
-
----
-
-### 5.7 Site > Domains & SSL
-
-| Attribute | Value |
-|-----------|-------|
-| **Purpose** | Custom domain bağlama |
-| **Primary CTA** | "Domain Ekle" |
-| **URL** | `/site/domains` |
-| **Permissions** | Owner, Admin (CRUD), Editor (R), Viewer (R) |
-
-**Wizard Steps:**
-1. Enter domain name
-2. Copy DNS records (CNAME/A)
-3. Verify DNS propagation
-4. SSL provisioning (auto via Let's Encrypt)
-5. Set as primary (optional)
-
-**Status Indicators:**
-- 🟡 Pending verification
-- 🟢 Active
-- 🔴 SSL expired
-- ⚪ Inactive
-
----
-
-### 5.8 Site > SEO
-
-| Attribute | Value |
-|-----------|-------|
-| **Purpose** | Site geneli + sayfa bazlı SEO |
+| **Purpose** | Site geneli SEO ayarları |
 | **Primary CTA** | "Kaydet" |
 | **URL** | `/site/seo` |
-| **Permissions** | All except Viewer |
+| **Permissions** | Owner, Admin (CRU), Editor (R) |
 
 **Sections:**
 1. **Site-wide:** Default title template, meta description, OG image
-2. **Page-level:** Override per page (accessible from Pages list)
-3. **Technical:** robots.txt, sitemap.xml (auto-generated)
+2. **Technical:** robots.txt, sitemap.xml (auto-generated)
+
+**Not:** Sayfa bazlı SEO site-engine'de yapılır.
 
 ---
 
-### 5.9 Site > Publish
+### 5.6 Site > Publish
 
 | Attribute | Value |
 |-----------|-------|
@@ -1810,19 +1713,16 @@ it('should trap focus in modal', async () => {
 
 ## 12. MVP Scope
 
-### ✅ MVP Features
+### ✅ MVP Features (Dashboard)
 
 | Category | Features |
 |----------|----------|
 | **Multi-tenant** | Tenant isolation (RLS), tenant_members, role-based access |
 | **Auth** | Supabase Auth (email/password, magic link), session management |
-| **Site Builder** | Block-based page editor, 10+ block types, drag-drop, revisions |
-| **Pages** | CRUD, soft delete, publish status, SEO per page |
-| **Theme** | Logo, colors, typography, header/footer settings |
-| **Menus** | Header/Footer navigation, nested items |
-| **Media** | Upload, organize, image optimization |
+| **Site Management** | Site listesi, durum, publish kontrolü |
+| **SEO** | Site-wide meta ayarları |
 | **Domains** | Custom domain setup wizard, SSL (Let's Encrypt) |
-| **Publish** | Draft → Staging → Production flow |
+| **Publish** | Staging → Production flow |
 | **Offer Module** | Fixed form, inbox, email notification |
 | **Contact Module** | Contact info, fixed form, inbox |
 | **HR Module** | Job posts CRUD, application form, inbox (no pipeline) |
@@ -1830,7 +1730,16 @@ it('should trap focus in modal', async () => {
 | **Users** | Invite, role assignment, suspend |
 | **Audit** | Critical action logging |
 
-### 🚫 NOT in MVP
+### 🚫 NOT in MVP (site-engine'de)
+
+- Page Builder / Blok Editör
+- Şablon Sistemi
+- Theme Builder
+- Menu Builder
+- Media Library
+- Pages CRUD
+
+### 🚫 NOT in MVP (Gelecek Phase'ler)
 
 - Dynamic form builder
 - Pipeline/Kanban for applications
@@ -1838,7 +1747,6 @@ it('should trap focus in modal', async () => {
 - Advanced analytics dashboard
 - CRM integrations (webhook, Zapier)
 - WhatsApp/SMS notifications
-- Template marketplace
 - Multi-site per tenant
 - Invoice generation
 - A/B testing
@@ -1848,31 +1756,28 @@ it('should trap focus in modal', async () => {
 
 ## 13. Phase-2 Roadmap
 
-### 13.1 Form Builder
+### 13.1 site-engine Integration
+- AI site generator (vibe coding)
+- Prompt'tan custom site
+- Webhook entegrasyonu (site-engine → Dashboard)
+
+### 13.2 Form Builder
 - Drag-drop field creation
 - Conditional logic
 - Multi-step forms
 - File upload fields
 
-### 13.2 Pipeline & CRM Lite
+### 13.3 Pipeline & CRM Lite
 - Kanban view for applications
 - Status workflow (New → Review → Interview → Hired/Rejected)
 - Notes per application
 - Team assignment
 
-### 13.3 Integrations
+### 13.4 Integrations
 - Webhook on form submission
 - Zapier/Make.com connector
 - WhatsApp Business API
 - Google Analytics 4 deep integration
-
-### 13.4 Advanced Features
-- Multi-site per tenant
-- Template marketplace
-- White-label options
-- Scheduled publishing
-- A/B page variants
-- AI content suggestions
 
 ### 13.5 Billing
 - Stripe integration
@@ -1882,28 +1787,7 @@ it('should trap focus in modal', async () => {
 
 ---
 
-## Appendix A: Block Types (MVP)
-
-| Block | Purpose | Props |
-|-------|---------|-------|
-| `hero` | Landing section | title, subtitle, cta, bg_image |
-| `text` | Rich text content | content (HTML) |
-| `image` | Single image | src, alt, caption, link |
-| `gallery` | Image grid | images[], columns |
-| `features` | Feature cards | items[{icon, title, desc}] |
-| `cta` | Call to action | title, subtitle, button, style |
-| `testimonials` | Customer quotes | items[{quote, author, role}] |
-| `team` | Team members | members[{photo, name, role}] |
-| `faq` | Accordion | items[{question, answer}] |
-| `contact_form` | Contact form embed | module_id |
-| `offer_form` | Offer form embed | module_id |
-| `map` | Google Maps embed | embed_url |
-| `spacer` | Vertical space | height |
-| `divider` | Horizontal line | style |
-
----
-
-## Appendix B: Environment Variables
+## Appendix A: Environment Variables
 
 ```env
 # Supabase

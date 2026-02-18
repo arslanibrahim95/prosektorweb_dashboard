@@ -16,6 +16,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { assertPageEditableByPanelRole, getPageOriginForTenant } from "@/server/pages/origin-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +59,9 @@ export async function POST(req: Request, ctxRoute: { params: Promise<{ id: strin
       throw new HttpError(400, { code: "VALIDATION_ERROR", message: "Invalid page id" });
     }
 
+    const page = await getPageOriginForTenant(ctx, pageIdParsed.data);
+    assertPageEditableByPanelRole(page.origin, ctx.role);
+
     const body = await parseJson(req);
     const parsed = createRevisionRequestSchema.safeParse(body);
     if (!parsed.success) {
@@ -67,16 +71,6 @@ export async function POST(req: Request, ctxRoute: { params: Promise<{ id: strin
         details: zodErrorToDetails(parsed.error),
       });
     }
-
-    // Ensure page exists (and belongs to tenant).
-    const { data: page, error: pageError } = await ctx.supabase
-      .from("pages")
-      .select("id")
-      .eq("tenant_id", ctx.tenant.id)
-      .eq("id", pageIdParsed.data)
-      .maybeSingle();
-    if (pageError) throw mapPostgrestError(pageError);
-    if (!page) throw new HttpError(404, { code: "NOT_FOUND", message: "Not found" });
 
     const { data: revision, error: revisionError } = await ctx.supabase
       .from("page_revisions")

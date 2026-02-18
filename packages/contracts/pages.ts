@@ -9,6 +9,9 @@ export const seoSchema = z
   })
   .strict();
 
+export const pageOriginSchema = z.enum(["panel", "site_engine", "unknown"]);
+export type PageOrigin = z.infer<typeof pageOriginSchema>;
+
 export const pageSchema = z.object({
   id: uuidSchema,
   tenant_id: uuidSchema,
@@ -17,6 +20,7 @@ export const pageSchema = z.object({
   title: z.string().min(1).max(200),
   status: pageStatusSchema,
   seo: seoSchema.default({}),
+  origin: pageOriginSchema,
   order_index: z.number().int(),
   draft_revision_id: uuidSchema.nullable().optional(),
   staging_revision_id: uuidSchema.nullable().optional(),

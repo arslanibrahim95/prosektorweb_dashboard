@@ -12,8 +12,8 @@ import { ProgressIndicator } from '@/components/onboarding/progress-indicator';
 const nextSteps = [
     {
         icon: '📊',
-        title: 'İlk sayfanızı oluşturun',
-        description: 'Site yönetimi bölümünden sayfalarınızı düzenleyin',
+        title: 'Vibe briefinizi oluşturun',
+        description: 'Site > Vibe Uretim ekraninda markanizi anlatip ilk taslagi hazirlayin',
     },
     {
         icon: '📝',
