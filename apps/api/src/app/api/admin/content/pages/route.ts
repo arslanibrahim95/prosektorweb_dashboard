@@ -23,6 +23,18 @@ export const adminContentPagesQuerySchema = z
     })
     .strict();
 
+interface MissingColumnError {
+    code?: string;
+    message?: string;
+    details?: string | null;
+    hint?: string | null;
+}
+
+function isMissingColumnError(error: MissingColumnError): boolean {
+    if (!error.code) return false;
+    return error.code === "42703" || error.code === "PGRST204";
+}
+
 export const GET = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
 
@@ -48,31 +60,53 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         const { search, status, page, limit } = parsedQuery.data;
         const offset = (page - 1) * limit;
 
-        // Build query
-        let query = ctx.admin
-            .from("pages")
-            .select("id, title, slug, status, origin, updated_at, created_at", { count: "exact" })
-            .eq("tenant_id", ctx.tenant.id)
-            .is("deleted_at", null);
+        const applyCommonFilters = (query: any) => {
+            if (search) {
+                query = query.or(buildSafeIlikeOr(["title", "slug"], search));
+            }
 
-        if (search) {
-            query = query.or(buildSafeIlikeOr(["title", "slug"], search));
+            if (status === "published") {
+                query = query.eq("status", "published");
+            } else if (status === "draft") {
+                query = query.eq("status", "draft");
+            }
+
+            return query.order("updated_at", { ascending: false }).range(offset, offset + limit - 1);
+        };
+
+        const primary = await applyCommonFilters(
+            ctx.admin
+                .from("pages")
+                .select("id, title, slug, status, origin, updated_at, created_at", { count: "exact" })
+                .eq("tenant_id", ctx.tenant.id)
+                .is("deleted_at", null),
+        );
+
+        let data = (primary.data as Array<Record<string, unknown>> | null) ?? [];
+        let error = primary.error;
+        let count = primary.count;
+
+        if (error && isMissingColumnError(error)) {
+            const fallback = await applyCommonFilters(
+                ctx.admin
+                    .from("pages")
+                    .select("id, title, slug, status, updated_at, created_at", { count: "exact" })
+                    .eq("tenant_id", ctx.tenant.id),
+            );
+
+            data = ((fallback.data as Array<Record<string, unknown>> | null) ?? []).map((item) => ({
+                ...item,
+                origin: "unknown",
+            }));
+            error = fallback.error;
+            count = fallback.count;
         }
 
-        if (status === "published") {
-            query = query.eq("status", "published");
-        } else if (status === "draft") {
-            query = query.eq("status", "draft");
-        }
-
-        query = query.order("updated_at", { ascending: false }).range(offset, offset + limit - 1);
-
-        const { data, error, count } = await query;
         if (error) throw mapPostgrestError(error);
 
         return jsonOk(
             {
-                items: data ?? [],
+                items: data,
                 total: count ?? 0,
             },
             200,

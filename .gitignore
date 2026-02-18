@@ -53,6 +53,8 @@ logs/
 *.log
 # Allow admin API logs route (but not general logs)
 !apps/api/src/app/api/admin/logs/
+# Allow admin web logs page route (but not general logs)
+!apps/web/src/app/(dashboard)/admin/logs/
 
 # ─────────────────────────────────────────────────────────────
 # Supabase

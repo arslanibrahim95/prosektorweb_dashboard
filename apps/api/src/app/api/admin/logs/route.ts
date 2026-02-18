@@ -100,14 +100,31 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         throw mapPostgrestError(error);
     }
 
-    const totalPages = Math.ceil((count ?? 0) / limit);
+    const items = data ?? [];
+    const total = count ?? 0;
+    const totalPages = Math.ceil(total / limit);
+    const byAction = items.reduce<Record<string, number>>((acc, item) => {
+        const actionKey = typeof item.action === "string" ? item.action : "unknown";
+        acc[actionKey] = (acc[actionKey] ?? 0) + 1;
+        return acc;
+    }, {});
 
     return jsonOk({
-        data: data ?? [],
+        // Preferred shape for admin web UI
+        items,
+        total,
+        page,
+        limit,
+        stats: {
+            total,
+            byAction,
+        },
+        // Backward-compatible shape for existing consumers
+        data: items,
         pagination: {
             page,
             limit,
-            total: count ?? 0,
+            total,
             totalPages,
         },
     }, 200, rateLimitHeaders(rateLimit));
