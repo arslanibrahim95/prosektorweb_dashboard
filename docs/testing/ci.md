@@ -13,6 +13,7 @@ Her PR açıldığında veya güncellendiğinde çalışan hızlı testler.
 
 - **Trigger:** `pull_request`
 - **Görevler:**
+  - `pnpm run validate:agents-team`: Agent konfigürasyon ve pipeline tutarlılığı
   - `pnpm lint`: Statik analiz
   - `pnpm test:contracts`: Schema uyumluluğu
   - `pnpm test:api`: Route handler testleri
@@ -61,6 +62,8 @@ jobs:
 
       - name: Run Fast Tests
         run: |
+          pnpm run validate:agents-team
+          pnpm lint
           pnpm test:contracts
           pnpm test:api
           pnpm test:db

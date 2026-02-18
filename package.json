@@ -9,6 +9,7 @@
     "dev": "pnpm -r --parallel --filter web --filter api dev",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
+    "validate:agents-team": "node scripts/validate-agents-team.mjs",
     "build": "pnpm -r --filter web --filter api build",
     "lint": "pnpm -r --filter web --filter api lint",
     "test:contracts": "pnpm --filter @prosektor/contracts test",

@@ -170,6 +170,23 @@ Her iş paketi için:
 - [ ] PR açıklaması DoD'u referans alıyor
 - [ ] Kontrol Ajanı review onayı
 
+### 0.7 Operasyon Referansları (Runbook)
+
+Agent zincirinin operasyonel kullanımı için aşağıdaki dokümanlar referans alınır:
+
+- Runbook: `docs/agent-ops/runbook.md`
+- Handover şablonları: `docs/handoff/agent-stage-templates.md`
+- Severity/Blocking politikası: `docs/agent-ops/severity-policy.md`
+- Quality gates: `docs/agent-ops/quality-gates.md`
+- Pilot retrospektif: `docs/agent-ops/pilot-retrospective-template.md`
+- Haftalık metrik şablonu: `docs/agent-ops/weekly-metrics-template.md`
+
+Konfig doğrulama komutu:
+
+```bash
+pnpm run validate:agents-team
+```
+
 ---
 
 ## 1. Overview

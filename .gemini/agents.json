@@ -1,0 +1,154 @@
+{
+    "agents": [
+        {
+            "name": "UX Agent",
+            "description": "Information Architecture, kullanıcı akışları ve ekran spesifikasyonları",
+            "tool": "OpenCode",
+            "model": "Kimi 2.5",
+            "workflow": ".agent/workflows/ux-agent.md",
+            "scope": [
+                "docs/ux/"
+            ],
+            "trigger": "/ux-agent"
+        },
+        {
+            "name": "UI Agent",
+            "description": "Component inventory, wireframe spec ve UI kuralları",
+            "tool": "OpenCode",
+            "model": "Kimi 2.5",
+            "workflow": ".agent/workflows/ui-agent.md",
+            "scope": [
+                "docs/ui/",
+                "packages/ui/",
+                "apps/web/src/components/"
+            ],
+            "trigger": "/ui-agent"
+        },
+        {
+            "name": "CSS/Design System Agent",
+            "description": "Token'lar, theme, Tailwind/shadcn standardizasyonu",
+            "tool": "OpenCode",
+            "model": "GLM5",
+            "workflow": ".agent/workflows/css-agent.md",
+            "scope": [
+                "packages/design-tokens/",
+                "apps/web/src/styles/"
+            ],
+            "trigger": "/css-agent"
+        },
+        {
+            "name": "Frontend Agent",
+            "description": "Route'lar, sayfalar, state management, form entegrasyonu",
+            "tool": "OpenCode",
+            "model": "Kimi 2.5",
+            "workflow": ".agent/workflows/frontend-agent.md",
+            "scope": [
+                "apps/web/src/"
+            ],
+            "trigger": "/frontend-agent"
+        },
+        {
+            "name": "Backend Agent",
+            "description": "DB şeması, RLS, API routes, server actions, storage policy",
+            "tool": "Codex",
+            "model": "5.3 High",
+            "workflow": ".agent/workflows/backend-agent.md",
+            "scope": [
+                "apps/api/src/",
+                "packages/db/",
+                "packages/contracts/",
+                "supabase/"
+            ],
+            "trigger": "/backend-agent"
+        },
+        {
+            "name": "Code Reviewer",
+            "description": "Diff odaklı kalite kontrolü, regresyon analizi ve risk raporu",
+            "tool": "MiniMax",
+            "model": "2.5",
+            "workflow": ".agent/workflows/code-reviewer.md",
+            "scope": [
+                "*"
+            ],
+            "trigger": "/code-reviewer"
+        },
+        {
+            "name": "Test Engineer",
+            "description": "Unit test, integration test, E2E test yazımı ve coverage artırma",
+            "tool": "Codex",
+            "model": "5.3 High",
+            "workflow": ".agent/workflows/test-engineer.md",
+            "scope": [
+                "apps/api/tests/",
+                "apps/web/__tests__/",
+                "apps/web/tests/",
+                "packages/testing/"
+            ],
+            "trigger": "/test-engineer"
+        },
+        {
+            "name": "QA Agent",
+            "description": "Bağımsız doğrulama, gap listesi, DoD kontrolü ve son onay",
+            "tool": "Opus",
+            "model": "4.6",
+            "workflow": ".agent/workflows/qa-agent.md",
+            "scope": [
+                "*"
+            ],
+            "trigger": "/qa-agent"
+        }
+    ],
+    "pipeline": {
+        "description": "Tam geliştirme döngüsü: UX → UI → CSS → Frontend → Backend → Code Review → Test → QA",
+        "stages": [
+            {
+                "agent": "UX Agent",
+                "phase": "planning",
+                "tool": "OpenCode",
+                "model": "Kimi 2.5"
+            },
+            {
+                "agent": "UI Agent",
+                "phase": "planning",
+                "tool": "OpenCode",
+                "model": "Kimi 2.5"
+            },
+            {
+                "agent": "CSS/Design System Agent",
+                "phase": "planning",
+                "tool": "OpenCode",
+                "model": "GLM5"
+            },
+            {
+                "agent": "Frontend Agent",
+                "phase": "execution",
+                "tool": "OpenCode",
+                "model": "Kimi 2.5"
+            },
+            {
+                "agent": "Backend Agent",
+                "phase": "execution",
+                "tool": "Codex",
+                "model": "5.3 High"
+            },
+            {
+                "agent": "Code Reviewer",
+                "phase": "verification",
+                "tool": "MiniMax",
+                "model": "2.5"
+            },
+            {
+                "agent": "Test Engineer",
+                "phase": "verification",
+                "tool": "Codex",
+                "model": "5.3 High"
+            },
+            {
+                "agent": "QA Agent",
+                "phase": "verification",
+                "tool": "Opus",
+                "model": "4.6"
+            }
+        ]
+    }
+}
