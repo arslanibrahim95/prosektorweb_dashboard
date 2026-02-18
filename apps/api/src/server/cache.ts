@@ -354,7 +354,7 @@ export async function getOrSetCachedValue<T>(
           reject(new Error(`Loader timeout after ${timeoutMs}ms`));
         }, timeoutMs);
         if (typeof id === 'object' && 'unref' in id) {
-          (id as any).unref();
+          (id as { unref(): void }).unref();
         }
       });
 

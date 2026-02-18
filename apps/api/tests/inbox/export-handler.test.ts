@@ -68,7 +68,7 @@ describe("createExportHandler", () => {
             expect(parsed.success).toBe(true);
             if (parsed.success) {
                 expect(parsed.data.site_id).toBe(validUuid);
-                expect((parsed.data as any).job_post_id).toBeUndefined();
+                expect((parsed.data as Record<string, unknown>).job_post_id).toBeUndefined();
             }
         });
 

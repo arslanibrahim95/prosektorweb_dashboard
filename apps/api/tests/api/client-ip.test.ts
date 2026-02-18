@@ -1,16 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { getClientIp } from "../../src/server/rate-limit";
 
 describe("getClientIp", () => {
-  const originalNodeEnv = process.env.NODE_ENV;
   const originalTrustedProxyCount = process.env.TRUSTED_PROXY_COUNT;
 
   afterEach(() => {
-    if (originalNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
-    } else {
-      process.env.NODE_ENV = originalNodeEnv;
-    }
+    vi.unstubAllEnvs();
 
     if (originalTrustedProxyCount === undefined) {
       delete process.env.TRUSTED_PROXY_COUNT;
@@ -66,7 +61,7 @@ describe("getClientIp", () => {
   });
 
   it("uses trusted-hop extraction in production to reduce x-forwarded-for spoofing", () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv('NODE_ENV', 'production');
     process.env.TRUSTED_PROXY_COUNT = "0";
 
     const req = new Request("http://localhost", {
@@ -79,7 +74,7 @@ describe("getClientIp", () => {
   });
 
   it("rejects private forwarded IPs in production and falls back", () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv('NODE_ENV', 'production');
     process.env.TRUSTED_PROXY_COUNT = "0";
 
     const req = new Request("http://localhost", {

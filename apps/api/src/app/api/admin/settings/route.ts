@@ -14,6 +14,53 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const backupSettingsSchema = z.object({
+    auto_backup: z.boolean().optional(),
+    frequency: z.enum(['daily', 'weekly', 'monthly']).optional(),
+    retention_period: z.enum(['7', '30', '90', '365']).optional(),
+    location: z.enum(['local', 's3', 'gcs']).optional(),
+    include: z.object({
+        database: z.boolean().optional(),
+        media: z.boolean().optional(),
+        config: z.boolean().optional(),
+        logs: z.boolean().optional(),
+    }).optional(),
+});
+
+const i18nSettingsSchema = z.object({
+    defaultLanguage: z.string().min(2).max(10).optional(),
+    enabledLanguages: z.array(z.string().min(2).max(10)).optional(),
+    languages: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        code: z.string().min(2).max(10),
+        status: z.enum(['active', 'inactive']),
+        isDefault: z.boolean(),
+        progress: z.number().min(0).max(100),
+    })).optional(),
+});
+
+const themeSettingsSchema = z.object({
+    colors: z.object({
+        primary: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        secondary: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        background: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        text: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        success: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        warning: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        error: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    }).optional(),
+    fontFamily: z.enum(['inter', 'roboto', 'open-sans', 'poppins', 'nunito']).optional(),
+    baseFontSize: z.number().min(12).max(24).optional(),
+    headingFont: z.enum(['inter', 'roboto', 'open-sans', 'poppins', 'nunito']).optional(),
+    lineHeight: z.enum(['1.25', '1.5', '1.75', '2']).optional(),
+    sidebarWidth: z.number().min(200).max(400).optional(),
+    borderRadius: z.enum(['none', 'small', 'medium', 'large', 'full']).optional(),
+    shadowStyle: z.enum(['none', 'light', 'medium', 'strong']).optional(),
+    compactMode: z.boolean().optional(),
+});
+
 const settingsPatchSchema = z.object({
     tenant: z.object({
         name: z.string().min(1).max(100).optional(),
@@ -24,7 +71,10 @@ const settingsPatchSchema = z.object({
         settings: z.record(z.string(), z.unknown()).optional(),
     }).optional(),
     security: z.record(z.string(), z.unknown()).optional(),
-}).strict();
+    backup: backupSettingsSchema.optional(),
+    i18n: i18nSettingsSchema.optional(),
+    theme: themeSettingsSchema.optional(),
+});
 
 export const GET = withAdminErrorHandling(async (req: Request) => {
     const ctx = await requireAuthContext(req);
@@ -76,7 +126,7 @@ export const PATCH = withAdminErrorHandling(async (req: Request) => {
         });
     }
 
-    const { tenant, site, security } = parsed.data;
+    const { tenant, site, security, backup, i18n, theme } = parsed.data;
 
     // Plan updates require owner role (privilege escalation prevention)
     if (tenant?.plan) {
@@ -189,6 +239,108 @@ export const PATCH = withAdminErrorHandling(async (req: Request) => {
             });
             if (auditError) throw mapPostgrestError(auditError);
         }
+    }
+
+    // Update backup settings (stored in tenant.settings.backup)
+    if (backup) {
+        const { data: currentTenant } = await ctx.admin
+            .from("tenants")
+            .select("settings")
+            .eq("id", ctx.tenant.id)
+            .single();
+
+        const currentSettings = (currentTenant?.settings ?? {}) as Record<string, unknown>;
+        const merged = { ...currentSettings, backup: { ...((currentSettings.backup as object) ?? {}), ...backup } };
+
+        const { data: updatedTenant, error: backupError } = await ctx.admin
+            .from("tenants")
+            .update({ settings: merged })
+            .eq("id", ctx.tenant.id)
+            .select("*")
+            .single();
+
+        if (backupError) throw mapPostgrestError(backupError);
+        results.settings = updatedTenant;
+
+        const { error: auditError } = await ctx.admin.from("audit_logs").insert({
+            tenant_id: ctx.tenant.id,
+            actor_id: ctx.user.id,
+            action: "backup_settings_update",
+            entity_type: "tenant",
+            entity_id: ctx.tenant.id,
+            changes: { backup: { from: currentSettings.backup ?? null, to: backup } },
+            meta: null,
+            created_at: nowIso,
+        });
+        if (auditError) throw mapPostgrestError(auditError);
+    }
+
+    // Update i18n settings (stored in tenant.settings.i18n)
+    if (i18n) {
+        const { data: currentTenant } = await ctx.admin
+            .from("tenants")
+            .select("settings")
+            .eq("id", ctx.tenant.id)
+            .single();
+
+        const currentSettings = (currentTenant?.settings ?? {}) as Record<string, unknown>;
+        const merged = { ...currentSettings, i18n: { ...((currentSettings.i18n as object) ?? {}), ...i18n } };
+
+        const { data: updatedTenant, error: i18nError } = await ctx.admin
+            .from("tenants")
+            .update({ settings: merged })
+            .eq("id", ctx.tenant.id)
+            .select("*")
+            .single();
+
+        if (i18nError) throw mapPostgrestError(i18nError);
+        results.settings = updatedTenant;
+
+        const { error: auditError } = await ctx.admin.from("audit_logs").insert({
+            tenant_id: ctx.tenant.id,
+            actor_id: ctx.user.id,
+            action: "i18n_settings_update",
+            entity_type: "tenant",
+            entity_id: ctx.tenant.id,
+            changes: { i18n: { from: currentSettings.i18n ?? null, to: i18n } },
+            meta: null,
+            created_at: nowIso,
+        });
+        if (auditError) throw mapPostgrestError(auditError);
+    }
+
+    // Update theme settings (stored in tenant.settings.theme)
+    if (theme) {
+        const { data: currentTenant } = await ctx.admin
+            .from("tenants")
+            .select("settings")
+            .eq("id", ctx.tenant.id)
+            .single();
+
+        const currentSettings = (currentTenant?.settings ?? {}) as Record<string, unknown>;
+        const merged = { ...currentSettings, theme: { ...((currentSettings.theme as object) ?? {}), ...theme } };
+
+        const { data: updatedTenant, error: themeError } = await ctx.admin
+            .from("tenants")
+            .update({ settings: merged })
+            .eq("id", ctx.tenant.id)
+            .select("*")
+            .single();
+
+        if (themeError) throw mapPostgrestError(themeError);
+        results.settings = updatedTenant;
+
+        const { error: auditError } = await ctx.admin.from("audit_logs").insert({
+            tenant_id: ctx.tenant.id,
+            actor_id: ctx.user.id,
+            action: "theme_settings_update",
+            entity_type: "tenant",
+            entity_id: ctx.tenant.id,
+            changes: { theme: { from: currentSettings.theme ?? null, to: theme } },
+            meta: null,
+            created_at: nowIso,
+        });
+        if (auditError) throw mapPostgrestError(auditError);
     }
 
     return jsonOk(results);

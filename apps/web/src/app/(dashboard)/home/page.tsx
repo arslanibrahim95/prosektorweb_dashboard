@@ -177,16 +177,16 @@ export default function HomePage() {
   const completedCount = checklist.filter((c) => c.completed).length;
   const completionPercent = Math.round((completedCount / checklist.length) * 100);
   const CELEBRATION_KEY = 'prosektor.checklist.celebration_fired';
-  const [celebrationFired, setCelebrationFired] = useState(() => {
+  // Read once at mount from localStorage — never changes within the session
+  const [celebrationFired] = useState(() => {
     try { return localStorage.getItem(CELEBRATION_KEY) === '1'; } catch { return false; }
   });
   const isAllComplete = completionPercent === 100 && !isLoading;
   const shouldCelebrate = isAllComplete && !celebrationFired;
 
-  // Persist the celebration-fired flag so confetti doesn't retrigger on re-mount
+  // Persist the flag to localStorage so confetti doesn't retrigger after page reload
   useEffect(() => {
     if (shouldCelebrate) {
-      setCelebrationFired(true);
       try { localStorage.setItem(CELEBRATION_KEY, '1'); } catch { /* ignore */ }
     }
   }, [shouldCelebrate]);

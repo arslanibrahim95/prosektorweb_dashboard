@@ -70,7 +70,7 @@ export async function GET(
         // Control (A) ve Variant (B) için istatistikleri hesapla
         const controlStats = variantStats.get('control') || { visitors: 0, conversions: 0 }
 
-        let results: Record<string, unknown> = {
+        const results: Record<string, unknown> = {
             test_info: {
                 id: test.id,
                 name: test.name,
@@ -153,9 +153,9 @@ export async function GET(
         )
 
         // Traffic optimization önerisi
-        if (controlStats.visitors > 0 && results.test_metrics.overall_conversion_rate > 0) {
-            const baselineRate = results.test_metrics.overall_conversion_rate
-            results.traffic_optimization = optimizeTrafficSplit(baselineRate, 0.05, dailyTraffic)
+        const testMetrics = results.test_metrics as { overall_conversion_rate: number } | undefined
+        if (controlStats.visitors > 0 && testMetrics && testMetrics.overall_conversion_rate > 0) {
+            results.traffic_optimization = optimizeTrafficSplit(testMetrics.overall_conversion_rate, 0.05, dailyTraffic)
         }
 
         return NextResponse.json({ data: results })

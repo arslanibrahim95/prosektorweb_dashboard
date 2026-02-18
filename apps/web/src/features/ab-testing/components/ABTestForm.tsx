@@ -2,7 +2,7 @@
  * A/B Test Oluşturma/Düzenleme Formu
  */
 import { useState } from 'react'
-import { CreateABTestForm, ABVariant, ABGoal, GoalType } from '../types'
+import { CreateABTestForm, ABVariant, ABGoal, GoalType, ABTestStatus } from '../types'
 import { useCreateABTest, useUpdateABTest } from '../hooks/useABTests'
 
 interface ABTestFormProps {
@@ -171,7 +171,7 @@ export function ABTestForm({
                         </label>
                         <select
                             value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                            onChange={(e) => setFormData({ ...formData, status: e.target.value as ABTestStatus })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                         >
                             <option value="draft">Taslak</option>

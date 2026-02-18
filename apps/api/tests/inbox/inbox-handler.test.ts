@@ -373,7 +373,7 @@ describe("createInboxHandler", () => {
 
             expect(result.site_id).toBe(validUuid);
             // job_post_id should not exist on base schema - using any to bypass strict type check
-            expect((result as any).job_post_id).toBeUndefined();
+            expect((result as Record<string, unknown>).job_post_id).toBeUndefined();
         });
 
         it("should parse base schema params correctly without job_post_id", () => {
