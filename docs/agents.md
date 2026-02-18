@@ -100,7 +100,7 @@ KONUŞMA UZADIĞINDA → Memory Bank'a bak → activeContext.md oku
 
 ### 0.4 Çoklu Ajan Sistem Mimarisi (Net Sorumluluk Ayrımı)
 
-Ajanlar 5 üretici + 1 kontrol olarak ayrılır:
+Ajanlar 5 üretici + 2 Codex yardımcı + 1 kontrol olarak ayrılır:
 
 ```mermaid
 flowchart LR
@@ -111,12 +111,19 @@ flowchart LR
         FE["⚛️ Frontend Ajanı"]
         BE["🔧 Backend Ajanı"]
     end
+
+    subgraph Codex["Codex Agent Katmanı"]
+        CXI["🤖 Codex Implementer"]
+        CXR["🧪 Codex Reviewer"]
+    end
     
     subgraph Control["Kontrol"]
         QA["✅ Kontrol Ajanı"]
     end
     
-    UX --> UI --> CSS --> FE --> BE --> QA
+    UX --> UI --> CSS --> FE --> CXI --> BE --> CXR --> QA
+    CXR -->|Risk/GAP| FE
+    CXR -->|Risk/GAP| BE
 ```
 
 | Ajan | Sorumluluk | Çıktı |
@@ -125,7 +132,9 @@ flowchart LR
 | **UI Ajanı** | Component inventory + wireframe spec + UI kuralları | `/docs/ui/*` |
 | **CSS/Design System** | Token'lar, theme, tailwind/shadcn standardizasyonu | `/packages/design-tokens` |
 | **Frontend Ajanı** | Route'lar, sayfalar, state, form entegrasyonu, UI bağlama | `/apps/web/*` |
+| **Codex Implementer** | FE/BE'den gelen işleri hızlı patch, refactor, test scaffold ile uygulama | `/apps/web/*`, `/apps/api/*`, `tests/*` |
 | **Backend Ajanı** | DB şeması, RLS, API/server actions, storage policy, audit log | `/packages/db`, `/apps/web/server` |
+| **Codex Reviewer** | Diff odaklı kalite/regresyon kontrolü, risk raporu, düzeltme önerisi | Review notu + risk listesi |
 | **Kontrol Ajanı (QA)** | Bağımsız doğrulama + gap listesi | Review raporu |
 
 ### 0.5 Plan Modu (Görevler)
@@ -137,8 +146,10 @@ flowchart TD
     A[UX Ajanı: IA + Akış] --> B[UI Ajanı: Component Spec]
     B --> C[CSS Ajanı: Design Tokens]
     C --> D[Frontend Ajanı: Implementation]
-    D --> E[Backend Ajanı: API + DB]
-    E --> F[Kontrol Ajanı: QA Review]
+    D --> D1[Codex Implementer: Patch + Refactor]
+    D1 --> E[Backend Ajanı: API + DB]
+    E --> E1[Codex Reviewer: Diff + Regression]
+    E1 --> F[Kontrol Ajanı: QA Review]
     F --> G{Gap Var mı?}
     G -->|Evet| H[İlgili Ajana Geri Dön]
     G -->|Hayır| I[✅ Done]
@@ -154,6 +165,7 @@ Her iş paketi için:
 - [ ] İlgili Zod schema'ları tanımlı
 - [ ] RLS policy aktif (multi-tenant tablolar için)
 - [ ] Unit test yazıldı (kritik iş mantığı için)
+- [ ] Codex Reviewer çıktısı kontrol edildi (diff + regresyon riskleri)
 - [ ] Empty/Loading/Error state'leri tanımlı
 - [ ] PR açıklaması DoD'u referans alıyor
 - [ ] Kontrol Ajanı review onayı
