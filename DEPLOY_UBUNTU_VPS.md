@@ -134,6 +134,11 @@ cd /var/www/prosektorweb_dashboard
 chmod +x deploy.sh scripts/*.sh
 ```
 
+Safety behavior:
+- deploy aborts if git worktree is dirty.
+- override only when intentional: `ALLOW_DIRTY_DEPLOY=1 ./deploy.sh`
+- deterministic sync is used: `fetch + reset` to `origin/main`.
+
 ---
 
 ## 7. Monitoring
