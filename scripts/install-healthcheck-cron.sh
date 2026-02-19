@@ -35,10 +35,14 @@ main() {
     cron_cmd="${cron_cmd} && APP_BASE_URL='${EXTERNAL_HEALTH_URL}' HEALTH_RETRY_COUNT='${HEALTH_RETRY_COUNT}' HEALTH_RETRY_DELAY_SEC='${HEALTH_RETRY_DELAY_SEC}' '${HEALTH_SCRIPT}'"
   fi
 
+  # Escape single quotes for safe embedding in bash -lc '...'
+  local cron_cmd_escaped
+  cron_cmd_escaped="$(printf "%s" "${cron_cmd}" | sed "s/'/'\\\\''/g")"
+
   cat > "${CRON_FILE}" <<EOF_CRON
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-${CRON_SCHEDULE} root ${cron_cmd} >> '${LOG_FILE}' 2>&1
+${CRON_SCHEDULE} root /bin/bash -lc '${cron_cmd_escaped}' >> '${LOG_FILE}' 2>&1
 EOF_CRON
 
   chmod 644 "${CRON_FILE}"
