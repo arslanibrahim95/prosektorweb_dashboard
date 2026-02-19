@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_BASE_URL="${APP_BASE_URL:-http://localhost:8080}"
+HEALTH_RETRY_COUNT="${HEALTH_RETRY_COUNT:-20}"
+HEALTH_RETRY_DELAY_SEC="${HEALTH_RETRY_DELAY_SEC:-2}"
 
 log() {
   printf '[healthcheck] %s\n' "$*"
@@ -33,14 +35,23 @@ check_endpoint() {
   shift
   local expected=("$@")
   local status
+  local attempt=1
+  local max_attempts="${HEALTH_RETRY_COUNT}"
 
-  status="$(curl -sS -o /tmp/prosektor_health_resp.tmp -w "%{http_code}" "${APP_BASE_URL}${path}")"
-  if is_expected_status "${status}" "${expected[@]}"; then
-    log "OK ${path} -> ${status}"
-    return 0
-  fi
+  while [[ "${attempt}" -le "${max_attempts}" ]]; do
+    status="$(curl -sS -o /tmp/prosektor_health_resp.tmp -w "%{http_code}" "${APP_BASE_URL}${path}" || echo "000")"
+    if is_expected_status "${status}" "${expected[@]}"; then
+      log "OK ${path} -> ${status}"
+      return 0
+    fi
 
-  log "FAIL ${path} -> ${status} (expected: ${expected[*]})"
+    if [[ "${attempt}" -lt "${max_attempts}" ]]; then
+      sleep "${HEALTH_RETRY_DELAY_SEC}"
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  log "FAIL ${path} -> ${status} (expected: ${expected[*]}, attempts: ${max_attempts})"
   return 1
 }
 
