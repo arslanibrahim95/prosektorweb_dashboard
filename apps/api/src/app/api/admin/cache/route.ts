@@ -13,6 +13,27 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const defaultCacheSettings = {
+    auto_purge: true,
+    purge_interval: "daily" as const,
+    max_size_mb: 1024,
+    enabled_types: ["query", "api", "static"],
+};
+
+interface PostgrestLikeError {
+    code?: string | null;
+}
+
+function isMissingCacheSettingsResourceError(error: PostgrestLikeError | null | undefined): boolean {
+    if (!error?.code) return false;
+    return (
+        error.code === "42P01" || // relation does not exist
+        error.code === "42703" || // column does not exist
+        error.code === "PGRST204" || // missing column in schema cache
+        error.code === "PGRST205" // table not present in schema cache
+    );
+}
+
 const cacheSettingsSchema = z.object({
     auto_purge: z.boolean().optional(),
     purge_interval: z.enum(["hourly", "every6hours", "daily", "weekly"]).optional(),
@@ -35,7 +56,9 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
             .eq("tenant_id", ctx.tenant.id)
             .single();
 
-        if (settingsError && settingsError.code !== "PGRST116") {
+        const cacheSettingsTableMissing = isMissingCacheSettingsResourceError(settingsError);
+
+        if (settingsError && settingsError.code !== "PGRST116" && !cacheSettingsTableMissing) {
             // PGRST116 = no rows returned
             throw mapPostgrestError(settingsError);
         }
@@ -50,24 +73,19 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         };
 
         // If no settings exist, create default
-        if (!settings) {
-            await ctx.admin.from("cache_settings").insert({
+        if (!settings && !cacheSettingsTableMissing) {
+            const { error: insertError } = await ctx.admin.from("cache_settings").insert({
                 tenant_id: ctx.tenant.id,
-                auto_purge: true,
-                purge_interval: "daily",
-                max_size_mb: 1024,
-                enabled_types: ["query", "api", "static"],
+                ...defaultCacheSettings,
             });
+            if (insertError && !isMissingCacheSettingsResourceError(insertError)) {
+                throw mapPostgrestError(insertError);
+            }
         }
 
         return jsonOk(
             {
-                settings: settings || {
-                    auto_purge: true,
-                    purge_interval: "daily",
-                    max_size_mb: 1024,
-                    enabled_types: ["query", "api", "static"],
-                },
+                settings: settings || defaultCacheSettings,
                 stats: cacheStats,
             },
             200,
@@ -107,6 +125,13 @@ export const PATCH = withAdminErrorHandling(async (req: Request) => {
             }, { onConflict: "tenant_id" })
             .select()
             .single();
+
+        if (isMissingCacheSettingsResourceError(settingsError)) {
+            throw new HttpError(503, {
+                code: "INTERNAL_ERROR",
+                message: "Cache ayarlari tablosu bulunamadi. Veritabani migrasyonlarini calistirin.",
+            });
+        }
 
         if (settingsError) throw mapPostgrestError(settingsError);
 
