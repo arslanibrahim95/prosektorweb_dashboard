@@ -25,4 +25,4 @@ echo "📊 Current status:"
 docker compose ps
 
 echo "📝 Showing last 50 lines of logs..."
-docker compose logs -f --tail=50
+docker compose logs --tail=50

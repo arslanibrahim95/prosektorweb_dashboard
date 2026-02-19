@@ -38,6 +38,10 @@ git clone https://github.com/arslanibrahim95/prosektorweb_dashboard.git
 cd prosektorweb_dashboard
 ```
 
+Canonical deployment directory:
+- `/var/www/prosektorweb_dashboard`
+- Do not keep parallel release clones on the same server unless explicitly needed for rollback drills.
+
 ### Setup Environment
 ```bash
 cp .env.example .env
@@ -59,18 +63,8 @@ TRUSTED_PROXY_COUNT=1
 ## 3. Build & Run
 
 ```bash
-# Apply package DB migrations (required)
-./scripts/db-migrate-packages.sh
-
-# Build Docker images
-docker compose build
-
-# Start services
-docker compose up -d
-
-# Check status
-docker compose ps
-docker compose logs -f
+# Preferred: one-command deploy (pull + migration + build + up + healthcheck)
+./deploy.sh
 ```
 
 ### Critical Health Check
@@ -133,24 +127,11 @@ sudo ufw enable
 
 ## 6. Deployment Script
 
-Create `deploy.sh`:
-```bash
-#!/bin/bash
-set -e
-
-echo "Pulling latest changes..."
-git pull origin main
-
-echo "Building and starting containers..."
-docker compose build
-docker compose up -d
-
-echo "Deployment complete!"
-docker compose logs -f --tail=50
-```
+`deploy.sh` is versioned in the repository. Do not maintain a separate local copy.
 
 ```bash
-chmod +x deploy.sh
+cd /var/www/prosektorweb_dashboard
+chmod +x deploy.sh scripts/*.sh
 ```
 
 ---
@@ -172,6 +153,29 @@ docker compose restart
 ```bash
 docker compose down
 ```
+
+---
+
+## 8. Backup Retention (7 Days)
+
+Install automatic backup pruning:
+
+```bash
+cd /var/www/prosektorweb_dashboard
+chmod +x scripts/prune-backups.sh scripts/install-backup-prune-cron.sh
+sudo RETENTION_DAYS=7 ./scripts/install-backup-prune-cron.sh
+```
+
+Dry-run manual check:
+
+```bash
+BACKUP_ROOT=/var/backups/prosektorweb_dashboard RETENTION_DAYS=7 DRY_RUN=1 ./scripts/prune-backups.sh
+```
+
+Cron file:
+- `/etc/cron.d/prosektor-backup-prune`
+- default schedule: `03:30` daily
+- log: `/var/log/prosektor-backup-prune.log`
 
 ---
 
