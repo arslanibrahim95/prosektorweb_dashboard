@@ -46,7 +46,11 @@ init_psql_mode() {
 
   if command -v docker >/dev/null 2>&1; then
     local container_name
-    container_name="$(docker ps --format '{{.Names}}' | rg '^supabase_db_prosektorweb_dashboard$' || true)"
+    if command -v rg >/dev/null 2>&1; then
+      container_name="$(docker ps --format '{{.Names}}' | rg '^supabase_db_prosektorweb_dashboard$' || true)"
+    else
+      container_name="$(docker ps --format '{{.Names}}' | grep -E '^supabase_db_prosektorweb_dashboard$' || true)"
+    fi
     if [[ -n "${container_name}" ]]; then
       PSQL_MODE="docker_exec"
       PSQL_EXEC_CONTAINER="${container_name}"
