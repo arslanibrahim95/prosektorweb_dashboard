@@ -59,6 +59,9 @@ TRUSTED_PROXY_COUNT=1
 ## 3. Build & Run
 
 ```bash
+# Apply package DB migrations (required)
+./scripts/db-migrate-packages.sh
+
 # Build Docker images
 docker compose build
 
@@ -68,6 +71,12 @@ docker compose up -d
 # Check status
 docker compose ps
 docker compose logs -f
+```
+
+### Critical Health Check
+```bash
+./scripts/healthcheck-critical.sh
+APP_BASE_URL=https://panel.prosektorweb.com ./scripts/healthcheck-critical.sh
 ```
 
 ---

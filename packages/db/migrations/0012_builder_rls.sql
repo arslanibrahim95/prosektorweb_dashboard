@@ -93,5 +93,3 @@ ALTER TABLE public.component_library FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.component_styles FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.page_layouts FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.layout_history FORCE ROW LEVEL SECURITY;
-
-RAISE NOTICE 'Builder RLS policies applied successfully!';

@@ -91,6 +91,6 @@ CREATE INDEX idx_ab_test_metrics_recorded_at ON public.ab_test_metrics(recorded_
 -- Trigger for updated_at
 CREATE TRIGGER update_ab_tests_modtime
   BEFORE UPDATE ON public.ab_tests
-  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 COMMIT;
