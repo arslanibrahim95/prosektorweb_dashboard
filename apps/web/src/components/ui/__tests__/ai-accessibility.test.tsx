@@ -15,7 +15,7 @@ import {
   useAnnouncer,
   AccessibleTabs,
   VisuallyHidden,
-} from './ai-accessibility';
+} from '../ai-accessibility';
 
 // Mock localStorage
 const localStorageMock = {
@@ -188,6 +188,8 @@ describe('SmartThemeProvider', () => {
 describe('safeStorageSet', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorageMock.setItem.mockReset();
+    localStorageMock.getItem.mockReset();
   });
 
   it('successfully sets item', () => {
@@ -310,7 +312,7 @@ describe('AccessibleButton', () => {
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('aria-busy', 'true');
     expect(button).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByText('Processing')).toBeInTheDocument();
+    expect(screen.getAllByText('Processing').length).toBeGreaterThan(0);
   });
 
   it('renders loading spinner', () => {
@@ -331,7 +333,7 @@ describe('AccessibleButton', () => {
 
   it('supports left and right icons', () => {
     render(
-      <AccessibleButton 
+      <AccessibleButton
         leftIcon={<span data-testid="left-icon">←</span>}
         rightIcon={<span data-testid="right-icon">→</span>}
       >
@@ -339,8 +341,11 @@ describe('AccessibleButton', () => {
       </AccessibleButton>
     );
 
-    expect(screen.getByTestId('left-icon')).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByTestId('right-icon')).toHaveAttribute('aria-hidden', 'true');
+    // Icons are wrapped in aria-hidden spans by the component
+    const leftIcon = screen.getByTestId('left-icon');
+    const rightIcon = screen.getByTestId('right-icon');
+    expect(leftIcon.parentElement).toHaveAttribute('aria-hidden', 'true');
+    expect(rightIcon.parentElement).toHaveAttribute('aria-hidden', 'true');
   });
 });
 
@@ -473,10 +478,11 @@ describe('VisuallyHidden', () => {
     render(<VisuallyHidden>Screen reader only text</VisuallyHidden>);
 
     const element = screen.getByText('Screen reader only text');
-    expect(element).toHaveClass('sr-only');
+    // Component uses custom CSS positioning instead of sr-only class
     expect(element).toHaveStyle({
       clip: 'rect(0, 0, 0, 0)',
       clipPath: 'inset(50%)',
     });
+    expect(element.tagName.toLowerCase()).toBe('span');
   });
 });

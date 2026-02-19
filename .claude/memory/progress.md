@@ -5,6 +5,63 @@
 
 ---
 
+## 📅 2026-02-19
+
+### ✅ Admin Kullanıcıları Veri Modeli Düzeltmesi
+
+**Sorun:**
+- `admin/users` sayfası kullanıcı adı/e-posta/son giriş alanlarını boş gösteriyordu
+- Backend `user` objesini nested döndürüyor, frontend flat bekliyor
+
+**Yapılanlar:**
+- `apps/web/src/hooks/admin/use-admin-users.ts` içine `select` transform eklendi
+  - Nested `user.email`, `user.name`, `user.avatar_url`, `user.last_sign_in_at` flatten edildi
+  - `RawMember`, `RawUsersResponse` tip tanımları eklendi
+
+**Doğrulama:**
+- ✅ `pnpm --filter web lint` geçti
+- ✅ `pnpm --filter web exec tsc --noEmit` geçti
+
+---
+
+### ✅ Admin Security - Session Revoke Düzeltmesi
+
+**Sorun:**
+- `DELETE /api/admin/security/sessions/:id` sadece audit log yazıyor, gerçek session revoke yapmıyordu
+- UI "oturum sonlandırıldı" mesajı gösterirken arka planda hiçbir şey olmuyordu
+
+**Yapılanlar:**
+- `apps/api/src/app/api/admin/security/sessions/[id]/route.ts` güncellendi
+  - `ctx.admin.auth.admin.signOut(member.user_id, 'global')` çağrısı eklendi
+  - Hata durumunda 500 fırlatılıyor
+
+**Doğrulama:**
+- ✅ `pnpm --filter api lint` geçti
+
+---
+
+### ✅ Admin Reports + Backup Download Endpoint'leri
+
+**Sorun:**
+- Rapor ve yedek oluştururken `file_url: /api/admin/reports/download?id=...` yazılıyordu
+- İlgili download route'ları kod tabanında yoktu → 404
+
+**Yapılanlar:**
+- `apps/api/src/app/api/admin/reports/download/route.ts` oluşturuldu
+  - Auth + admin role kontrolü
+  - Tenant izolasyonu (tenant_id filtresi)
+  - CSV ve JSON format desteği
+  - `Content-Disposition` header ile dosya indirme
+- `apps/api/src/app/api/admin/backup/download/route.ts` oluşturuldu
+  - Auth + admin role kontrolü
+  - Tenant izolasyonu
+  - JSON formatında demo backup içeriği
+
+**Doğrulama:**
+- ✅ `pnpm --filter api lint` her iki dosya için geçti
+
+---
+
 ## 📅 2026-02-18
 
 ### ✅ Admin Logs API Eklendi

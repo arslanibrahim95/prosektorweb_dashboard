@@ -97,8 +97,8 @@ export interface ApiClientDependencies {
 export class ApiClient {
     private deps: ApiClientDependencies;
 
-    constructor(deps: ApiClientDependencies) {
-        this.deps = deps;
+    constructor(deps: ApiClientDependencies | string) {
+        this.deps = typeof deps === 'string' ? { baseUrl: deps } : deps;
     }
 
     setAccessTokenProvider(provider: (() => Promise<string | null> | string | null) | null) {

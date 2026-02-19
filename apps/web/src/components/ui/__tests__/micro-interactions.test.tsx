@@ -15,7 +15,7 @@ import {
   MorphingIcon,
   usePrefersReducedMotion,
   ANIMATION_CONFIG,
-} from './micro-interactions';
+} from '../micro-interactions';
 
 // Mock matchMedia
 const mockMatchMedia = vi.fn();
@@ -58,38 +58,32 @@ describe('CountUp', () => {
     // Initially shows start value
     expect(screen.getByText('0')).toBeInTheDocument();
 
-    // Fast forward to completion
-    act(() => {
+    // Fast forward to completion - use async act to flush React updates
+    await act(async () => {
       vi.advanceTimersByTime(1100);
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('100')).toBeInTheDocument();
-    });
+    expect(screen.getByText('100')).toBeInTheDocument();
   });
 
   it('formats numbers with separator', async () => {
     render(<CountUp end={1000000} separator="," />);
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(2000);
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('1,000,000')).toBeInTheDocument();
-    });
+    expect(screen.getByText('1,000,000')).toBeInTheDocument();
   });
 
   it('formats numbers with decimals', async () => {
     render(<CountUp end={100} decimals={2} />);
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(2000);
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('100.00')).toBeInTheDocument();
-    });
+    expect(screen.getByText('100.00')).toBeInTheDocument();
   });
 
   it('respects reduced motion preference', () => {
@@ -110,6 +104,11 @@ describe('CountUp', () => {
 
     const { unmount } = render(<CountUp end={100} />);
 
+    // Advance time to trigger the setTimeout(delay=0) so RAF gets scheduled
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+
     act(() => {
       unmount();
     });
@@ -120,15 +119,12 @@ describe('CountUp', () => {
   it('throttles state updates to prevent re-render storms', async () => {
     render(<CountUp end={100} duration={500} />);
 
-    // Fast forward through animation
-    act(() => {
+    // Fast forward through animation - use async act to flush React updates
+    await act(async () => {
       vi.advanceTimersByTime(600);
     });
 
-    // Should complete without excessive re-renders
-    await waitFor(() => {
-      expect(screen.getByText('100')).toBeInTheDocument();
-    });
+    expect(screen.getByText('100')).toBeInTheDocument();
   });
 
   it('supports prefix and suffix', async () => {

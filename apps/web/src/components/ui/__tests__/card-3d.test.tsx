@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
-import { Card3D, Card3DContent, Card3DHeader, Card3DTitle, sanitizeCssValue, usePrefersReducedMotion } from './card-3d';
+import { Card3D, Card3DContent, Card3DHeader, Card3DTitle, sanitizeCssValue, usePrefersReducedMotion } from '../card-3d';
 
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -27,13 +27,28 @@ global.cancelAnimationFrame = vi.fn((id) => {
   clearTimeout(id);
 });
 
+const mockMatchMedia = (matches = false) => {
+  window.matchMedia = vi.fn().mockImplementation(query => ({
+    matches: query.includes('reduced-motion') ? matches : false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+};
+
 describe('Card3D', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockMatchMedia(false);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    mockMatchMedia(false);
   });
 
   describe('Rendering', () => {

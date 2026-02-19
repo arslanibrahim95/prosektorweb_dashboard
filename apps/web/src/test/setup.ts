@@ -49,18 +49,20 @@ vi.mock("next/head", () => {
 });
 
 // Setup matchMedia mock
-global.matchMedia =
-  global.matchMedia ||
-  function () {
-    return {
-      matches: false,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    };
-  };
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  configurable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 
 // Setup localStorage mock
 const localStorageMock = {
@@ -70,6 +72,8 @@ const localStorageMock = {
   clear: vi.fn(),
 };
 Object.defineProperty(window, "localStorage", {
+  configurable: true,
+  writable: true,
   value: localStorageMock,
 });
 
@@ -81,6 +85,8 @@ const sessionStorageMock = {
   clear: vi.fn(),
 };
 Object.defineProperty(window, "sessionStorage", {
+  configurable: true,
+  writable: true,
   value: sessionStorageMock,
 });
 

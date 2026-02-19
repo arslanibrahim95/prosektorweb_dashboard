@@ -8,6 +8,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/server/api';
 import { adminKeys } from './keys';
 
+interface RawMember {
+    id: string;
+    tenant_id?: string;
+    user_id: string;
+    role: string;
+    created_at: string;
+    user?: {
+        id?: string;
+        email?: string;
+        name?: string;
+        avatar_url?: string;
+        invited_at?: string | null;
+        last_sign_in_at?: string | null;
+    } | null;
+}
+
+interface RawUsersResponse {
+    items: RawMember[];
+    total: number;
+}
+
 export function useAdminUsers(params?: {
     search?: string;
     role?: string;
@@ -17,6 +38,23 @@ export function useAdminUsers(params?: {
     return useQuery({
         queryKey: adminKeys.users(params),
         queryFn: () => api.get('/admin/users', params),
+        select: (data: unknown) => {
+            const raw = data as RawUsersResponse;
+            return {
+                items: (raw.items ?? []).map((item) => ({
+                    id: item.id,
+                    user_id: item.user_id,
+                    role: item.role,
+                    created_at: item.created_at,
+                    email: item.user?.email,
+                    name: item.user?.name,
+                    avatar_url: item.user?.avatar_url,
+                    invited_at: item.user?.invited_at ?? undefined,
+                    last_sign_in_at: item.user?.last_sign_in_at ?? undefined,
+                })),
+                total: raw.total ?? 0,
+            };
+        },
         staleTime: 30 * 1000,
     });
 }

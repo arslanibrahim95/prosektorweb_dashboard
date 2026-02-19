@@ -9,7 +9,7 @@
 
 **Durum:** ✅ TAMAMLANDI
 
-**Açıklama:** Panel-origin sayfa düzenleme akışı uygulandı
+**Açıklama:** Admin Users Sayfası Veri Düzeltmesi — Pilot pipeline (8-stage) tamamlandı
 
 **Sonuç:**
 - `pages` için `origin` modeli eklendi (`panel | site_engine | unknown`)

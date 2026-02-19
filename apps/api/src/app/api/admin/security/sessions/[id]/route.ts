@@ -51,16 +51,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             });
         }
 
-        // Note: Supabase doesn't provide a way to revoke specific sessions directly
-        // In a real implementation, you might need to:
-        // 1. Delete the user and re-create them
-        // 2. Use custom session management
-        // 3. Disable the user temporarily
+        // Revoke all sessions for the target user via Supabase Admin API
+        const { error: signOutError } = await ctx.admin.auth.admin.signOut(
+            member.user_id,
+            "global",
+        );
 
-        // For now, we'll log the attempt and return success
-        // The actual session termination would require Supabase Admin API changes
+        if (signOutError) {
+            throw new HttpError(500, {
+                code: "INTERNAL_ERROR",
+                message: "Oturum sonlandırılamadı",
+            });
+        }
 
-        // Log the action
+        // Audit log
         await ctx.admin.from("audit_logs").insert({
             tenant_id: ctx.tenant.id,
             actor_id: ctx.user.id,
@@ -70,14 +74,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             meta: {
                 target_user_id: member.user_id,
                 target_role: member.role,
-                note: "Session termination requires Supabase Admin API implementation"
             },
         });
 
         return jsonOk(
             {
                 success: true,
-                message: "Oturum sonlandırma isteği kaydedildi. Gerçek sonlandırma için Supabase yapılandırması gereklidir.",
+                message: "Oturum başarıyla sonlandırıldı.",
             },
             200,
             rateLimitHeaders(rateLimit),
