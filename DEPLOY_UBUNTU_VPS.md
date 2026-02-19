@@ -188,7 +188,7 @@ Cron file:
 
 ## 9. Automatic Health Monitoring (Every 15 Minutes)
 
-Install healthcheck cron:
+Install healthcheck cron + alerting:
 
 ```bash
 cd /var/www/prosektorweb_dashboard
@@ -200,6 +200,30 @@ Cron file:
 - `/etc/cron.d/prosektor-healthcheck`
 - default schedule: `*/15 * * * *`
 - log: `/var/log/prosektor-healthcheck.log`
+
+Monitoring config file (created by installer):
+- `/etc/default/prosektor-monitoring`
+- includes base URLs, retry settings, and alert channel config.
+
+Default alert channel behavior:
+- if no alert channel is provided, installer auto-creates an `ntfy.sh` webhook topic.
+- You can override by setting one of:
+  - `ALERT_WEBHOOK_URL=...`
+  - `ALERT_TELEGRAM_BOT_TOKEN=... ALERT_TELEGRAM_CHAT_ID=...`
+  - `ALERT_EMAIL_TO=...`
+
+Useful commands:
+
+```bash
+# show active monitoring config
+sudo cat /etc/default/prosektor-monitoring
+
+# trigger one immediate monitoring run
+sudo MONITORING_ENV_FILE=/etc/default/prosektor-monitoring /var/www/prosektorweb_dashboard/scripts/run-healthcheck-with-alert.sh
+
+# check recent monitoring output
+sudo tail -n 50 /var/log/prosektor-healthcheck.log
+```
 
 ---
 
