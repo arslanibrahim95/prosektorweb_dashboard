@@ -138,6 +138,8 @@ Safety behavior:
 - deploy aborts if git worktree is dirty.
 - override only when intentional: `ALLOW_DIRTY_DEPLOY=1 ./deploy.sh`
 - deterministic sync is used: `fetch + reset` to `origin/main`.
+- optional external health check during deploy:
+  `EXTERNAL_HEALTH_URL=https://panel.prosektorweb.com ./deploy.sh`
 
 ---
 
@@ -181,6 +183,23 @@ Cron file:
 - `/etc/cron.d/prosektor-backup-prune`
 - default schedule: `03:30` daily
 - log: `/var/log/prosektor-backup-prune.log`
+
+---
+
+## 9. Automatic Health Monitoring (Every 15 Minutes)
+
+Install healthcheck cron:
+
+```bash
+cd /var/www/prosektorweb_dashboard
+chmod +x scripts/install-healthcheck-cron.sh
+sudo EXTERNAL_HEALTH_URL=https://panel.prosektorweb.com ./scripts/install-healthcheck-cron.sh
+```
+
+Cron file:
+- `/etc/cron.d/prosektor-healthcheck`
+- default schedule: `*/15 * * * *`
+- log: `/var/log/prosektor-healthcheck.log`
 
 ---
 

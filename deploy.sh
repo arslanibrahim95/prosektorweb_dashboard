@@ -5,6 +5,7 @@ echo "🚀 Starting deployment..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 APP_BASE_URL="${APP_BASE_URL:-http://localhost:8080}"
+EXTERNAL_HEALTH_URL="${EXTERNAL_HEALTH_URL:-}"
 ALLOW_DIRTY_DEPLOY="${ALLOW_DIRTY_DEPLOY:-0}"
 
 require_cmd() {
@@ -64,6 +65,10 @@ docker compose up -d
 
 echo "🩺 Running critical health checks..."
 APP_BASE_URL="${APP_BASE_URL}" "${SCRIPT_DIR}/scripts/healthcheck-critical.sh"
+if [[ -n "${EXTERNAL_HEALTH_URL}" ]]; then
+  echo "🌍 Running external health checks on ${EXTERNAL_HEALTH_URL}..."
+  APP_BASE_URL="${EXTERNAL_HEALTH_URL}" "${SCRIPT_DIR}/scripts/healthcheck-critical.sh"
+fi
 
 echo "✅ Deployment complete!"
 echo "📊 Current status:"
