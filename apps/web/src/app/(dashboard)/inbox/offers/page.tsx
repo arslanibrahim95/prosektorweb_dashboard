@@ -12,6 +12,7 @@ import { useSite } from '@/components/site/site-provider';
 import { useAuth } from '@/components/auth/auth-provider';
 import { exportInbox } from '@/features/inbox';
 import { inboxKeys, useBulkMarkAsRead, useMarkAsRead, useOffers } from '@/hooks/use-inbox';
+import type { InboxStatusFilter } from '@/components/inbox';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { toast } from 'sonner';
 import { formatRelativeTime, formatDate } from '@/lib/format';
@@ -40,9 +41,11 @@ function OffersInboxContent() {
 
   const [selectedOffer, setSelectedOffer] = useState<OfferRequest | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<InboxStatusFilter>('all');
   const [currentPage, setCurrentPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
   const [dateRange, setDateRange] = useState<{ from: string; to: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const statusForApi = statusFilter === 'all' ? undefined : statusFilter;
   const queryClient = useQueryClient();
 
   // Debounce search
@@ -78,6 +81,7 @@ function OffersInboxContent() {
   const { data, isLoading } = useOffers(site.currentSiteId, {
     search: searchForApi,
     page: effectivePage,
+    status: statusForApi,
   });
   const markAsReadMutation = useMarkAsRead('offers', site.currentSiteId);
   const bulkMarkAsReadMutation = useBulkMarkAsRead('offers', site.currentSiteId);
@@ -226,6 +230,11 @@ function OffersInboxContent() {
           setCurrentPage(PAGINATION.DEFAULT_PAGE);
         }}
         unreadCount={unreadCount}
+        statusFilter={statusFilter}
+        onStatusFilterChange={(s) => {
+          setStatusFilter(s);
+          setCurrentPage(PAGINATION.DEFAULT_PAGE);
+        }}
         onExport={() => void handleBulkExport()}
         onBulkMarkRead={() => void handleBulkMarkRead()}
         selectedCount={selectedIds.size}

@@ -41,11 +41,15 @@ export const baseExportQuerySchema = z
     .strict();
 
 export type BaseExportQuery = z.infer<typeof baseExportQuerySchema>;
+type CsvCellValue = string | number | boolean | null | object;
 
 /**
  * Configuration for export handler factory
  */
-export interface ExportHandlerConfig<TQuery extends BaseExportQuery = BaseExportQuery> {
+export interface ExportHandlerConfig<
+    TQuery extends BaseExportQuery = BaseExportQuery,
+    TItem extends Record<string, unknown> = Record<string, unknown>,
+> {
     /** Database table name */
     tableName: string;
 
@@ -56,8 +60,7 @@ export interface ExportHandlerConfig<TQuery extends BaseExportQuery = BaseExport
     headers: string[];
 
     /** Maps DB row to CSV row values */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rowMapper: (item: any) => (string | number | boolean | null | object)[];
+    rowMapper: (item: TItem) => CsvCellValue[];
 
     /** Filename prefix (e.g., 'contact', 'offers', 'applications') */
     filenamePrefix: string;
@@ -72,8 +75,7 @@ export interface ExportHandlerConfig<TQuery extends BaseExportQuery = BaseExport
     querySchema: z.ZodType<TQuery>;
 
     /** Zod schema for validating response items */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    itemSchema: z.ZodType<any>;
+    itemSchema: z.ZodType<TItem>;
 
     /**
      * Optional function to apply additional filters to the query
@@ -85,8 +87,11 @@ export interface ExportHandlerConfig<TQuery extends BaseExportQuery = BaseExport
 /**
  * Creates a generic export GET handler with all common logic
  */
-export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQuery>(
-    config: ExportHandlerConfig<TQuery>
+export function createExportHandler<
+    TQuery extends BaseExportQuery = BaseExportQuery,
+    TItem extends Record<string, unknown> = Record<string, unknown>,
+>(
+    config: ExportHandlerConfig<TQuery, TItem>
 ) {
     const {
         tableName,
@@ -143,8 +148,7 @@ export function createExportHandler<TQuery extends BaseExportQuery = BaseExportQ
                 .range(from, to);
 
             // 6. Apply common filters (status/date/search/additional)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const query: any = applyInboxFilters(baseQuery, parsed, searchFields, additionalFilters, ctx);
+            const query = applyInboxFilters(baseQuery, parsed, searchFields, additionalFilters, ctx);
 
             // 7. Execute query
             const { data, error } = await query;

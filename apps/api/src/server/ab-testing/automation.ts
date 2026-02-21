@@ -5,7 +5,7 @@
  * AI destekli öneriler sunar.
  */
 
-import { analyzeTestResults, calculateSampleSize, optimizeTrafficSplit } from './statistics'
+import { analyzeTestResults, calculateSampleSize } from './statistics'
 
 export interface TestAutomationConfig {
     auto_stop_significant: boolean

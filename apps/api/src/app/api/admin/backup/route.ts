@@ -2,6 +2,7 @@ import {
     HttpError,
     jsonOk,
     mapPostgrestError,
+    parseJson,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
@@ -97,7 +98,7 @@ export const POST = withAdminErrorHandling(async (req: Request) => {
             windowSeconds: 300,
         });
 
-        const body = await req.json();
+        const body = await parseJson(req);
         const parsed = backupSchema.safeParse(body);
 
         if (!parsed.success) {

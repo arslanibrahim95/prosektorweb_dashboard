@@ -11,6 +11,7 @@ import {
   parseJson,
   zodErrorToDetails,
 } from "@/server/api/http";
+import { buildSafeIlikeOr, safeSearchParamSchema } from "@/server/api/postgrest-search";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertSuperAdminRole } from "@/server/admin/access";
 import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
@@ -53,7 +54,15 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
       .range(from, to);
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,slug.ilike.%${search}%`);
+      const safeSearch = safeSearchParamSchema.safeParse(search);
+      if (!safeSearch.success) {
+        throw new HttpError(400, {
+          code: "VALIDATION_ERROR",
+          message: "Validation failed",
+          details: zodErrorToDetails(safeSearch.error),
+        });
+      }
+      query = query.or(buildSafeIlikeOr(["name", "slug"], safeSearch.data));
     }
     if (status) {
       query = query.eq("status", status);

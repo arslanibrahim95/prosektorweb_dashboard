@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AdminPageHeader } from '@/features/admin/components/admin-page-header';
 import { NotificationTemplateDialog } from '@/features/admin/components/notification-template-dialog';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ import {
     Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/auth/auth-provider';
 import { useAdminNotifications, useUpdateAdminNotifications } from '@/hooks/use-admin';
 import { toast } from 'sonner';
 
@@ -64,138 +65,53 @@ type NotificationTemplateFormData = {
     is_active: boolean;
 };
 
-const defaultTemplates: NotificationTemplate[] = [
-    {
-        id: '1',
-        name: 'Hoş Geldiniz E-postası',
-        type: 'email',
-        trigger_event: 'user_welcome',
-        trigger_label: 'Kullanıcı Hoş Geldiniz',
-        subject: 'Hoş Geldiniz!',
-        body: 'Merhaba {{user_name}}, {{site_name}} ailesine hoş geldiniz!',
-        is_active: true,
-        updated_at: '2026-02-10T10:00:00Z',
-    },
-    {
-        id: '2',
-        name: 'Şifre Sıfırlama',
-        type: 'email',
-        trigger_event: 'password_reset',
-        trigger_label: 'Şifre Sıfırlama',
-        subject: 'Şifre Sıfırlama Talebi',
-        body: 'Şifrenizi sıfırlamak için {{link}} bağlantısını kullanın.',
-        is_active: true,
-        updated_at: '2026-02-09T14:30:00Z',
-    },
-    {
-        id: '3',
-        name: 'Yeni Başvuru Bildirimi',
-        type: 'in_app',
-        trigger_event: 'new_application',
-        trigger_label: 'Yeni Başvuru',
-        body: 'Yeni bir başvuru alındı.',
-        is_active: true,
-        updated_at: '2026-02-08T09:15:00Z',
-    },
-    {
-        id: '4',
-        name: 'Sistem Uyarısı',
-        type: 'push',
-        trigger_event: 'system_alert',
-        trigger_label: 'Sistem Uyarısı',
-        subject: 'Önemli Sistem Bildirimi',
-        body: 'Sistemde önemli bir güncelleme var.',
-        is_active: false,
-        updated_at: '2026-02-07T16:45:00Z',
-    },
-    {
-        id: '5',
-        name: 'Ödeme Alındı',
-        type: 'email',
-        trigger_event: 'payment_received',
-        trigger_label: 'Ödeme Alındı',
-        subject: 'Ödemeniz Alındı',
-        body: 'Sayın {{user_name}}, ödemeniz başarıyla alındı.',
-        is_active: true,
-        updated_at: '2026-02-06T11:20:00Z',
-    },
-    {
-        id: '6',
-        name: 'Abonelik Sona Eriyor',
-        type: 'email',
-        trigger_event: 'subscription_expiring',
-        trigger_label: 'Abonelik Sona Eriyor',
-        subject: 'Aboneliğiniz Sona Eriyor',
-        body: 'Aboneliğiniz {{date}} tarihinde sona erecek.',
-        is_active: true,
-        updated_at: '2026-02-05T13:00:00Z',
-    },
-    {
-        id: '7',
-        name: 'Yeni Mesaj SMS',
-        type: 'sms',
-        trigger_event: 'new_message',
-        trigger_label: 'Yeni Mesaj',
-        body: 'Yeni bir mesajınız var.',
-        is_active: true,
-        updated_at: '2026-02-04T15:30:00Z',
-    },
-    {
-        id: '8',
-        name: 'Başvuru Durumu Değişti',
-        type: 'email',
-        trigger_event: 'application_status',
-        trigger_label: 'Başvuru Durumu',
-        subject: 'Başvuru Durumunuz Güncellendi',
-        body: 'Başvurunuzun durumu güncellendi.',
-        is_active: true,
-        updated_at: '2026-02-03T10:45:00Z',
-    },
-];
+type EmailHistoryItem = {
+    id: string;
+    recipient: string;
+    subject: string;
+    status: 'sent' | 'failed' | 'pending';
+    sent_at: string;
+};
 
-function resolveTriggerLabel(triggerEvent: string): string {
-    const existing = defaultTemplates.find((template) => template.trigger_event === triggerEvent);
-    return existing?.trigger_label ?? triggerEvent;
+interface NotificationSettings {
+    enabled?: boolean;
+    email_notifications?: boolean;
+    slack_notifications?: boolean;
+    webhook_url?: string;
 }
 
-// Mock email history
-const mockEmailHistory = [
-    {
-        id: '1',
-        recipient: 'ahmet.yilmaz@example.com',
-        subject: 'Hoş Geldiniz!',
-        status: 'sent' as const,
-        sent_at: '2026-02-13T18:30:00Z',
-    },
-    {
-        id: '2',
-        recipient: 'zeynep.kaya@example.com',
-        subject: 'Şifre Sıfırlama Talebi',
-        status: 'sent' as const,
-        sent_at: '2026-02-13T17:15:00Z',
-    },
-    {
-        id: '3',
-        recipient: 'mehmet.demir@example.com',
-        subject: 'Ödemeniz Alındı',
-        status: 'failed' as const,
-        sent_at: '2026-02-13T16:00:00Z',
-    },
-    {
-        id: '4',
-        recipient: 'ayse.sahin@example.com',
-        subject: 'Başvuru Durumunuz Güncellendi',
-        status: 'sent' as const,
-        sent_at: '2026-02-13T15:30:00Z',
-    },
-    {
-        id: '5',
-        recipient: 'ali.yildiz@example.com',
-        subject: 'Aboneliğiniz Sona Eriyor',
-        status: 'pending' as const,
-        sent_at: '2026-02-13T14:45:00Z',
-    },
-];
+interface NotificationSettingsResponse extends NotificationSettings {
+    templates?: NotificationTemplate[];
+    email_history?: EmailHistoryItem[];
+}
+
+const triggerLabels: Record<string, string> = {
+    user_welcome: 'Kullanıcı Hoş Geldiniz',
+    password_reset: 'Şifre Sıfırlama',
+    new_application: 'Yeni Başvuru',
+    system_alert: 'Sistem Uyarısı',
+    payment_received: 'Ödeme Alındı',
+    subscription_expiring: 'Abonelik Sona Eriyor',
+    new_message: 'Yeni Mesaj',
+    application_status: 'Başvuru Durumu',
+    custom: 'Özel',
+};
+
+function generateId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return String(Date.now());
+}
+
+function resolveTriggerLabel(
+    triggerEvent: string,
+    templates: NotificationTemplate[],
+): string {
+    const existing = templates.find((template) => template.trigger_event === triggerEvent);
+    if (existing?.trigger_label) return existing.trigger_label;
+    return triggerLabels[triggerEvent] ?? triggerEvent;
+}
 
 const typeColors = {
     email: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
@@ -229,42 +145,73 @@ const statusIcons = {
     pending: Clock,
 };
 
-interface NotificationSettings {
-    enabled?: boolean;
-    email_notifications?: boolean;
-    slack_notifications?: boolean;
-    webhook_url?: string;
-}
-
 export default function NotificationsPage() {
+    const auth = useAuth();
     const [activeTab, setActiveTab] = useState('templates');
     const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState<NotificationTemplate | null>(null);
-    const [templates, setTemplates] = useState<NotificationTemplate[]>(defaultTemplates);
+    const [templatesOverride, setTemplatesOverride] = useState<NotificationTemplate[] | null>(null);
+    const [emailHistoryOverride, setEmailHistoryOverride] = useState<EmailHistoryItem[] | null>(null);
+    const [emailSettingsOverride, setEmailSettingsOverride] = useState<Required<NotificationSettings> | null>(null);
 
-    // Fetch notification settings from API
     const { data: notificationSettings, isLoading } = useAdminNotifications();
     const updateNotifications = useUpdateAdminNotifications();
 
-    // Email settings state
-    const [emailSettings, setEmailSettings] = useState<Required<NotificationSettings>>({
-        enabled: true,
-        email_notifications: true,
-        slack_notifications: false,
-        webhook_url: '',
-    });
+    const settings = notificationSettings as NotificationSettingsResponse | undefined;
+    const baseEmailSettings = useMemo<Required<NotificationSettings>>(
+        () => ({
+            enabled: settings?.enabled ?? true,
+            email_notifications: settings?.email_notifications ?? true,
+            slack_notifications: settings?.slack_notifications ?? false,
+            webhook_url: settings?.webhook_url ?? '',
+        }),
+        [settings],
+    );
+    const templates = templatesOverride ?? settings?.templates ?? [];
+    const emailHistory = emailHistoryOverride ?? settings?.email_history ?? [];
+    const emailSettings = emailSettingsOverride ?? baseEmailSettings;
 
-    // Update local state when API data loads
-    // Note: Using useEffect would be more correct, but keeping the existing pattern
-    if (notificationSettings && emailSettings.webhook_url === '' && (notificationSettings as NotificationSettings).webhook_url) {
-        const settings = notificationSettings as NotificationSettings;
-        setEmailSettings({
-            enabled: settings.enabled ?? true,
-            email_notifications: settings.email_notifications ?? true,
-            slack_notifications: settings.slack_notifications ?? false,
-            webhook_url: settings.webhook_url ?? '',
-        });
-    }
+    const persistTemplates = async (
+        nextTemplates: NotificationTemplate[],
+        successMessage: string,
+    ) => {
+        try {
+            await updateNotifications.mutateAsync({ templates: nextTemplates });
+            setTemplatesOverride(nextTemplates);
+            toast.success(successMessage);
+        } catch {
+            toast.error('Şablonlar kaydedilemedi');
+        }
+    };
+
+    const persistEmailHistory = async (
+        nextHistory: EmailHistoryItem[],
+        successMessage: string,
+    ) => {
+        try {
+            await updateNotifications.mutateAsync({ email_history: nextHistory });
+            setEmailHistoryOverride(nextHistory);
+            toast.success(successMessage);
+        } catch {
+            toast.error('E-posta geçmişi güncellenemedi');
+        }
+    };
+
+    const appendEmailHistory = async (
+        subject: string,
+        status: EmailHistoryItem['status'] = 'sent',
+    ) => {
+        const recipient = auth.me?.user?.email ?? 'system@localhost';
+        const nextEntry: EmailHistoryItem = {
+            id: generateId(),
+            recipient,
+            subject,
+            status,
+            sent_at: new Date().toISOString(),
+        };
+
+        await persistEmailHistory([nextEntry, ...emailHistory].slice(0, 100), 'Test bildirimi kaydedildi');
+    };
 
     const handleCreateTemplate = () => {
         setSelectedTemplate(null);
@@ -276,52 +223,51 @@ export default function NotificationsPage() {
         setTemplateDialogOpen(true);
     };
 
-    const handleCopyTemplate = (template: NotificationTemplate) => {
+    const handleCopyTemplate = async (template: NotificationTemplate) => {
         const copy: NotificationTemplate = {
             ...template,
-            id: String(Date.now()),
+            id: generateId(),
             name: `${template.name} (Kopya)`,
             updated_at: new Date().toISOString(),
         };
-        setTemplates(prev => [copy, ...prev]);
-        toast.success('Şablon kopyalandı');
+        await persistTemplates([copy, ...templates], 'Şablon kopyalandı');
     };
 
-    const handleTestSend = (template: NotificationTemplate) => {
-        toast.success(`"${template.name}" test bildirimi gönderildi`);
+    const handleTestSend = async (template: NotificationTemplate) => {
+        await appendEmailHistory(template.subject || template.name, 'sent');
     };
 
-    const handleDeleteTemplate = (template: NotificationTemplate) => {
-        setTemplates(prev => prev.filter(t => t.id !== template.id));
-        toast.success('Şablon silindi');
+    const handleDeleteTemplate = async (template: NotificationTemplate) => {
+        const nextTemplates = templates.filter((item) => item.id !== template.id);
+        await persistTemplates(nextTemplates, 'Şablon silindi');
     };
 
     const handleSubmitTemplate = async (data: NotificationTemplateFormData) => {
+        const triggerLabel = resolveTriggerLabel(data.trigger_event, templates);
+
         if (selectedTemplate) {
-            // Update existing
-            setTemplates(prev => prev.map(t =>
-                t.id === selectedTemplate.id
+            const nextTemplates = templates.map((template) =>
+                template.id === selectedTemplate.id
                     ? {
-                        ...t,
+                        ...template,
                         ...data,
-                        trigger_label: resolveTriggerLabel(data.trigger_event),
+                        trigger_label: triggerLabel,
                         updated_at: new Date().toISOString(),
                     }
-                    : t
-            ));
-            toast.success('Şablon güncellendi');
+                    : template,
+            );
+            await persistTemplates(nextTemplates, 'Şablon güncellendi');
         } else {
-            // Create new
             const newTemplate: NotificationTemplate = {
-                id: String(Date.now()),
+                id: generateId(),
                 ...data,
-                trigger_label: resolveTriggerLabel(data.trigger_event),
+                trigger_label: triggerLabel,
                 is_active: true,
                 updated_at: new Date().toISOString(),
             };
-            setTemplates(prev => [newTemplate, ...prev]);
-            toast.success('Şablon oluşturuldu');
+            await persistTemplates([newTemplate, ...templates], 'Şablon oluşturuldu');
         }
+
         setTemplateDialogOpen(false);
     };
 
@@ -334,8 +280,8 @@ export default function NotificationsPage() {
         }
     };
 
-    const handleTestEmail = () => {
-        toast.success('Test e-postası gönderildi');
+    const handleTestEmail = async () => {
+        await appendEmailHistory('Test Bildirimi', 'sent');
     };
 
     const formatDate = (dateString: string) => {
@@ -475,6 +421,13 @@ export default function NotificationsPage() {
                                             </TableCell>
                                         </TableRow>
                                     ))}
+                                    {templates.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                                                Kayıtlı şablon bulunmuyor
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </CardContent>
@@ -501,7 +454,7 @@ export default function NotificationsPage() {
                                     id="enabled"
                                     checked={emailSettings.enabled}
                                     onCheckedChange={(checked) =>
-                                        setEmailSettings({ ...emailSettings, enabled: checked })
+                                        setEmailSettingsOverride({ ...emailSettings, enabled: checked })
                                     }
                                 />
                             </div>
@@ -517,7 +470,7 @@ export default function NotificationsPage() {
                                     id="email_notifications"
                                     checked={emailSettings.email_notifications}
                                     onCheckedChange={(checked) =>
-                                        setEmailSettings({ ...emailSettings, email_notifications: checked })
+                                        setEmailSettingsOverride({ ...emailSettings, email_notifications: checked })
                                     }
                                     disabled={!emailSettings.enabled}
                                 />
@@ -534,7 +487,7 @@ export default function NotificationsPage() {
                                     id="slack_notifications"
                                     checked={emailSettings.slack_notifications}
                                     onCheckedChange={(checked) =>
-                                        setEmailSettings({ ...emailSettings, slack_notifications: checked })
+                                        setEmailSettingsOverride({ ...emailSettings, slack_notifications: checked })
                                     }
                                     disabled={!emailSettings.enabled}
                                 />
@@ -547,8 +500,8 @@ export default function NotificationsPage() {
                                     type="url"
                                     placeholder="https://hooks.slack.com/services/..."
                                     value={emailSettings.webhook_url}
-                                    onChange={(e) =>
-                                        setEmailSettings({ ...emailSettings, webhook_url: e.target.value })
+                                    onChange={(event) =>
+                                        setEmailSettingsOverride({ ...emailSettings, webhook_url: event.target.value })
                                     }
                                     disabled={!emailSettings.enabled}
                                 />
@@ -587,7 +540,7 @@ export default function NotificationsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {mockEmailHistory.map((email) => {
+                                    {emailHistory.map((email) => {
                                         const StatusIcon = statusIcons[email.status];
                                         return (
                                             <TableRow key={email.id}>
@@ -610,6 +563,13 @@ export default function NotificationsPage() {
                                             </TableRow>
                                         );
                                     })}
+                                    {emailHistory.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                                                Henüz e-posta geçmişi bulunmuyor
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </CardContent>

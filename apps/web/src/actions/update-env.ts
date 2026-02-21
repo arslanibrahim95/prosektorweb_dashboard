@@ -4,21 +4,49 @@ import fs from 'fs';
 import path from 'path';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
+import { assertSuperAdminAction } from './auth-guard';
 
 const ENV_FILE_PATH = path.join(process.cwd(), '.env.local');
 
-interface SupabaseSettings {
+interface SupabaseSettingsInput {
     url: string;
     anonKey: string;
     serviceRoleKey?: string;
+}
+
+interface SupabasePublicSettings {
+    url: string;
+    anonKey: string;
+    hasServiceRoleKey: boolean;
+}
+
+interface SupabaseAdminSettings extends SupabasePublicSettings {
+    serviceRoleKey: string;
 }
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu.';
 }
 
-export async function testSupabaseConnection(settings: SupabaseSettings) {
+function sanitizeEnvValue(value: string): string {
+    return value.replace(/[\r\n]/g, '').trim();
+}
+
+export async function getSupabaseAdminSettings(): Promise<SupabaseAdminSettings> {
+    await assertSuperAdminAction();
+
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    return {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+        hasServiceRoleKey: serviceRoleKey.length > 0,
+        serviceRoleKey,
+    };
+}
+
+export async function testSupabaseConnection(settings: SupabaseSettingsInput) {
     try {
+        await assertSuperAdminAction();
         const client = createClient(settings.url, settings.serviceRoleKey || settings.anonKey);
 
         // Perform a simple health check or query
@@ -50,8 +78,9 @@ export async function testSupabaseConnection(settings: SupabaseSettings) {
     }
 }
 
-export async function updateSupabaseSettings(settings: SupabaseSettings) {
+export async function updateSupabaseSettings(settings: SupabaseSettingsInput) {
     try {
+        await assertSuperAdminAction();
         let envContent = '';
 
         if (fs.existsSync(ENV_FILE_PATH)) {
@@ -70,11 +99,12 @@ export async function updateSupabaseSettings(settings: SupabaseSettings) {
         let newEnvContent = envContent;
 
         for (const [key, value] of Object.entries(newValues)) {
+            const safeValue = sanitizeEnvValue(value);
             const regex = new RegExp(`^${key}=.*`, 'm');
             if (regex.test(newEnvContent)) {
-                newEnvContent = newEnvContent.replace(regex, `${key}=${value}`);
+                newEnvContent = newEnvContent.replace(regex, `${key}=${safeValue}`);
             } else {
-                newEnvContent += `\n${key}=${value}`;
+                newEnvContent += `\n${key}=${safeValue}`;
             }
         }
 
@@ -94,11 +124,11 @@ export async function updateSupabaseSettings(settings: SupabaseSettings) {
 }
 
 export async function getSupabaseSettings() {
-    // Note: In a real production app, we wouldn't want to expose sensitive keys like this 
-    // without strict RBAC. Assuming this is a local dev tool or admin-only area.
-    return {
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-        serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    const settings = await getSupabaseAdminSettings();
+    const publicSettings: SupabasePublicSettings = {
+        url: settings.url,
+        anonKey: settings.anonKey,
+        hasServiceRoleKey: settings.hasServiceRoleKey,
     };
+    return publicSettings;
 }

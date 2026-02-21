@@ -52,35 +52,35 @@ describe('CountUp', () => {
     vi.clearAllMocks();
   });
 
-  it('counts up from start to end value', async () => {
+  it('counts up from start to end value', () => {
     render(<CountUp end={100} duration={1000} />);
 
     // Initially shows start value
     expect(screen.getByText('0')).toBeInTheDocument();
 
-    // Fast forward to completion - use async act to flush React updates
-    await act(async () => {
+    // Fast forward to completion synchronously
+    act(() => {
       vi.advanceTimersByTime(1100);
     });
 
     expect(screen.getByText('100')).toBeInTheDocument();
   });
 
-  it('formats numbers with separator', async () => {
+  it('formats numbers with separator', () => {
     render(<CountUp end={1000000} separator="," />);
 
-    await act(async () => {
-      vi.advanceTimersByTime(2000);
+    act(() => {
+      vi.advanceTimersByTime(2100);
     });
 
     expect(screen.getByText('1,000,000')).toBeInTheDocument();
   });
 
-  it('formats numbers with decimals', async () => {
+  it('formats numbers with decimals', () => {
     render(<CountUp end={100} decimals={2} />);
 
-    await act(async () => {
-      vi.advanceTimersByTime(2000);
+    act(() => {
+      vi.advanceTimersByTime(2100);
     });
 
     expect(screen.getByText('100.00')).toBeInTheDocument();
@@ -116,11 +116,10 @@ describe('CountUp', () => {
     expect(cancelAnimationFrameSpy).toHaveBeenCalled();
   });
 
-  it('throttles state updates to prevent re-render storms', async () => {
+  it('throttles state updates to prevent re-render storms', () => {
     render(<CountUp end={100} duration={500} />);
 
-    // Fast forward through animation - use async act to flush React updates
-    await act(async () => {
+    act(() => {
       vi.advanceTimersByTime(600);
     });
 

@@ -1,72 +1,54 @@
-import { NextRequest } from "next/server";
 import {
+    createAdminReportRequestSchema,
+    createAdminReportResponseSchema,
+    deleteAdminReportQuerySchema,
+    deleteAdminReportResponseSchema,
+    listAdminReportsQuerySchema,
+    listAdminReportsResponseSchema,
+} from "@prosektor/contracts";
+import {
+    asErrorBody,
+    asHeaders,
+    asStatus,
     HttpError,
+    mapPostgrestError,
     parseJson,
     jsonError,
     jsonOk,
+    zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
-import { enforceRateLimit, rateLimitAuthKey } from "@/server/rate-limit";
-import { getServerEnv } from "@/server/env";
+import { enforceAdminRateLimit } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_LIMIT = 100;
-const MAX_PAGE = 1000000;
-
-function parsePositiveIntParam(
-    value: string | null,
-    fallback: number,
-    max: number,
-    field: string
-): number {
-    if (value === null || value.trim() === "") {
-        return fallback;
-    }
-
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed) || parsed < 1) {
-        throw new HttpError(400, {
-            code: "VALIDATION_ERROR",
-            message: `${field} must be a positive integer`,
-        });
-    }
-
-    return Math.min(parsed, max);
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-        throw new HttpError(400, {
-            code: "VALIDATION_ERROR",
-            message: "Request body must be a JSON object",
-        });
-    }
-    return value as Record<string, unknown>;
-}
-
 // GET /api/admin/reports - List all reports for the tenant
-async function GET(req: NextRequest) {
+async function GET(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role, "Admin yetkisi gerekli");
 
-        const env = getServerEnv();
-        await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_reports", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_reports", "read");
 
         const { searchParams } = new URL(req.url);
-        const page = parsePositiveIntParam(searchParams.get("page"), 1, MAX_PAGE, "page");
-        const limit = parsePositiveIntParam(searchParams.get("limit"), 20, MAX_LIMIT, "limit");
-        const status = searchParams.get('status');
-        const type = searchParams.get('type');
+        const parsedQuery = listAdminReportsQuerySchema.safeParse({
+            page: searchParams.get("page") ?? undefined,
+            limit: searchParams.get("limit") ?? undefined,
+            status: searchParams.get("status") ?? undefined,
+            type: searchParams.get("type") ?? undefined,
+        });
+        if (!parsedQuery.success) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsedQuery.error),
+            });
+        }
+        const { page, limit, status, type } = parsedQuery.data;
         const offset = (page - 1) * limit;
         if (!Number.isSafeInteger(offset)) {
             throw new HttpError(400, {
@@ -95,10 +77,7 @@ async function GET(req: NextRequest) {
 
         const { data: reports, error } = await query;
 
-        if (error) {
-            console.error('Error fetching reports:', error);
-            return jsonError({ code: 'FETCH_ERROR', message: 'Failed to fetch reports' }, 500);
-        }
+        if (error) throw mapPostgrestError(error);
 
         // Get total count
         let countQuery = ctx.admin
@@ -114,69 +93,45 @@ async function GET(req: NextRequest) {
         }
 
         const { count, error: countError } = await countQuery;
-        if (countError) {
-            console.error('Error fetching report count:', countError);
-            return jsonError({ code: 'FETCH_ERROR', message: 'Failed to fetch report count' }, 500);
-        }
+        if (countError) throw mapPostgrestError(countError);
 
-        return jsonOk({
+        const response = listAdminReportsResponseSchema.parse({
             items: reports || [],
             total: count || 0,
             page,
             limit,
             totalPages: Math.ceil((count || 0) / limit),
         });
+
+        return jsonOk(response, 200, rateLimitHeaders(rateLimit));
     } catch (error) {
-        console.error('Reports GET error:', error);
-        if (error instanceof HttpError) {
-            return jsonError(error.body, error.status);
-        }
-        return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500);
+        return jsonError(asErrorBody(error), asStatus(error), asHeaders(error));
     }
 }
 
 // POST /api/admin/reports - Create a new report
-async function POST(req: NextRequest) {
+async function POST(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role, "Admin yetkisi gerekli");
 
-        await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_reports_write", ctx.tenant.id, ctx.user.id),
-            5,
-            300,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_reports", "write");
 
-        const parsedBody = await parseJson(req);
-        const body = asRecord(parsedBody);
-        const name = typeof body.name === "string" ? body.name.trim() : "";
-        const type = typeof body.type === "string" ? body.type : "";
-
-        // Validate required fields
-        if (!name || !type) {
-            return jsonError({ code: 'VALIDATION_ERROR', message: 'Name and type are required' }, 400);
+        const parsedBody = createAdminReportRequestSchema.safeParse(await parseJson(req));
+        if (!parsedBody.success) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsedBody.error),
+            });
         }
-        if (name.length > 255) {
-            return jsonError({ code: 'VALIDATION_ERROR', message: 'Name must be at most 255 characters' }, 400);
-        }
-
-        const validTypes = ['users', 'content', 'analytics', 'revenue', 'custom'];
-        const validFormats = ['csv', 'xlsx', 'pdf'];
-
-        if (!validTypes.includes(type)) {
-            return jsonError({ code: 'VALIDATION_ERROR', message: 'Invalid report type' }, 400);
-        }
-
-        const requestedFormat = typeof body.format === "string" ? body.format : "";
-        const format = validFormats.includes(requestedFormat) ? requestedFormat : 'csv';
-        const parameters =
-            typeof body.parameters === "object" &&
-            body.parameters !== null &&
-            !Array.isArray(body.parameters)
-                ? body.parameters
-                : {};
+        const {
+            name,
+            type,
+            format,
+            parameters,
+        } = parsedBody.data;
 
         // Create report record
         const { data: report, error } = await ctx.admin
@@ -194,10 +149,7 @@ async function POST(req: NextRequest) {
             .select()
             .single();
 
-        if (error) {
-            console.error('Error creating report:', error);
-            return jsonError({ code: 'CREATE_ERROR', message: 'Failed to create report' }, 500);
-        }
+        if (error) throw mapPostgrestError(error);
 
         // Simulate completed report immediately (in production, use a job queue)
         const fileSizeKB = Math.floor(Math.random() * 4900) + 100; // 100-5000 KB
@@ -217,39 +169,38 @@ async function POST(req: NextRequest) {
             console.error('Error updating report:', updateError);
         }
 
-        return jsonOk({
+        const response = createAdminReportResponseSchema.parse({
             ...(updatedReport || report),
             message: 'Rapor oluşturuldu.',
-        }, 201);
+        });
+
+        return jsonOk(response, 201, rateLimitHeaders(rateLimit));
     } catch (error) {
-        console.error('Reports POST error:', error);
-        if (error instanceof HttpError) {
-            return jsonError(error.body, error.status);
-        }
-        return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500);
+        return jsonError(asErrorBody(error), asStatus(error), asHeaders(error));
     }
 }
 
 // DELETE /api/admin/reports?id=<uuid> - Delete a report
-async function DELETE(req: NextRequest) {
+async function DELETE(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role, "Admin yetkisi gerekli");
 
-        await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_reports_write", ctx.tenant.id, ctx.user.id),
-            5,
-            300,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_reports", "write");
 
         const { searchParams } = new URL(req.url);
-        const reportId = searchParams.get('id');
-
-        if (!reportId) {
-            return jsonError({ code: 'VALIDATION_ERROR', message: 'Report id is required' }, 400);
+        const parsedQuery = deleteAdminReportQuerySchema.safeParse({
+            id: searchParams.get("id") ?? undefined,
+        });
+        if (!parsedQuery.success) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsedQuery.error),
+            });
         }
+        const { id: reportId } = parsedQuery.data;
 
         // Verify report belongs to this tenant
         const { data: existing } = await ctx.admin
@@ -260,7 +211,7 @@ async function DELETE(req: NextRequest) {
             .maybeSingle();
 
         if (!existing) {
-            return jsonError({ code: 'NOT_FOUND', message: 'Report not found' }, 404);
+            throw new HttpError(404, { code: "NOT_FOUND", message: "Report not found" });
         }
 
         const { error } = await ctx.admin
@@ -269,18 +220,12 @@ async function DELETE(req: NextRequest) {
             .eq('id', reportId)
             .eq('tenant_id', ctx.tenant.id);
 
-        if (error) {
-            console.error('Error deleting report:', error);
-            return jsonError({ code: 'DELETE_ERROR', message: 'Failed to delete report' }, 500);
-        }
+        if (error) throw mapPostgrestError(error);
 
-        return jsonOk({ success: true, id: reportId });
+        const response = deleteAdminReportResponseSchema.parse({ success: true, id: reportId });
+        return jsonOk(response, 200, rateLimitHeaders(rateLimit));
     } catch (error) {
-        console.error('Reports DELETE error:', error);
-        if (error instanceof HttpError) {
-            return jsonError(error.body, error.status);
-        }
-        return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500);
+        return jsonError(asErrorBody(error), asStatus(error), asHeaders(error));
     }
 }
 

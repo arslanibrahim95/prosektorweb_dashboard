@@ -1,0 +1,1 @@
+../../packages/db/migrations/0009_platform_settings.sql

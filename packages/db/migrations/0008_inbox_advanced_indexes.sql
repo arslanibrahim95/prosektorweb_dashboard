@@ -5,7 +5,7 @@
 -- - Advanced composite and partial indexes for inbox query optimization
 -- - Targets common query patterns: tenant+site filtering, created_at sorting, is_read filtering
 -- - Includes job_post_id filtering for job_applications
--- - Uses CONCURRENTLY to avoid table locks during index creation
+-- - Uses standard CREATE INDEX for Supabase migration runner compatibility
 --
 -- Query patterns optimized:
 -- 1. List inbox items: WHERE tenant_id = X AND site_id = Y ORDER BY created_at DESC
@@ -26,8 +26,7 @@
 -- - Job applications by post: ~5-20x faster (eliminates sequential scans)
 -- - Overall inbox listing: ~2-5x faster (better index selectivity)
 --
--- Note: CREATE INDEX CONCURRENTLY cannot run inside a transaction block.
--- This migration must be run outside of a transaction.
+-- Note: Use non-concurrent index creation so migration runner can apply in pipeline mode.
 
 -- ---------------------------------------------------------------------------
 -- Partial indexes for unread filtering
@@ -37,17 +36,17 @@
 -- which are very common in the inbox UI (badge counts, filters).
 
 -- Contact messages: unread items only
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_contact_messages_unread_partial
+CREATE INDEX IF NOT EXISTS idx_contact_messages_unread_partial
   ON public.contact_messages (tenant_id, site_id, created_at DESC)
   WHERE is_read = false;
 
 -- Offer requests: unread items only
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_offer_requests_unread_partial
+CREATE INDEX IF NOT EXISTS idx_offer_requests_unread_partial
   ON public.offer_requests (tenant_id, site_id, created_at DESC)
   WHERE is_read = false;
 
 -- Job applications: unread items only
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_job_applications_unread_partial
+CREATE INDEX IF NOT EXISTS idx_job_applications_unread_partial
   ON public.job_applications (tenant_id, site_id, created_at DESC)
   WHERE is_read = false;
 
@@ -58,7 +57,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_job_applications_unread_partial
 -- Common in HR workflows where you want to see all applications for a specific position.
 -- Includes created_at DESC for sorting without additional index scan.
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_job_applications_job_post_filter
+CREATE INDEX IF NOT EXISTS idx_job_applications_job_post_filter
   ON public.job_applications (tenant_id, site_id, job_post_id, created_at DESC);
 
 -- ---------------------------------------------------------------------------
@@ -68,13 +67,13 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_job_applications_job_post_filter
 -- when filtering by read status (both read and unread).
 -- Complements the partial indexes above for full coverage.
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_contact_messages_status_covering
+CREATE INDEX IF NOT EXISTS idx_contact_messages_status_covering
   ON public.contact_messages (tenant_id, site_id, is_read, created_at DESC);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_offer_requests_status_covering
+CREATE INDEX IF NOT EXISTS idx_offer_requests_status_covering
   ON public.offer_requests (tenant_id, site_id, is_read, created_at DESC);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_job_applications_status_covering
+CREATE INDEX IF NOT EXISTS idx_job_applications_status_covering
   ON public.job_applications (tenant_id, site_id, is_read, created_at DESC);
 
 -- ---------------------------------------------------------------------------

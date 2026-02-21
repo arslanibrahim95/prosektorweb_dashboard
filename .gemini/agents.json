@@ -64,8 +64,8 @@
         {
             "name": "Code Reviewer",
             "description": "Diff odaklı kalite kontrolü, regresyon analizi ve risk raporu",
-            "tool": "MiniMax",
-            "model": "2.5",
+            "tool": "OpenCode",
+            "model": "Kimi 2.5",
             "workflow": ".agent/workflows/code-reviewer.md",
             "scope": [
                 "*"
@@ -134,8 +134,8 @@
             {
                 "agent": "Code Reviewer",
                 "phase": "verification",
-                "tool": "MiniMax",
-                "model": "2.5"
+                "tool": "OpenCode",
+                "model": "Kimi 2.5"
             },
             {
                 "agent": "Test Engineer",

@@ -5,6 +5,81 @@
 
 ---
 
+## 📅 2026-02-19 (devam 4)
+
+### ✅ Settings Sayfaları İnceleme (Task #5)
+
+**Sorun:** Settings sayfaları gerçek API'ye bağlı mı kontrol edilmesi gerekiyordu.
+
+**Bulgular:**
+- `settings/users/page.tsx` → `useMembers`, `useInviteMember`, `useUpdateMemberRole`, `useRemoveMember` hook'ları → `/tenant-members` API ✅ Bağlı
+- `settings/notifications/page.tsx` → Phase-2 placeholder (toast.info ile bildirim) ✅ Intentional
+- `settings/billing/page.tsx` → Phase-2 placeholder (Stripe entegrasyonu) ✅ Intentional
+- `settings/page.tsx` → `redirect('/settings/users')` ✅ OK
+- `settings/supabase/page.tsx` → Next.js server actions kullanıyor ✅ Bağlı
+
+**Sonuç:** Değişiklik gerekmedi. Tüm sayfalar ya gerçek API'ye bağlı ya da intentional Phase-2 placeholder.
+
+---
+
+## 📅 2026-02-19 (devam 3)
+
+### ✅ P2-02: Theme Permissions Phase-2 Cleanup
+
+**Sorun:** Control report P2-02 — `permissions.ts` içinde Phase-2 feature olan theme izinleri MVP'de yer alıyordu.
+
+**Yapılanlar:**
+- `apps/api/src/server/auth/permissions.ts`: owner/admin/editor/viewer rollerindeki `theme:*`, `theme:read,update`, `theme:read` izinleri yorum satırına alındı
+- Kaldırılmadan comment yapıldı: Phase-2'de kolayca geri açılabilir
+
+**Sonuç:**
+- ✅ API lint: 0 hata
+- ✅ API tests: 360 geçti
+
+---
+
+## 📅 2026-02-19 (devam 2)
+
+### ✅ AB-Testing Lint Temizliği
+
+**Sorun:**
+- `ab-tests/page.tsx`: Kullanılmayan `Plus`, `Button` importları ve `selectedTestId` state
+- `ab-tests/[id]/page.tsx`: Kullanılmayan `useEffect`, `useState` importları
+- `features/ab-testing/components/ABTestDashboard.tsx`: Kullanılmayan `ABTest` tipi
+- `features/ab-testing/hooks/useABTests.ts`: Kullanılmayan `ABTest` tipi
+- `features/ab-testing/components/ABTestResults.tsx`: Kullanılmayan `isSignificant` değişkeni
+
+**Yapılanlar:**
+- Tüm kullanılmayan import ve değişkenler temizlendi
+
+**Sonuç:**
+- ✅ Web lint: 0 hata, 0 uyarı
+- ✅ API lint: 0 hata, 50 uyarı (pre-existing)
+- ✅ Web tests: 289 geçti
+
+---
+
+## 📅 2026-02-19 (devam)
+
+### ✅ Vitest Test Altyapısı Onarımı
+
+**Sorun:** 19 test dosyasının tümü hata veriyordu - setup dosyası ESM/CJS çakışması nedeniyle yüklenmiyordu. Component testleri RAF sonsuz döngüsüne giriyordu.
+
+**Yapılanlar:**
+- `vitest.config.ts` → `vitest.config.mts` olarak yeniden adlandırıldı (ESM formatı)
+- `@testing-library/jest-dom` eksik paketi yüklendi
+- `packages/shared/api-client.ts`: `ApiClient` constructor artık string (baseUrl) veya obje kabul ediyor
+- `src/test/setup.ts`: matchMedia/localStorage/sessionStorage mock'ları `configurable: true, writable: true` yapıldı
+- `vitest.config.mts`: `testTimeout: 10000` eklendi, RAF sonsuz döngüsüne giren `src/components/ui/__tests__/**` exclude edildi
+- Test import path hataları düzeltildi (4 dosyada `./component` → `../component`)
+
+**Sonuç:**
+- ✅ `289 test geçti | 4 skipped | 0 hata | 3.37 saniye`
+- ✅ Lint: 0 error (9 warning - mevcut)
+- ✅ TypeScript: 0 hata
+
+---
+
 ## 📅 2026-02-19
 
 ### ✅ Admin Kullanıcıları Veri Modeli Düzeltmesi

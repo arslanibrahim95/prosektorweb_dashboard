@@ -1,5 +1,6 @@
 import { inviteTenantMemberRequestSchema, tenantMemberSchema } from "@prosektor/contracts";
 import {
+  asHeaders,
   asErrorBody,
   asStatus,
   HttpError,
@@ -10,7 +11,10 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
-import { isAdminRole } from "@/server/auth/permissions";
+import { assertAdminRole } from "@/server/admin/access";
+import { canAssignRole } from "@/server/admin/utils";
+import { getServerEnv } from "@/server/env";
+import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +22,16 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    const env = getServerEnv();
+
+    assertAdminRole(ctx.role);
+    const rateLimit = await enforceRateLimit(
+      ctx.admin,
+      rateLimitAuthKey("tenant_members_invite", ctx.tenant.id, ctx.user.id),
+      env.dashboardReadRateLimit,
+      env.dashboardReadRateWindowSec,
+    );
+
     const body = await parseJson(req);
 
     const parsed = inviteTenantMemberRequestSchema.safeParse(body);
@@ -29,8 +43,13 @@ export async function POST(req: Request) {
       });
     }
 
-    if (!isAdminRole(ctx.role)) {
-      throw new HttpError(403, { code: "FORBIDDEN", message: "Forbidden" });
+    // Privilege escalation prevention: actor cannot assign a role
+    // equal to or higher than their own (unless owner/super_admin)
+    if (!canAssignRole(ctx.role, parsed.data.role)) {
+      throw new HttpError(403, {
+        code: "FORBIDDEN",
+        message: "Kendi yetki seviyenize eşit veya daha yüksek bir rol atayamazsınız",
+      });
     }
 
     const nowIso = new Date().toISOString();
@@ -108,8 +127,10 @@ export async function POST(req: Request) {
           invited_at: invitedUser.invited_at ?? null,
         },
       }),
+      200,
+      rateLimitHeaders(rateLimit),
     );
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

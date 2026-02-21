@@ -126,6 +126,8 @@ describe("/api/auth/token origin policy", () => {
 
     expect(response.status).toBe(401);
     expect(payload.code).toBe("UNAUTHORIZED");
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://dashboard.prosektor.com");
+    expect(response.headers.get("vary")).toBe("Origin");
     expect(mocks.enforceRateLimitMock).toHaveBeenCalled();
   });
 
@@ -175,6 +177,7 @@ describe("/api/auth/token origin policy", () => {
 
     expect(response.status).toBe(401);
     expect(payload.code).toBe("UNAUTHORIZED");
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://autosite.example.com");
     expect(mocks.enforceRateLimitMock).toHaveBeenCalled();
   });
 
@@ -196,6 +199,7 @@ describe("/api/auth/token origin policy", () => {
 
     expect(response.status).toBe(401);
     expect(payload.code).toBe("UNAUTHORIZED");
+    expect(response.headers.get("access-control-allow-origin")).toBe("https://portal.example.com");
     expect(mocks.enforceRateLimitMock).toHaveBeenCalled();
   });
 });

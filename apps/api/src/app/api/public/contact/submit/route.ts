@@ -16,9 +16,24 @@ import { createAdminClient } from "@/server/supabase";
 import { verifySiteToken } from "@/server/site-token";
 import { enforceRateLimit, getClientIp, hashIp, rateLimitKey, rateLimitHeaders } from "@/server/rate-limit";
 import { getServerEnv } from "@/server/env";
+import { getOrSetCachedValue } from "@/server/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const PUBLIC_PRECHECK_CACHE_TTL_SEC = 60;
+
+type PublicSiteLookup = {
+  id: string;
+  tenant_id: string;
+};
+
+function getPublicSiteCacheKey(siteId: string): string {
+  return ["public-site", siteId].join("|");
+}
+
+function getPublicModuleCacheKey(siteId: string, moduleKey: string): string {
+  return ["public-module-enabled", siteId, moduleKey].join("|");
+}
 
 /**
  * SECURITY: HTML sanitizer using DOMPurify to prevent XSS attacks
@@ -67,22 +82,38 @@ export async function POST(req: Request) {
 
     const { site_id } = await verifySiteToken(parsed.data.site_token);
 
-    const { data: site, error: siteError } = await admin
-      .from("sites")
-      .select("id, tenant_id")
-      .eq("id", site_id)
-      .maybeSingle();
-    if (siteError) throw mapPostgrestError(siteError);
+    const site = await getOrSetCachedValue<PublicSiteLookup | null>(
+      getPublicSiteCacheKey(site_id),
+      PUBLIC_PRECHECK_CACHE_TTL_SEC,
+      async () => {
+        const { data, error } = await admin
+          .from("sites")
+          .select("id, tenant_id")
+          .eq("id", site_id)
+          .maybeSingle();
+        if (error) throw mapPostgrestError(error);
+        return data;
+      }
+    );
+
     if (!site) throw new HttpError(404, { code: "SITE_NOT_FOUND", message: "Site not found" });
 
-    const { data: moduleInstance, error: moduleError } = await admin
-      .from("module_instances")
-      .select("enabled")
-      .eq("site_id", site.id)
-      .eq("module_key", "contact")
-      .maybeSingle();
-    if (moduleError) throw mapPostgrestError(moduleError);
-    if (!moduleInstance || !moduleInstance.enabled) {
+    const moduleEnabled = await getOrSetCachedValue<boolean>(
+      getPublicModuleCacheKey(site.id, "contact"),
+      PUBLIC_PRECHECK_CACHE_TTL_SEC,
+      async () => {
+        const { data, error } = await admin
+          .from("module_instances")
+          .select("enabled")
+          .eq("site_id", site.id)
+          .eq("module_key", "contact")
+          .maybeSingle();
+        if (error) throw mapPostgrestError(error);
+        return Boolean(data?.enabled);
+      }
+    );
+
+    if (!moduleEnabled) {
       throw new HttpError(404, { code: "MODULE_DISABLED", message: "Module disabled" });
     }
 

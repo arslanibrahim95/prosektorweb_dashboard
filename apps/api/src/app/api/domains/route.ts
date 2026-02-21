@@ -7,6 +7,7 @@ import {
 } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -16,6 +17,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 import { clearOriginDecisionCache } from "@/server/security/origin";
 
 export const runtime = "nodejs";
@@ -31,6 +33,7 @@ function normalizeDomain(input: string): string {
 export async function GET(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const url = new URL(req.url);
 
     const parsedQuery = listDomainsQuerySchema.safeParse({
@@ -60,13 +63,14 @@ export async function GET(req: Request) {
 
     return jsonOk(response);
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
 
 export async function POST(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const body = await parseJson(req);
 
     const parsed = createDomainRequestSchema.safeParse(body);
@@ -141,6 +145,6 @@ export async function POST(req: Request) {
     clearOriginDecisionCache();
     return jsonOk(domainSchema.parse(finalRow));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

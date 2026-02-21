@@ -16,7 +16,7 @@ describe("createExportHandler", () => {
                 tableName: "test_table",
                 selectFields: "id,name,created_at",
                 headers: ["ID", "Name", "Created"],
-                rowMapper: (item) => [item.id, item.name, item.created_at],
+                rowMapper: (item) => [item.id as string, item.name as string, item.created_at as string],
                 filenamePrefix: "test",
                 searchFields: ["name", "email"],
                 rateLimitEndpoint: "test_export",
@@ -36,13 +36,13 @@ describe("createExportHandler", () => {
                 tableName: "test_table",
                 selectFields: "id,name,created_at",
                 headers: ["ID", "Name", "Created"],
-                rowMapper: (item) => [item.id, item.name, item.created_at],
+                rowMapper: (item) => [item.id as string, item.name as string, item.created_at as string],
                 filenamePrefix: "test",
                 searchFields: ["name", "email"],
                 rateLimitEndpoint: "test_export",
                 querySchema: baseExportQuerySchema,
                 itemSchema: z.object({ id: z.string(), name: z.string(), created_at: z.string() }),
-                additionalFilters: (query, _params, _ctx) => query,
+                additionalFilters: (query) => query,
             };
 
             const handler = createExportHandler(config);

@@ -1,0 +1,1 @@
+../../packages/db/migrations/0006_inbox_perf_indexes.sql

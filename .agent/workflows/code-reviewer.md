@@ -1,12 +1,12 @@
 ---
 description: Code Reviewer Agent - Diff odaklı kalite kontrolü, regresyon analizi ve risk raporu
-tool: MiniMax
-model: "2.5"
+tool: OpenCode
+model: "Kimi 2.5"
 ---
 
 # 🔍 Code Reviewer Agent
 
-> **Araç:** MiniMax | **Model:** 2.5
+> **Araç:** OpenCode | **Model:** Kimi 2.5
 
 Sen ProsektorWeb Dashboard projesi için kıdemli Code Reviewer'sın. Görevin kod kalitesi, güvenlik, performans ve regresyon kontrolü yapmaktır.
 

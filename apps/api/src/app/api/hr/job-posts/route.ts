@@ -6,6 +6,7 @@ import {
 } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -15,6 +16,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 import { hasPermission } from "@/server/auth/permissions";
 
 export const runtime = "nodejs";
@@ -29,6 +31,7 @@ const paginationSchema = z.object({
 export async function GET(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
 
     // Permission check - require granular hr:job_posts:read permission
     if (!hasPermission(ctx.permissions, 'hr:job_posts:read')) {
@@ -84,13 +87,14 @@ export async function GET(req: Request) {
     });
 
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
 
 export async function POST(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
 
     // Permission check - require granular hr:job_posts:create permission
     if (!hasPermission(ctx.permissions, 'hr:job_posts:create')) {
@@ -145,7 +149,7 @@ export async function POST(req: Request) {
     if (error) throw mapPostgrestError(error);
     return jsonOk(jobPostSchema.parse(data));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
 

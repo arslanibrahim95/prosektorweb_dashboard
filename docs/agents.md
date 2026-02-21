@@ -188,6 +188,35 @@ Konfig doğrulama komutu:
 pnpm run validate:agents-team
 ```
 
+### 0.8 Raporlama Standardi (Task + Control Report)
+
+Bu repoda yalnizca checkbox listesi ile "gorev notu" acilmaz. Tum teknik gorevler ve review ciktilari rapor formatinda yazilir.
+
+Zorunlu rapor iskeleti:
+
+1. `Status (Strict)` + `Sayim (P0/P1/P2)`
+2. `Executive Summary` (en kritik maddeler)
+3. `Scope` (dahil/haric)
+4. `Findings` tabloları (P0/P1/P2 ayri)
+5. `Faz Bazli Uygulama Plani`
+6. `Acceptance Checklist`
+7. `Decision Log`
+
+`Findings` satirlari asgari olarak su alanlari icerir:
+
+- `severity`
+- `dosya:satir` (mumkunse)
+- `bulgu`
+- `etki`
+- `onerilen fix`
+- `durum` (`open`, `fixed`, `accepted-risk`)
+
+Referanslar:
+
+- Kontrol rapor ornegi: `docs/review/control-report.md`
+- Severity kurali: `docs/agent-ops/severity-policy.md`
+- Stage handover sablonlari: `docs/handoff/agent-stage-templates.md`
+
 ---
 
 ## 1. Overview

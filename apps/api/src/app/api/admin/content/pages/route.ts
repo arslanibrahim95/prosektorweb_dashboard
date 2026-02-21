@@ -60,7 +60,8 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         const { search, status, page, limit } = parsedQuery.data;
         const offset = (page - 1) * limit;
 
-        const applyCommonFilters = (query: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const applyCommonFilters = (query: any): any => {
             if (search) {
                 query = query.or(buildSafeIlikeOr(["title", "slug"], search));
             }

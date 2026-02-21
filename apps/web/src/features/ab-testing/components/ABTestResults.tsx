@@ -1,31 +1,26 @@
 /**
  * A/B Test Sonuçları ve Analiz Bileşeni
  */
-import { useEffect, useState } from 'react'
 import { useABTestResults, useUpdateTestStatus } from '../hooks/useABTests'
-import { ABTestResultsResponse, VariantResultDetail, TestRecommendation } from '../types'
+import { VariantResultDetail, TestRecommendation } from '../types'
 
 interface ABTestResultsProps {
     testId: string
 }
 
 export function ABTestResults({ testId }: ABTestResultsProps) {
-    const { loading, error, fetchResults } = useABTestResults()
-    const { updateStatus, loading: statusLoading } = useUpdateTestStatus()
-    const [results, setResults] = useState<ABTestResultsResponse['data'] | null>(null)
-
-    useEffect(() => {
-        fetchResults(testId).then(setResults).catch(console.error)
-    }, [testId, fetchResults])
+    const { data: results, isLoading: loading, error } = useABTestResults(testId)
+    const updateStatusMutation = useUpdateTestStatus()
 
     const handleStatusChange = async (status: 'running' | 'paused' | 'completed') => {
-        await updateStatus(testId, status)
-        // Refresh results
-        const newResults = await fetchResults(testId)
-        setResults(newResults)
+        try {
+            await updateStatusMutation.mutateAsync({ id: testId, status })
+        } catch (err) {
+            console.error('Error updating status:', err)
+        }
     }
 
-    if (loading && !results) {
+    if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -36,7 +31,7 @@ export function ABTestResults({ testId }: ABTestResultsProps) {
     if (error) {
         return (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-                Sonuçlar yüklenirken hata oluştu: {error}
+                Sonuçlar yüklenirken hata oluştu: {error instanceof Error ? error.message : 'Bilinmeyen hata'}
             </div>
         )
     }
@@ -66,7 +61,7 @@ export function ABTestResults({ testId }: ABTestResultsProps) {
                         {test_info.status === 'draft' && (
                             <button
                                 onClick={() => handleStatusChange('running')}
-                                disabled={statusLoading}
+                                disabled={updateStatusMutation.isPending}
                                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                             >
                                 Testi Başlat
@@ -75,7 +70,7 @@ export function ABTestResults({ testId }: ABTestResultsProps) {
                         {test_info.status === 'running' && (
                             <button
                                 onClick={() => handleStatusChange('paused')}
-                                disabled={statusLoading}
+                                disabled={updateStatusMutation.isPending}
                                 className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
                             >
                                 Durdur
@@ -84,7 +79,7 @@ export function ABTestResults({ testId }: ABTestResultsProps) {
                         {test_info.status === 'paused' && (
                             <button
                                 onClick={() => handleStatusChange('running')}
-                                disabled={statusLoading}
+                                disabled={updateStatusMutation.isPending}
                                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                             >
                                 Devam Et
@@ -93,7 +88,7 @@ export function ABTestResults({ testId }: ABTestResultsProps) {
                         {(test_info.status === 'running' || test_info.status === 'paused') && (
                             <button
                                 onClick={() => handleStatusChange('completed')}
-                                disabled={statusLoading}
+                                disabled={updateStatusMutation.isPending}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                             >
                                 Testi Bitir
@@ -174,7 +169,6 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 function VariantCard({ variant }: { variant: VariantResultDetail }) {
     const { statistical_analysis, bayesian_analysis, recommendation } = variant
     const isWinner = recommendation.action === 'winner'
-    const isSignificant = statistical_analysis.is_significant
 
     return (
         <div className={`bg-white rounded-lg shadow-sm border-2 overflow-hidden ${isWinner ? 'border-green-500' : 'border-gray-200'

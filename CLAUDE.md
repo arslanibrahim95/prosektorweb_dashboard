@@ -158,6 +158,50 @@ KONUŞMA UZADIĞINDA → Memory Bank'a bak
 
 ---
 
+## 🤖 Agents Pipeline
+
+### Pipeline: 8 Aşamalı Geliştirme Zinciri
+
+| # | Aşama | Agent | Araç | Trigger |
+|---|-------|-------|------|---------|
+| 1 | Planning | UX Agent | OpenCode Kimi 2.5 | `/ux-agent` |
+| 2 | Planning | UI Agent | OpenCode Kimi 2.5 | `/ui-agent` |
+| 3 | Planning | CSS Agent | OpenCode GLM5 | `/css-agent` |
+| 4 | Execution | Frontend Agent | OpenCode Kimi 2.5 | `/frontend-agent` |
+| 5 | Execution | Backend Agent | Codex 5.3 High | `/backend-agent` |
+| 6 | Verification | Code Reviewer | OpenCode Kimi 2.5 | `/code-reviewer` |
+| 7 | Verification | Test Engineer | Codex 5.3 High | `/test-engineer` |
+| 8 | Verification | QA Agent | Opus 4.6 | `/qa-agent` |
+
+### Tam Pipeline (Tek Komut)
+```
+/pipeline-orchestrator <work item açıklaması>
+```
+
+### Tek Stage Tetikleme
+```
+/ux-agent <feature açıklaması>
+```
+
+### Work Item Durum Akışı
+```
+ready-for-ux → ready-for-ui → ready-for-css → ready-for-fe →
+ready-for-be → ready-for-review → ready-for-test → ready-for-qa → done
+```
+
+### Quality Gate (PR Öncesi Zorunlu)
+```bash
+pnpm run validate:agents-team && pnpm lint && pnpm test:api && pnpm test:web
+```
+
+### Kaynaklar
+- Config: `.gemini/agents.json`
+- Runbook: `docs/agent-ops/runbook.md`
+- Handover şablonları: `docs/handoff/agent-stage-templates.md`
+- Severity policy: `docs/agent-ops/severity-policy.md`
+
+---
+
 ## 💡 Hatırlatmalar
 
 ```

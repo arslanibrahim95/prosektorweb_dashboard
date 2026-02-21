@@ -2,6 +2,7 @@ import { uuidSchema } from "@prosektor/contracts";
 import { z } from "zod";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -10,6 +11,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ const checkSlugQuerySchema = z
 export async function GET(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const url = new URL(req.url);
     const qp = url.searchParams;
 
@@ -70,7 +73,7 @@ export async function GET(req: Request) {
 
     return jsonOk({ available: !data });
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
 

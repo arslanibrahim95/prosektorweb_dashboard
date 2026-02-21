@@ -1,20 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireAuthContext } from '@/server/auth/context'
+import { NextRequest } from "next/server";
+import { requireAuthContext } from "@/server/auth/context";
 import {
-    HttpError,
+    asErrorBody,
+    asHeaders,
+    asStatus,
     jsonError,
-    mapPostgrestError
-} from '@/server/api/http'
+    jsonOk,
+    mapPostgrestError,
+} from "@/server/api/http";
 import {
     analyzeTestResults,
     calculateTestMetrics,
     optimizeTrafficSplit,
-    BayesianResult,
-    calculateBayesianAB
-} from '@/server/ab-testing'
+    calculateBayesianAB,
+} from "@/server/ab-testing";
+import { getServerEnv } from "@/server/env";
+import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 // GET - Test sonuçlarını ve istatistiksel analizi getir
 export async function GET(
@@ -22,30 +26,39 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const ctx = await requireAuthContext(request)
-        const { id } = await params
+        const ctx = await requireAuthContext(request);
+        const env = getServerEnv();
+        const { id } = await params;
+
+        const rateLimit = await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("ab_tests_results", ctx.tenant.id, ctx.user.id),
+            env.dashboardReadRateLimit,
+            env.dashboardReadRateWindowSec,
+        );
 
         // Test bilgilerini getir
-        const { data: test, error: testError } = await ctx.admin
-            .from('ab_tests')
-            .select('*')
-            .eq('id', id)
-            .eq('tenant_id', ctx.tenant.id)
-            .single()
+        // SECURITY: Use user-scoped client so RLS policies are enforced per role.
+        const { data: test, error: testError } = await ctx.supabase
+            .from("ab_tests")
+            .select("*")
+            .eq("id", id)
+            .eq("tenant_id", ctx.tenant.id)
+            .single();
 
         if (testError) {
-            throw mapPostgrestError(testError)
+            throw mapPostgrestError(testError);
         }
 
         // Test varyantları için metrikleri getir
-        const { data: metrics, error: metricsError } = await ctx.admin
-            .from('ab_test_metrics')
-            .select('*')
-            .eq('test_id', id)
-            .order('recorded_at', { ascending: false })
+        const { data: metrics, error: metricsError } = await ctx.supabase
+            .from("ab_test_metrics")
+            .select("*")
+            .eq("test_id", id)
+            .order("recorded_at", { ascending: false });
 
         if (metricsError) {
-            throw mapPostgrestError(metricsError)
+            throw mapPostgrestError(metricsError);
         }
 
         // En son metrikleri kullan
@@ -55,20 +68,20 @@ export async function GET(
         const variantStats = new Map<string, { visitors: number; conversions: number }>()
 
         for (const metric of latestMetrics) {
-            const existing = variantStats.get(metric.variant_id) || { visitors: 0, conversions: 0 }
+            const existing = variantStats.get(metric.variant_id) || { visitors: 0, conversions: 0 };
             variantStats.set(metric.variant_id, {
                 visitors: existing.visitors + (metric.visitors || 0),
-                conversions: existing.conversions + (metric.conversions || 0)
-            })
+                conversions: existing.conversions + (metric.conversions || 0),
+            });
         }
 
         // Parse variants from test
-        const variants = typeof test.variants === 'string'
+        const variants = typeof test.variants === "string"
             ? JSON.parse(test.variants)
-            : test.variants
+            : test.variants;
 
         // Control (A) ve Variant (B) için istatistikleri hesapla
-        const controlStats = variantStats.get('control') || { visitors: 0, conversions: 0 }
+        const controlStats = variantStats.get("control") || { visitors: 0, conversions: 0 };
 
         const results: Record<string, unknown> = {
             test_info: {
@@ -79,14 +92,14 @@ export async function GET(
                 start_date: test.start_date,
                 end_date: test.end_date
             },
-            variants: []
-        }
+            variants: [],
+        };
 
         // Her varyant için analiz yap
         for (const variant of variants) {
-            if (variant.id === 'control') continue
+            if (variant.id === "control") continue;
 
-            const variantStatsData = variantStats.get(variant.id) || { visitors: 0, conversions: 0 }
+            const variantStatsData = variantStats.get(variant.id) || { visitors: 0, conversions: 0 };
 
             // İstatistiksel analiz
             const analysis = analyzeTestResults(
@@ -97,7 +110,7 @@ export async function GET(
                 variant.id,
                 variant.name,
                 (test.confidence_level || 95) / 100
-            )
+            );
 
             // Bayesian analiz
             const bayesian = calculateBayesianAB(
@@ -105,7 +118,7 @@ export async function GET(
                 controlStats.conversions,
                 variantStatsData.visitors,
                 variantStatsData.conversions
-            )
+            );
 
             // Varyant sonucu
             const variantResult = {
@@ -132,16 +145,16 @@ export async function GET(
                     risk_of_choosing_wrong: bayesian.riskOfChoosingWrong
                 },
                 recommendation: analysis.recommendation
-            }
+            };
 
             // @ts-expect-error - dynamic key assignment
-            results.variants.push(variantResult)
+            results.variants.push(variantResult);
         }
 
         // Test metriklerini ekle
         const dailyTraffic = latestMetrics.length > 0
             ? Math.ceil(latestMetrics.reduce((sum, m) => sum + (m.visitors || 0), 0) / 7) // 7 günlük ort
-            : 0
+            : 0;
 
         results.test_metrics = calculateTestMetrics(
             controlStats.visitors,
@@ -150,20 +163,16 @@ export async function GET(
             Array.from(variantStats.values()).reduce((sum, v) => sum + v.conversions, 0) - controlStats.conversions,
             test.start_date || new Date().toISOString(),
             dailyTraffic
-        )
+        );
 
         // Traffic optimization önerisi
         const testMetrics = results.test_metrics as { overall_conversion_rate: number } | undefined
         if (controlStats.visitors > 0 && testMetrics && testMetrics.overall_conversion_rate > 0) {
-            results.traffic_optimization = optimizeTrafficSplit(testMetrics.overall_conversion_rate, 0.05, dailyTraffic)
+            results.traffic_optimization = optimizeTrafficSplit(testMetrics.overall_conversion_rate, 0.05, dailyTraffic);
         }
 
-        return NextResponse.json({ data: results })
+        return jsonOk({ data: results }, 200, rateLimitHeaders(rateLimit));
     } catch (error) {
-        if (error instanceof HttpError) {
-            return jsonError(error.body, error.status, error.headers)
-        }
-        console.error('A/B Test results error:', error)
-        return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500)
+        return jsonError(asErrorBody(error), asStatus(error), asHeaders(error));
     }
 }

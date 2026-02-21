@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "../../src/app/api/publish/route";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceRateLimit } from "@/server/rate-limit";
 import { sendPublishWebhook } from "@/server/webhooks/publish";
 
 vi.mock("@/server/auth/context", () => ({
@@ -9,6 +10,12 @@ vi.mock("@/server/auth/context", () => ({
 
 vi.mock("@/server/webhooks/publish", () => ({
   sendPublishWebhook: vi.fn(),
+}));
+
+vi.mock("@/server/rate-limit", () => ({
+  enforceRateLimit: vi.fn(),
+  rateLimitAuthKey: vi.fn(() => "rl:test"),
+  rateLimitHeaders: vi.fn(() => ({})),
 }));
 
 const TENANT_ID = "aaaaaaaa-0000-4000-8001-000000000001";
@@ -33,6 +40,12 @@ describe("POST /api/publish", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.mocked(enforceRateLimit).mockResolvedValue({
+      allowed: true,
+      remaining: 99,
+      resetAt: new Date(Date.now() + 60_000).toISOString(),
+      limit: 100,
+    });
 
     vi.mocked(requireAuthContext).mockResolvedValue({
       supabase: {} as never,

@@ -1,6 +1,7 @@
 import { pageSchema, updatePageRequestSchema } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -10,6 +11,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 import { assertPageEditableByPanelRole, getPageOriginForTenant } from "@/server/pages/origin-guard";
 
 export const runtime = "nodejs";
@@ -18,6 +20,7 @@ export const dynamic = "force-dynamic";
 export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const { id } = await ctxRoute.params;
     const body = await parseJson(req);
 
@@ -46,6 +49,6 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
 
     return jsonOk(pageSchema.parse(data));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

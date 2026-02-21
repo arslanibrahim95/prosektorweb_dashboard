@@ -22,7 +22,7 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -43,8 +43,8 @@ describe("createInboxHandler", () => {
                 orderBy: "updated_at",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -64,8 +64,8 @@ describe("createInboxHandler", () => {
                 orderDirection: "asc",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -86,7 +86,7 @@ describe("createInboxHandler", () => {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 additionalFilters: (query, _params, _ctx) => query,
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -107,7 +107,7 @@ describe("createInboxHandler", () => {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 additionalCacheKeyParts: (_params) => ["extra", "parts"],
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -128,8 +128,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -147,8 +147,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -168,8 +168,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint_one",
                 cacheKeyPrefix: "one",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -181,8 +181,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint_two",
                 cacheKeyPrefix: "two",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -203,8 +203,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -216,8 +216,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "test_endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -236,8 +236,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint_a",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -249,8 +249,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint_b",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -275,8 +275,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "hr_applications",
                 cacheKeyPrefix: "hr_app",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -297,8 +297,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -315,8 +315,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -333,8 +333,8 @@ describe("createInboxHandler", () => {
                 rateLimitEndpoint: "endpoint",
                 cacheKeyPrefix: "test",
                 itemSchema: z.object({ id: z.string() }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
+                 
                 responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
             };
 
@@ -536,7 +536,7 @@ describe('permission requirements', () => {
             rateLimitEndpoint: 'test',
             cacheKeyPrefix: 'test',
             itemSchema: z.object({ id: z.string() }),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             responseSchema: z.object({ items: z.array(z.any()), total: z.number() }),
         };
 

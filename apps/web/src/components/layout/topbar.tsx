@@ -51,7 +51,7 @@ interface TopbarProps {
 const HEADER_ICON_SIZE_CLASS = 'h-[var(--font-size-lg)] w-[var(--font-size-lg)]';
 
 export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) {
-    const { toggle } = useSidebar();
+    const { toggleMobile } = useSidebar();
     const { theme, setTheme } = useTheme();
     const auth = useAuth();
     const router = useRouter();
@@ -91,7 +91,7 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                         variant="ghost"
                         size="icon"
                         className="lg:hidden shrink-0"
-                        onClick={toggle}
+                        onClick={toggleMobile}
                         aria-label="Navigasyon menüsünü aç"
                     >
                         <Menu className="h-5 w-5" />

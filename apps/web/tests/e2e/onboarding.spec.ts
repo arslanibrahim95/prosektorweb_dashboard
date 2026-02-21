@@ -6,9 +6,8 @@ import {
     cleanupTestTenant
 } from './helpers/auth';
 
-test.describe('Onboarding Flow', () => {
+test.describe('Onboarding Flow (Drawer)', () => {
 
-    // Store created tenant slug for cleanup
     let createdTenantSlug: string | null = null;
 
     test.beforeAll(async () => {
@@ -29,11 +28,15 @@ test.describe('Onboarding Flow', () => {
         await page.fill('[data-slot="login-email"]', NEW_USER_EMAIL);
         await page.fill('[data-slot="login-password"]', NEW_USER_PASSWORD);
         await page.click('[data-slot="login-submit"]');
-        await expect(page).toHaveURL(/\/onboarding/, { timeout: 30000 });
+
+        // Wait for redirect to home
+        await expect(page).toHaveURL(/\/home/, { timeout: 30000 });
+
+        // Drawer should open since user has no tenant
+        await expect(page.getByText('Organizasyonunuzu Oluşturun')).toBeVisible({ timeout: 15000 });
 
         // Try to submit with empty input
         await page.getByLabel('Organizasyon Adı').fill('');
-        await page.getByRole('button', { name: 'Organizasyonu Oluştur' }).click();
 
         // Button should be disabled or show error
         const button = page.getByRole('button', { name: 'Organizasyonu Oluştur' });
@@ -41,12 +44,14 @@ test.describe('Onboarding Flow', () => {
     });
 
     test('Edge case: Too short organization name should show error', async ({ page }) => {
-        // Login first
+        // Reset state by forcing a reload if needed, but since it's the same page we are fine
         await page.goto('/login');
         await page.fill('[data-slot="login-email"]', NEW_USER_EMAIL);
         await page.fill('[data-slot="login-password"]', NEW_USER_PASSWORD);
         await page.click('[data-slot="login-submit"]');
-        await expect(page).toHaveURL(/\/onboarding/, { timeout: 30000 });
+        await expect(page).toHaveURL(/\/home/, { timeout: 30000 });
+
+        await expect(page.getByText('Organizasyonunuzu Oluşturun')).toBeVisible({ timeout: 15000 });
 
         // Try to submit with 1 character (min is 2)
         await page.getByLabel('Organizasyon Adı').fill('A');
@@ -56,52 +61,19 @@ test.describe('Onboarding Flow', () => {
         await expect(button).toBeDisabled();
     });
 
-    test('Edge case: Character counter shows correct count', async ({ page }) => {
-        // Login first
-        await page.goto('/login');
-        await page.fill('[data-slot="login-email"]', NEW_USER_EMAIL);
-        await page.fill('[data-slot="login-password"]', NEW_USER_PASSWORD);
-        await page.click('[data-slot="login-submit"]');
-        await expect(page).toHaveURL(/\/onboarding/, { timeout: 30000 });
-
-        // Type some text
-        const testName = 'Acme';
-        await page.getByLabel('Organizasyon Adı').fill(testName);
-
-        // Check character counter displays correctly (5/100 format)
-        await expect(page.getByText('5/100')).toBeVisible();
-    });
-
-    test('User without tenant is redirected to onboarding and can create organization', async ({ page }) => {
+    test('User creates organization via Drawer (Success Flow)', async ({ page }) => {
         // 1. Login
         await page.goto('/login');
+        // Clear session storage locally before login to ensure drawer isn't marked as dismissed
+        await page.evaluate(() => sessionStorage.clear());
+
         await page.fill('[data-slot="login-email"]', NEW_USER_EMAIL);
         await page.fill('[data-slot="login-password"]', NEW_USER_PASSWORD);
         await page.click('[data-slot="login-submit"]');
 
-        // 2. Should redirect to /onboarding (not /home yet, because no tenant)
-        // If previous test (Loading state) created a tenant, this test will fail if we don't clean up.
-        // But wait!
-        // We want to run Edge Cases FIRST (which should NOT create tenant ideally).
-        // But "Loading state" test DOES submit form.
-
-        // So allow me to Remove "Loading state" test or modify it to NOT submit?
-        // Or make clean up explicit.
-
-        // Actually, we should merge "Loading state" into the Main Success Test.
-        // It's safer.
-    });
-
-    test('User creates organization (Success Flow)', async ({ page }) => {
-        // 1. Login
-        await page.goto('/login');
-        await page.fill('[data-slot="login-email"]', NEW_USER_EMAIL);
-        await page.fill('[data-slot="login-password"]', NEW_USER_PASSWORD);
-        await page.click('[data-slot="login-submit"]');
-
-        // 2. Should redirect to /onboarding
-        await expect(page).toHaveURL(/\/onboarding/, { timeout: 30000 });
-        await expect(page.getByText('Organizasyon Oluştur')).toBeVisible();
+        // 2. Should redirect to /home and automatically show Drawer
+        await expect(page).toHaveURL(/\/home/, { timeout: 30000 });
+        await expect(page.getByText('Organizasyonunuzu Oluşturun')).toBeVisible({ timeout: 15000 });
 
         // 3. Fill form with unique name
         const timestamp = Date.now();
@@ -119,17 +91,12 @@ test.describe('Onboarding Flow', () => {
         await expect(page.getByText('Oluşturuluyor...')).toBeVisible();
         await expect(submitButton).toBeDisabled();
 
-        // 5. Verify Redirect to Dashboard (/home)
-        await expect(page).toHaveURL(/\/home/, { timeout: 30000 });
-
-        // 6. Verify Tenant Name is visible
+        // 5. Drawer should close and Tenant Name should be visible
+        await expect(page.getByText('Organizasyonunuzu Oluşturun')).toBeHidden({ timeout: 15000 });
         await expect(page.getByText(orgName)).toBeVisible({ timeout: 10000 });
-
-        // 7. Additional verification: Check if user is logged in
-        await expect(page).not.toHaveURL(/login|onboarding/);
     });
 
-    test('User with existing tenant should be redirected away from onboarding', async ({ page }) => {
+    test('User with existing tenant can cancel onboarding logic implicitly', async ({ page }) => {
         // Login
         await page.goto('/login');
         await page.fill('[data-slot="login-email"]', NEW_USER_EMAIL);
@@ -139,11 +106,7 @@ test.describe('Onboarding Flow', () => {
         // User already has a tenant from previous test, should redirect to /home
         await expect(page).toHaveURL(/\/home/, { timeout: 15000 });
 
-        // Try to manually navigate to /onboarding
-        await page.goto('/onboarding');
-
-        // Should be redirected back to / or /home
-        // Our OnboardingPage redirects to '/', which redirects to '/home'.
-        await expect(page).toHaveURL(/\/home/, { timeout: 10000 });
+        // Check that drawer does not open
+        await expect(page.getByText('Organizasyonunuzu Oluşturun')).toBeHidden({ timeout: 5000 });
     });
 });

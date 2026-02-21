@@ -1,9 +1,8 @@
 import { jsonOk } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 import { assertAdminRole } from "@/server/admin/access";
 import { withAdminErrorHandling } from "@/server/admin/route-utils";
-import { getServerEnv } from "@/server/env";
-import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +17,7 @@ interface HealthStatus {
 
 export const GET = withAdminErrorHandling(async (req: Request) => {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     assertAdminRole(ctx.role);
 
     const health: HealthStatus = {

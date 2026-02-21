@@ -33,6 +33,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/components/auth/auth-provider';
 import { UnauthorizedScreen } from '@/components/layout/role-guard';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
+import {
   useCreatePlatformTenant,
   usePlatformTenantDangerAction,
   usePlatformTenants,
@@ -179,34 +188,66 @@ export default function PlatformTenantsPage() {
                     </TableCell>
                     <TableCell>{tenant.owners_count}</TableCell>
                     <TableCell>{tenant.sites_count}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditTarget(tenant);
-                          setEditForm({
-                            name: tenant.name,
-                            slug: tenant.slug,
-                            plan: tenant.plan,
-                            status: tenant.status,
-                          });
-                        }}
-                      >
-                        Düzenle
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          setDangerTarget(tenant);
-                          setDangerAction(tenant.status === 'active' ? 'suspend' : 'reactivate');
-                          setDangerReason('');
-                          setDangerConfirmationText('');
-                        }}
-                      >
-                        Danger
-                      </Button>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <span className="sr-only">İşlemler</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => {
+                            setEditTarget(tenant);
+                            setEditForm({
+                              name: tenant.name,
+                              slug: tenant.slug,
+                              plan: tenant.plan,
+                              status: tenant.status,
+                            });
+                          }}>
+                            Düzenle
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {tenant.status === 'active' ? (
+                            <DropdownMenuItem
+                              className="text-yellow-600"
+                              onClick={() => {
+                                setDangerTarget(tenant);
+                                setDangerAction('suspend');
+                                setDangerReason('');
+                                setDangerConfirmationText('');
+                              }}
+                            >
+                              Askıya Al
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              className="text-green-600"
+                              onClick={() => {
+                                setDangerTarget(tenant);
+                                setDangerAction('reactivate');
+                                setDangerReason('');
+                                setDangerConfirmationText('');
+                              }}
+                            >
+                              Yeniden Aktive Et
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => {
+                              setDangerTarget(tenant);
+                              setDangerAction('soft_delete');
+                              setDangerReason('');
+                              setDangerConfirmationText('');
+                            }}
+                          >
+                            Sil
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}

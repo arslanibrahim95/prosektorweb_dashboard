@@ -30,7 +30,16 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
 
         // Get stats
-        const [usersRes, pagesRes, jobPostsRes, auditLogsRes, todayLogsRes] = await Promise.all([
+        const [
+            usersRes,
+            pagesRes,
+            jobPostsRes,
+            auditLogsRes,
+            todayLogsRes,
+            recentLogsRes,
+            recentMembersRes,
+            roleDistributionRes
+        ] = await Promise.all([
             ctx.admin
                 .from("tenant_members")
                 .select("id", { count: "exact", head: true })
@@ -54,6 +63,26 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
                 .select("id", { count: "exact", head: true })
                 .eq("tenant_id", ctx.tenant.id)
                 .gte("created_at", todayStart),
+            ctx.admin
+                .from("audit_logs")
+                .select("id, actor_id, action, entity_type, entity_id, created_at, meta")
+                .eq("tenant_id", ctx.tenant.id)
+                .order("created_at", { ascending: false })
+                .limit(10),
+            ctx.admin
+                .from("tenant_members")
+                .select("id, user_id, role, created_at")
+                .eq("tenant_id", ctx.tenant.id)
+                .order("created_at", { ascending: false })
+                .limit(5),
+            // Group by role in database (fallback when RPC is unavailable)
+            (async () => {
+                try {
+                    return await ctx.admin.rpc("get_tenant_role_distribution", { p_tenant_id: ctx.tenant.id });
+                } catch {
+                    return { data: null, error: null };
+                }
+            })()
         ]);
 
         if (usersRes.error) throw mapPostgrestError(usersRes.error);
@@ -61,51 +90,37 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         if (jobPostsRes.error) throw mapPostgrestError(jobPostsRes.error);
         if (auditLogsRes.error) throw mapPostgrestError(auditLogsRes.error);
         if (todayLogsRes.error) throw mapPostgrestError(todayLogsRes.error);
+        if (recentLogsRes.error) throw mapPostgrestError(recentLogsRes.error);
+        if (recentMembersRes.error) throw mapPostgrestError(recentMembersRes.error);
 
-        // Get user distribution by role
-        const { data: members, error: membersError } = await ctx.admin
-            .from("tenant_members")
-            .select("role")
-            .eq("tenant_id", ctx.tenant.id);
+        // Process role distribution (fallback to manual if RPC failed/missing)
+        let userDistribution = roleDistributionRes?.data;
+        if (!userDistribution) {
+            const { data: members, error: membersError } = await ctx.admin
+                .from("tenant_members")
+                .select("role")
+                .eq("tenant_id", ctx.tenant.id);
 
-        if (membersError) throw mapPostgrestError(membersError);
+            if (membersError) throw mapPostgrestError(membersError);
 
-        const roleDistribution = (members ?? []).reduce((acc, m) => {
-            const role = m.role as string;
-            acc[role] = (acc[role] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
+            const roleDistribution = (members ?? []).reduce((acc, m) => {
+                const role = m.role as string;
+                acc[role] = (acc[role] || 0) + 1;
+                return acc;
+            }, {} as Record<string, number>);
 
-        const userDistribution = Object.entries(roleDistribution).map(([role, count]) => ({
-            role,
-            count,
-        }));
-
-        // Get recent activity (last 10 audit logs)
-        const { data: recentLogs, error: recentLogsError } = await ctx.admin
-            .from("audit_logs")
-            .select("id, actor_id, action, entity_type, entity_id, created_at, meta")
-            .eq("tenant_id", ctx.tenant.id)
-            .order("created_at", { ascending: false })
-            .limit(10);
-
-        if (recentLogsError) throw mapPostgrestError(recentLogsError);
-
-        // Get recent users (last 5 members)
-        const { data: recentMembers, error: recentMembersError } = await ctx.admin
-            .from("tenant_members")
-            .select("id, user_id, role, created_at")
-            .eq("tenant_id", ctx.tenant.id)
-            .order("created_at", { ascending: false })
-            .limit(5);
-
-        if (recentMembersError) throw mapPostgrestError(recentMembersError);
+            userDistribution = Object.entries(roleDistribution).map(([role, count]) => ({
+                role,
+                count,
+            }));
+        }
 
         // Enrich recent users with names/emails
-        const recentUserIds = Array.from(new Set((recentMembers ?? []).map((m) => (m as { user_id: string }).user_id)));
+        const recentMembers = recentMembersRes.data ?? [];
+        const recentUserIds = Array.from(new Set(recentMembers.map((m) => (m as { user_id: string }).user_id)));
         const recentUsersInfo = await batchFetchUsers(ctx.admin, recentUserIds);
 
-        const enrichedRecentUsers = (recentMembers ?? []).map((m) => {
+        const enrichedRecentUsers = recentMembers.map((m) => {
             const member = m as { id: string; user_id: string; role: string; created_at: string };
             const userInfo = recentUsersInfo.get(member.user_id);
             return {
@@ -125,7 +140,7 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
                 todayOperations: todayLogsRes.count ?? 0,
             },
             userDistribution,
-            recentActivity: recentLogs ?? [],
+            recentActivity: recentLogsRes.data ?? [],
             recentUsers: enrichedRecentUsers,
         };
     });

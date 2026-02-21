@@ -11,11 +11,27 @@ export interface InboxFilterParams {
     search?: string;
 }
 
-// Note: 'any' is used here because Supabase PostgREST query builder types are complex
-// recursive generics that are difficult to type explicitly in a reusable function.
-// The query object is trusted (originates from our own client) and safely handled.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type InboxAdditionalFilters<TQuery extends InboxFilterParams> = (query: any, params: TQuery, ctx: AuthContext) => any;
+/**
+ * Minimal chainable interface needed by inbox filters.
+ * Supabase PostgREST builders satisfy this shape structurally.
+ */
+export interface InboxFilterBuilder<TSelf> {
+    eq(column: string, value: unknown): TSelf;
+    gte(column: string, value: string): TSelf;
+    lte(column: string, value: string): TSelf;
+    or(filters: string): TSelf;
+}
+
+/**
+ * Additional per-route filter hook that preserves the builder type.
+ */
+export type InboxAdditionalFilters<TQuery extends InboxFilterParams> = <
+    TBuilder extends InboxFilterBuilder<TBuilder>,
+>(
+    query: TBuilder,
+    params: TQuery,
+    ctx: AuthContext,
+) => TBuilder;
 
 /**
  * Selects the correct Supabase client for inbox operations.
@@ -29,15 +45,17 @@ export function getInboxDbClient(ctx: AuthContext) {
  * Applies common inbox filters to list/export/count queries.
  * Returns the query in the same builder stage as received.
  */
-export function applyInboxFilters<TQuery extends InboxFilterParams>(
-    query: unknown,
+export function applyInboxFilters<
+    TQuery extends InboxFilterParams,
+    TBuilder extends InboxFilterBuilder<TBuilder>,
+>(
+    query: TBuilder,
     params: TQuery,
     searchFields: string[],
     additionalFilters?: InboxAdditionalFilters<TQuery>,
     ctx?: AuthContext,
-): unknown {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q: any = query;
+): TBuilder {
+    let q = query;
 
     if (params.status === "read") q = q.eq("is_read", true);
     if (params.status === "unread") q = q.eq("is_read", false);

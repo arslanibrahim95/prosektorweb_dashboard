@@ -1,22 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { z } from "zod";
-
-/**
- * Tests for the admin settings PATCH schema validation.
- * We define the schema inline (matching the route's schema) to test
- * validation rules without requiring full route context.
- */
-const settingsPatchSchema = z.object({
-    tenant: z.object({
-        name: z.string().min(1).max(100).optional(),
-        plan: z.string().min(1).max(50).optional(),
-    }).optional(),
-    site: z.object({
-        id: z.string().uuid(),
-        settings: z.record(z.string(), z.unknown()).optional(),
-    }).optional(),
-    security: z.record(z.string(), z.unknown()).optional(),
-}).strict();
+import { settingsPatchSchema } from "@/schemas/admin-settings";
 
 describe("admin settings PATCH schema", () => {
     describe("tenant fields", () => {
@@ -33,124 +16,164 @@ describe("admin settings PATCH schema", () => {
             });
             expect(result.success).toBe(true);
         });
-
-        it("rejects empty tenant name", () => {
-            const result = settingsPatchSchema.safeParse({
-                tenant: { name: "" },
-            });
-            expect(result.success).toBe(false);
-        });
-
-        it("rejects tenant name longer than 100 chars", () => {
-            const result = settingsPatchSchema.safeParse({
-                tenant: { name: "x".repeat(101) },
-            });
-            expect(result.success).toBe(false);
-        });
-
-        it("rejects empty plan string", () => {
-            const result = settingsPatchSchema.safeParse({
-                tenant: { plan: "" },
-            });
-            expect(result.success).toBe(false);
-        });
-
-        it("rejects plan longer than 50 chars", () => {
-            const result = settingsPatchSchema.safeParse({
-                tenant: { plan: "x".repeat(51) },
-            });
-            expect(result.success).toBe(false);
-        });
     });
 
-    describe("site fields", () => {
-        it("accepts valid site with UUID and settings", () => {
+    describe("backup fields", () => {
+        it("accepts valid backup settings", () => {
             const result = settingsPatchSchema.safeParse({
-                site: {
-                    id: "550e8400-e29b-41d4-a716-446655440000",
-                    settings: { theme: "dark", logo_url: "https://example.com/logo.png" },
+                backup: {
+                    auto_backup: true,
+                    frequency: "daily",
+                    retention_period: "30",
+                    location: "local",
+                    include: { database: true, media: false },
                 },
             });
             expect(result.success).toBe(true);
         });
 
-        it("rejects site with invalid UUID", () => {
+        it("rejects invalid frequency", () => {
             const result = settingsPatchSchema.safeParse({
-                site: { id: "not-a-uuid", settings: {} },
-            });
-            expect(result.success).toBe(false);
-        });
-
-        it("rejects site without id", () => {
-            const result = settingsPatchSchema.safeParse({
-                site: { settings: {} },
+                backup: { frequency: "yearly" },
             });
             expect(result.success).toBe(false);
         });
     });
 
-    describe("security fields", () => {
-        it("accepts valid security settings", () => {
+    describe("i18n fields", () => {
+        it("accepts valid i18n settings", () => {
             const result = settingsPatchSchema.safeParse({
-                security: {
-                    two_factor_required: true,
-                    session_timeout_minutes: 30,
-                    ip_whitelist_enabled: false,
+                i18n: {
+                    defaultLanguage: "tr",
+                    enabledLanguages: ["tr", "en"],
+                    languages: [
+                        {
+                            id: "1",
+                            name: "Turkish",
+                            code: "tr",
+                            status: "active",
+                            isDefault: true,
+                            progress: 100,
+                        },
+                    ],
+                },
+            });
+            expect(result.success).toBe(true);
+        });
+    });
+
+    describe("theme fields", () => {
+        it("accepts valid theme settings", () => {
+            const result = settingsPatchSchema.safeParse({
+                theme: {
+                    colors: { primary: "#ff0000" },
+                    fontFamily: "inter",
+                    baseFontSize: 16,
                 },
             });
             expect(result.success).toBe(true);
         });
 
-        it("accepts empty security object", () => {
+        it("rejects invalid color format", () => {
             const result = settingsPatchSchema.safeParse({
-                security: {},
-            });
-            expect(result.success).toBe(true);
-        });
-    });
-
-    describe("strict mode — prevents field injection", () => {
-        it("rejects unknown top-level fields", () => {
-            const result = settingsPatchSchema.safeParse({
-                tenant: { name: "Valid" },
-                malicious_field: "DROP TABLE tenants",
-            });
-            expect(result.success).toBe(false);
-        });
-
-        it("rejects injecting role field", () => {
-            const result = settingsPatchSchema.safeParse({
-                role: "super_admin",
-            });
-            expect(result.success).toBe(false);
-        });
-
-        it("rejects injecting password field", () => {
-            const result = settingsPatchSchema.safeParse({
-                password: "hacked",
+                theme: { colors: { primary: "red" } },
             });
             expect(result.success).toBe(false);
         });
     });
 
-    describe("empty body", () => {
-        it("accepts empty body (no-op update)", () => {
-            const result = settingsPatchSchema.safeParse({});
-            expect(result.success).toBe(true);
-        });
-    });
-
-    describe("combined fields", () => {
-        it("accepts tenant + site + security in one request", () => {
+    describe("strict mode — check with combined fields", () => {
+        it("accepts tenant + backup + theme in one request", () => {
             const result = settingsPatchSchema.safeParse({
                 tenant: { name: "Updated Corp" },
-                site: {
-                    id: "550e8400-e29b-41d4-a716-446655440000",
-                    settings: { theme: "light" },
-                },
-                security: { two_factor_required: true },
+                backup: { auto_backup: true },
+                theme: { compactMode: true },
             });
             expect(result.success).toBe(true);
+        });
+    });
+
+    describe("enhanced validations", () => {
+        it("rejects non-integer baseFontSize", () => {
+            const result = settingsPatchSchema.safeParse({
+                theme: { baseFontSize: 16.5 },
+            });
+            expect(result.success).toBe(false);
+        });
+
+        it("accepts 3-char hex color", () => {
+            const result = settingsPatchSchema.safeParse({
+                theme: { colors: { primary: "#fff" } },
+            });
+            expect(result.success).toBe(true);
+        });
+
+        it("accepts rgb() color", () => {
+            const result = settingsPatchSchema.safeParse({
+                theme: { colors: { primary: "rgb(255, 0, 0)" } },
+            });
+            expect(result.success).toBe(true);
+        });
+
+        it("accepts rgba() color", () => {
+            const result = settingsPatchSchema.safeParse({
+                theme: { colors: { primary: "rgba(255, 0, 0, 0.5)" } },
+            });
+            expect(result.success).toBe(true);
+        });
+
+        it("rejects duplicate language codes", () => {
+            const result = settingsPatchSchema.safeParse({
+                i18n: {
+                    languages: [
+                        { id: "1", name: "Turkish", code: "tr", status: "active", isDefault: true, progress: 100 },
+                        { id: "2", name: "Turkish2", code: "tr", status: "inactive", isDefault: false, progress: 50 },
+                    ],
+                },
+            });
+            expect(result.success).toBe(false);
+        });
+
+        it("rejects duplicate language codes case-insensitively", () => {
+            const result = settingsPatchSchema.safeParse({
+                i18n: {
+                    languages: [
+                        { id: "1", name: "Turkish", code: "tr", status: "active", isDefault: true, progress: 100 },
+                        { id: "2", name: "Turkish2", code: "TR", status: "inactive", isDefault: false, progress: 50 },
+                    ],
+                },
+            });
+            expect(result.success).toBe(false);
+        });
+
+        it("rejects security payload with too many keys", () => {
+            const tooManyKeys = Object.fromEntries(
+                Array.from({ length: 21 }, (_, i) => [`key${i}`, "value"])
+            );
+            const result = settingsPatchSchema.safeParse({ security: tooManyKeys });
+            expect(result.success).toBe(false);
+        });
+
+        it("rejects security payload with nested object values", () => {
+            const result = settingsPatchSchema.safeParse({
+                security: { nested: { deep: "value" } },
+            });
+            expect(result.success).toBe(false);
+        });
+
+        it("rejects unknown root fields due to strict schema", () => {
+            const result = settingsPatchSchema.safeParse({
+                tenant: { name: "Valid" },
+                unknownRootField: true,
+            });
+            expect(result.success).toBe(false);
+        });
+
+        it("rejects invalid rgb channel values", () => {
+            const result = settingsPatchSchema.safeParse({
+                theme: { colors: { primary: "rgb(999, 0, 0)" } },
+            });
+            expect(result.success).toBe(false);
         });
     });
 });

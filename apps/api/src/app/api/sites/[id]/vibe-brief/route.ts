@@ -5,6 +5,7 @@ import {
 } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -14,6 +15,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +30,7 @@ function toJsonObject(value: unknown): JsonObject {
 export async function POST(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const { id } = await ctxRoute.params;
     const body = await parseJson(req);
 
@@ -144,6 +147,6 @@ export async function POST(req: Request, ctxRoute: { params: Promise<{ id: strin
       }),
     );
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

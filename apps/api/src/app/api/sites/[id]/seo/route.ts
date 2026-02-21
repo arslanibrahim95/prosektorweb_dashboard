@@ -4,6 +4,7 @@ import {
 } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -13,6 +14,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +26,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const { id } = await ctxRoute.params;
 
     const { data, error } = await ctx.supabase
@@ -46,7 +49,7 @@ export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string
 
     return jsonOk(getSEOSettingsResponseSchema.parse(seoSettings));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
 
@@ -57,6 +60,7 @@ export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string
 export async function PUT(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const { id } = await ctxRoute.params;
     const body = await parseJson(req);
 
@@ -101,6 +105,6 @@ export async function PUT(req: Request, ctxRoute: { params: Promise<{ id: string
 
     return jsonOk(getSEOSettingsResponseSchema.parse(updatedSeo));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

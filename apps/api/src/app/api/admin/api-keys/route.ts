@@ -1,121 +1,50 @@
-import { NextRequest } from "next/server";
 import {
+    createAdminApiKeyRequestSchema,
+    createAdminApiKeyResponseSchema,
+    listAdminApiKeysQuerySchema,
+    listAdminApiKeysResponseSchema,
+} from "@prosektor/contracts";
+import {
+    asErrorBody,
+    asHeaders,
+    asStatus,
     HttpError,
+    mapPostgrestError,
     parseJson,
     jsonError,
     jsonOk,
+    zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
-import { enforceRateLimit, rateLimitAuthKey } from "@/server/rate-limit";
-import { getServerEnv } from "@/server/env";
+import { enforceAdminRateLimit } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_LIMIT = 100;
-const MAX_PAGE = 1000000;
-
-function parsePositiveIntParam(
-    value: string | null,
-    fallback: number,
-    max: number,
-    field: string
-): number {
-    if (value === null || value.trim() === "") {
-        return fallback;
-    }
-
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed) || parsed < 1) {
-        throw new HttpError(400, {
-            code: "VALIDATION_ERROR",
-            message: `${field} must be a positive integer`,
-        });
-    }
-
-    return Math.min(parsed, max);
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-        throw new HttpError(400, {
-            code: "VALIDATION_ERROR",
-            message: "Request body must be a JSON object",
-        });
-    }
-    return value as Record<string, unknown>;
-}
-
-// Validation schema for creating API key
-const createApiKeySchema = {
-    name: (val: unknown) => {
-        if (typeof val !== 'string' || val.length < 1 || val.length > 255) {
-            throw new HttpError(400, {
-                code: "VALIDATION_ERROR",
-                message: "Name must be between 1 and 255 characters",
-            });
-        }
-        return val;
-    },
-    permissions: (val: unknown) => {
-        if (val !== undefined) {
-            if (!Array.isArray(val) || !val.every((item) => typeof item === "string" && item.length > 0)) {
-                throw new HttpError(400, {
-                    code: "VALIDATION_ERROR",
-                    message: "Permissions must be a non-empty string array",
-                });
-            }
-            return val as string[];
-        }
-        return ['read'];
-    },
-    rate_limit: (val: unknown) => {
-        if (val !== undefined) {
-            const num = Number(val);
-            if (isNaN(num) || num < 1 || num > 10000) {
-                throw new HttpError(400, {
-                    code: "VALIDATION_ERROR",
-                    message: "Rate limit must be between 1 and 10000",
-                });
-            }
-            return num;
-        }
-        return 1000;
-    },
-    expires_at: (val: unknown) => {
-        if (val !== undefined && val !== null) {
-            const date = new Date(String(val));
-            if (isNaN(date.getTime())) {
-                throw new HttpError(400, {
-                    code: "VALIDATION_ERROR",
-                    message: "Invalid expires_at date",
-                });
-            }
-            return date.toISOString();
-        }
-        return null;
-    },
-};
-
 // GET /api/admin/api-keys - List all API keys for the tenant
-async function GET(req: NextRequest) {
+async function GET(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role, "Admin yetkisi gerekli");
 
-        const env = getServerEnv();
-        await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_api_keys", ctx.tenant.id, ctx.user.id),
-            env.dashboardReadRateLimit,
-            env.dashboardReadRateWindowSec,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_api_keys", "read");
 
         const { searchParams } = new URL(req.url);
-        const page = parsePositiveIntParam(searchParams.get("page"), 1, MAX_PAGE, "page");
-        const limit = parsePositiveIntParam(searchParams.get("limit"), 20, MAX_LIMIT, "limit");
+        const parsedQuery = listAdminApiKeysQuerySchema.safeParse({
+            page: searchParams.get("page") ?? undefined,
+            limit: searchParams.get("limit") ?? undefined,
+        });
+        if (!parsedQuery.success) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsedQuery.error),
+            });
+        }
+        const { page, limit } = parsedQuery.data;
         const offset = (page - 1) * limit;
         if (!Number.isSafeInteger(offset)) {
             throw new HttpError(400, {
@@ -134,20 +63,14 @@ async function GET(req: NextRequest) {
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 
-        if (error) {
-            console.error('Error fetching API keys:', error);
-            return jsonError({ code: 'FETCH_ERROR', message: 'Failed to fetch API keys' }, 500);
-        }
+        if (error) throw mapPostgrestError(error);
 
         // Get total count
         const { count, error: countError } = await ctx.admin
             .from('api_keys')
             .select('*', { count: 'exact', head: true })
             .eq('tenant_id', ctx.tenant.id);
-        if (countError) {
-            console.error('Error fetching API key count:', countError);
-            return jsonError({ code: 'FETCH_ERROR', message: 'Failed to fetch API key count' }, 500);
-        }
+        if (countError) throw mapPostgrestError(countError);
 
         // Transform keys - mask the full key
         const transformedKeys = (apiKeys || []).map((key: Record<string, unknown>) => ({
@@ -165,44 +88,39 @@ async function GET(req: NextRequest) {
             created_by: (key.created_by_user as Record<string, string>)?.email || 'Unknown',
         }));
 
-        return jsonOk({
+        const response = listAdminApiKeysResponseSchema.parse({
             items: transformedKeys,
             total: count || 0,
             page,
             limit,
             totalPages: Math.ceil((count || 0) / limit),
         });
+
+        return jsonOk(response, 200, rateLimitHeaders(rateLimit));
     } catch (error) {
-        console.error('API keys GET error:', error);
-        if (error instanceof HttpError) {
-            return jsonError(error.body, error.status);
-        }
-        return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500);
+        return jsonError(asErrorBody(error), asStatus(error), asHeaders(error));
     }
 }
 
 // POST /api/admin/api-keys - Create a new API key
-async function POST(req: NextRequest) {
+async function POST(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
 
         assertAdminRole(ctx.role, "Admin yetkisi gerekli");
 
-        await enforceRateLimit(
-            ctx.admin,
-            rateLimitAuthKey("admin_api_keys_write", ctx.tenant.id, ctx.user.id),
-            10,
-            60,
-        );
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_api_keys", "write");
 
-        const parsedBody = await parseJson(req);
-        const body = asRecord(parsedBody);
+        const parsedBody = createAdminApiKeyRequestSchema.safeParse(await parseJson(req));
+        if (!parsedBody.success) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsedBody.error),
+            });
+        }
 
-        // Validate and parse request body
-        const name = createApiKeySchema.name(body.name);
-        const permissions = createApiKeySchema.permissions(body.permissions);
-        const rate_limit = createApiKeySchema.rate_limit(body.rate_limit);
-        const expires_at = createApiKeySchema.expires_at(body.expires_at);
+        const { name, permissions, rate_limit, expires_at } = parsedBody.data;
 
         // Generate secure API key
         const crypto = await import('crypto');
@@ -227,13 +145,10 @@ async function POST(req: NextRequest) {
             .select()
             .single();
 
-        if (error) {
-            console.error('Error creating API key:', error);
-            return jsonError({ code: 'CREATE_ERROR', message: 'Failed to create API key' }, 500);
-        }
+        if (error) throw mapPostgrestError(error);
 
         // Return the full key only once - this is the only time it's visible
-        return jsonOk({
+        const response = createAdminApiKeyResponseSchema.parse({
             id: apiKey.id,
             name: apiKey.name,
             key_prefix: apiKey.key_prefix,
@@ -245,13 +160,11 @@ async function POST(req: NextRequest) {
             is_active: apiKey.is_active,
             created_at: apiKey.created_at,
             message: 'Save this API key - it will not be shown again',
-        }, 201);
+        });
+
+        return jsonOk(response, 201, rateLimitHeaders(rateLimit));
     } catch (error) {
-        console.error('API keys POST error:', error);
-        if (error instanceof HttpError) {
-            return jsonError(error.body, error.status);
-        }
-        return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500);
+        return jsonError(asErrorBody(error), asStatus(error), asHeaders(error));
     }
 }
 

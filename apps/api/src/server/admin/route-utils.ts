@@ -3,7 +3,7 @@ import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, type RateLimitResult } from "@/server/rate-limit";
 import type { AuthContext } from "@/server/auth/context";
 
-export type AdminRateLimitPreset = "read" | "search" | "export";
+export type AdminRateLimitPreset = "read" | "search" | "export" | "write";
 
 export interface AdminRateLimitConfig {
   limit: number;
@@ -21,6 +21,9 @@ function resolveRateLimitConfig(
       limit: env.dashboardReadRateLimit,
       windowSeconds: env.dashboardReadRateWindowSec,
     };
+  }
+  if (input === "write") {
+    return { limit: 30, windowSeconds: 3600 };
   }
   if (input === "search") {
     return {

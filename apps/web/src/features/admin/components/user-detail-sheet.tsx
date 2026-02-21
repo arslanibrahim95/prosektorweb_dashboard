@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
     Sheet,
     SheetContent,
@@ -19,6 +20,7 @@ import {
     Monitor,
     Edit,
 } from 'lucide-react';
+import { useAdminLogs, useAdminSessions } from '@/hooks/use-admin';
 import type { AdminUser } from '@/types/admin';
 import type { UserRole } from '@prosektor/contracts';
 
@@ -62,53 +64,45 @@ function formatDate(dateString: string) {
     }).format(date);
 }
 
-// Mock activity data
-const mockActivities = [
-    {
-        id: '1',
-        action: 'Sayfa oluşturdu',
-        resource: 'Hakkımızda Sayfası',
-        timestamp: '2026-02-13T14:30:00Z',
-    },
-    {
-        id: '2',
-        action: 'Modül güncelledi',
-        resource: 'İletişim Formu',
-        timestamp: '2026-02-13T12:15:00Z',
-    },
-    {
-        id: '3',
-        action: 'Kullanıcı ekledi',
-        resource: 'Yeni Editör',
-        timestamp: '2026-02-13T10:00:00Z',
-    },
-    {
-        id: '4',
-        action: 'Ayarları değiştirdi',
-        resource: 'Site Ayarları',
-        timestamp: '2026-02-12T16:45:00Z',
-    },
-];
+interface AdminLogItem {
+    id: string;
+    actor_id: string | null;
+    action: string;
+    entity_type: string;
+    entity_id: string | null;
+    created_at: string;
+    meta: Record<string, unknown> | null;
+}
 
-// Mock session data
-const mockSessions = [
-    {
-        id: '1',
-        device: 'Chrome on macOS',
-        ip: '192.168.1.100',
-        location: 'İstanbul, Türkiye',
-        lastActive: '2026-02-13T18:30:00Z',
-        isCurrent: true,
-    },
-    {
-        id: '2',
-        device: 'Safari on iPhone',
-        ip: '192.168.1.101',
-        location: 'İstanbul, Türkiye',
-        lastActive: '2026-02-13T12:00:00Z',
-        isCurrent: false,
-    },
-];
+interface AdminLogsResponse {
+    items?: AdminLogItem[];
+    data?: AdminLogItem[];
+}
+
+interface AdminSessionItem {
+    id: string;
+    user_id?: string;
+    user_email?: string;
+    device?: string;
+    browser?: string;
+    ip_address?: string;
+    location?: string;
+    created_at: string;
+    last_activity?: string;
+    is_current?: boolean;
+}
+
+interface AdminSessionsResponse {
+    items?: AdminSessionItem[];
+}
+
+function humanizeAction(action: string): string {
+    return action
+        .split('_')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+}
 
 export function UserDetailSheet({
     open,
@@ -116,14 +110,89 @@ export function UserDetailSheet({
     user,
     onEdit,
 }: UserDetailSheetProps) {
-    if (!user) return null;
+    const { data: logsData, isLoading: logsLoading } = useAdminLogs({
+        page: 1,
+        limit: 100,
+    });
+    const { data: sessionsData, isLoading: sessionsLoading } = useAdminSessions({
+        page: 1,
+        limit: 100,
+    });
+    const userId = user?.id ?? null;
+    const userEmail = (user?.email ?? '').toLowerCase();
 
-    const initials = user.name
+    const activities = useMemo(() => {
+        if (!userId || !userEmail) return [];
+
+        const logsPayload = logsData as AdminLogsResponse | undefined;
+        const logs = logsPayload?.items ?? logsPayload?.data ?? [];
+
+        return logs
+            .filter((log) => {
+                const metaUserId = typeof log.meta?.user_id === 'string' ? log.meta.user_id : null;
+                const metaEmailRaw = typeof log.meta?.email === 'string' ? log.meta.email : null;
+                const metaEmail = metaEmailRaw ? metaEmailRaw.toLowerCase() : null;
+                return (
+                    log.actor_id === userId
+                    || log.entity_id === userId
+                    || metaUserId === userId
+                    || metaEmail === userEmail
+                );
+            })
+            .slice(0, 10)
+            .map((log) => ({
+                id: log.id,
+                action: humanizeAction(log.action),
+                resource: log.entity_type
+                    ? `${log.entity_type}${log.entity_id ? ` • ${log.entity_id}` : ''}`
+                    : 'Sistem',
+                timestamp: log.created_at,
+            }));
+    }, [logsData, userEmail, userId]);
+
+    const sessions = useMemo(() => {
+        if (!userId || !userEmail) return [];
+
+        const sessionsPayload = sessionsData as AdminSessionsResponse | undefined;
+        const rawSessions = sessionsPayload?.items ?? [];
+
+        return rawSessions
+            .filter((session) => {
+                const sessionEmail = session.user_email?.toLowerCase();
+                return (
+                    session.user_id === userId
+                    || session.id === userId
+                    || sessionEmail === userEmail
+                );
+            })
+            .slice(0, 10)
+            .map((session) => {
+                const device = [session.device, session.browser]
+                    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+                    .join(' / ')
+                    || 'Bilinmeyen Cihaz';
+
+                return {
+                    id: session.id,
+                    device,
+                    ip: session.ip_address || '-',
+                    location: session.location || 'Bilinmiyor',
+                    lastActive: session.last_activity || session.created_at,
+                    isCurrent: session.is_current ?? false,
+                };
+            });
+    }, [sessionsData, userEmail, userId]);
+
+    const initials = user?.name
+        ? user.name
         .split(' ')
         .map((n) => n[0])
         .join('')
         .toUpperCase()
-        .slice(0, 2);
+        .slice(0, 2)
+        : 'U';
+
+    if (!user) return null;
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -259,7 +328,13 @@ export function UserDetailSheet({
                                 Aktivite Geçmişi
                             </h4>
                             <div className="space-y-3">
-                                {mockActivities.map((activity) => (
+                                {logsLoading && (
+                                    <p className="text-xs text-muted-foreground">Aktiviteler yükleniyor...</p>
+                                )}
+                                {!logsLoading && activities.length === 0 && (
+                                    <p className="text-xs text-muted-foreground">Aktivite kaydı bulunamadı.</p>
+                                )}
+                                {activities.map((activity) => (
                                     <div
                                         key={activity.id}
                                         className="flex items-start gap-3 rounded-md border border-border p-3"
@@ -290,7 +365,13 @@ export function UserDetailSheet({
                                 Oturum Bilgileri
                             </h4>
                             <div className="space-y-3">
-                                {mockSessions.map((session) => (
+                                {sessionsLoading && (
+                                    <p className="text-xs text-muted-foreground">Oturumlar yükleniyor...</p>
+                                )}
+                                {!sessionsLoading && sessions.length === 0 && (
+                                    <p className="text-xs text-muted-foreground">Oturum kaydı bulunamadı.</p>
+                                )}
+                                {sessions.map((session) => (
                                     <div
                                         key={session.id}
                                         className="rounded-md border border-border p-3"

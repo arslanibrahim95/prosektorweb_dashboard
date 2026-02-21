@@ -18,8 +18,8 @@ export function ABTestForm({
     onSuccess,
     onCancel
 }: ABTestFormProps) {
-    const { createTest, loading: creating } = useCreateABTest()
-    const { updateTest, loading: updating } = useUpdateABTest()
+    const createMutation = useCreateABTest()
+    const updateMutation = useUpdateABTest()
 
     const [formData, setFormData] = useState<CreateABTestForm>({
         name: initialData?.name || '',
@@ -41,7 +41,7 @@ export function ABTestForm({
         type: 'conversion'
     })
 
-    const isLoading = creating || updating
+    const isLoading = createMutation.isPending || updateMutation.isPending
     const isEditing = !!testId
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -49,9 +49,9 @@ export function ABTestForm({
 
         try {
             if (isEditing) {
-                await updateTest(testId, formData)
+                await updateMutation.mutateAsync({ id: testId, formData })
             } else {
-                await createTest(formData)
+                await createMutation.mutateAsync(formData)
             }
             onSuccess?.()
         } catch (error) {

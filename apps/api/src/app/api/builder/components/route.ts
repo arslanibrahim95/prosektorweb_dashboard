@@ -1,6 +1,12 @@
-import { NextResponse } from 'next/server';
+import {
+    builderComponentSchema,
+    createBuilderComponentRequestSchema,
+    listBuilderComponentsQuerySchema,
+    listBuilderComponentsResponseSchema,
+} from "@prosektor/contracts";
 import {
     asErrorBody,
+    asHeaders,
     asStatus,
     HttpError,
     jsonError,
@@ -10,6 +16,7 @@ import {
     zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,9 +33,21 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
+        await enforceAuthRouteRateLimit(ctx, req);
         const { searchParams } = new URL(req.url);
-        const category = searchParams.get('category') || undefined;
-        const search = searchParams.get('search') || undefined;
+        const parsedQuery = listBuilderComponentsQuerySchema.safeParse({
+            category: searchParams.get("category") ?? undefined,
+            search: searchParams.get("search") ?? undefined,
+        });
+        if (!parsedQuery.success) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsedQuery.error),
+            });
+        }
+
+        const { category, search } = parsedQuery.data;
 
         let query = ctx.supabase
             .from('component_library')
@@ -50,12 +69,13 @@ export async function GET(req: Request) {
             throw mapPostgrestError(error);
         }
 
-        return jsonOk({
-            items: data || [],
-            total: data?.length || 0,
+        const response = listBuilderComponentsResponseSchema.parse({
+            items: (data ?? []).map((item) => builderComponentSchema.parse(item)),
+            total: data?.length ?? 0,
         });
+        return jsonOk(response);
     } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err));
+        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
     }
 }
 
@@ -67,21 +87,18 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
-        const body = await parseJson(req) as Record<string, unknown>;
-
-        // Validate request
-        const name = body.name as string | undefined;
-        const category = body.category as string | undefined;
-        const component_type = body.component_type as string | undefined;
-        const schema = body.schema as Record<string, unknown> | undefined;
-        const default_props = body.default_props as Record<string, unknown> | undefined;
-
-        if (!name || !category || !component_type) {
+        await enforceAuthRouteRateLimit(ctx, req);
+        const body = await parseJson(req);
+        const parsedBody = createBuilderComponentRequestSchema.safeParse(body);
+        if (!parsedBody.success) {
             throw new HttpError(400, {
                 code: "VALIDATION_ERROR",
-                message: "name, category ve component_type zorunludur",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsedBody.error),
             });
         }
+
+        const { name, category, component_type, schema, default_props, thumbnail_url, icon } = parsedBody.data;
 
         const { data, error } = await ctx.supabase
             .from('component_library')
@@ -92,6 +109,8 @@ export async function POST(req: Request) {
                 component_type,
                 schema: schema || {},
                 default_props: default_props || {},
+                thumbnail_url: thumbnail_url ?? null,
+                icon: icon ?? null,
                 is_system: false,
             })
             .select()
@@ -101,8 +120,8 @@ export async function POST(req: Request) {
             throw mapPostgrestError(error);
         }
 
-        return jsonOk(data);
+        return jsonOk(builderComponentSchema.parse(data));
     } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err));
+        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
     }
 }

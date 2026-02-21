@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createUserClientFromBearer, createAdminClient, getBearerToken } from '@/server/supabase';
 import { createCustomTokenFromSupabase } from '@/server/auth/dual-auth';
 import { createError } from '@/server/errors';
-import { asErrorBody, asStatus, jsonError, jsonOk } from '@/server/api/http';
+import { asErrorBody, asHeaders, asStatus, jsonError, jsonOk } from '@/server/api/http';
 import { enforceRateLimit, getClientIp, hashIp, rateLimitAuthKey } from '@/server/rate-limit';
 import { assertAllowedWebOrigin, getAllowedCorsOrigin } from '@/server/security/origin';
 import { z } from 'zod';
@@ -18,6 +18,22 @@ import { z } from 'zod';
 const tokenExchangeRequestSchema = z.object({
   rememberMe: z.boolean().optional().default(false),
 });
+
+function mergeResponseHeaders(...headersList: Array<HeadersInit | undefined>): HeadersInit | undefined {
+  const merged = new Headers();
+  let hasAny = false;
+
+  for (const headers of headersList) {
+    if (!headers) continue;
+    hasAny = true;
+    const normalized = new Headers(headers);
+    normalized.forEach((value, key) => {
+      merged.set(key, value);
+    });
+  }
+
+  return hasAny ? merged : undefined;
+}
 
 /**
  * POST /api/auth/token
@@ -41,10 +57,18 @@ const tokenExchangeRequestSchema = z.object({
  *   }
  */
 export async function POST(req: NextRequest) {
+  let corsHeaders: HeadersInit | undefined;
+
   try {
     const admin = createAdminClient();
     const origin = req.headers.get('origin');
-    await assertAllowedWebOrigin(origin, admin);
+    const allowedOrigin = await assertAllowedWebOrigin(origin, admin);
+    corsHeaders = allowedOrigin
+      ? {
+          'Access-Control-Allow-Origin': allowedOrigin,
+          Vary: 'Origin',
+        }
+      : undefined;
 
     // SECURITY: Rate limit by IP address first (before authentication)
     // This prevents brute force attacks on the token exchange endpoint
@@ -131,7 +155,7 @@ export async function POST(req: NextRequest) {
     );
 
     // SECURITY: Use jsonOk to include security headers (X-Content-Type-Options, etc.)
-    return jsonOk(tokenResponse);
+    return jsonOk(tokenResponse, 200, corsHeaders);
   } catch (err) {
     // SECURITY: Log failed token exchange attempts for monitoring
     // SECURITY: No raw IP in logs — use hashed value
@@ -145,7 +169,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(
+      asErrorBody(err),
+      asStatus(err),
+      mergeResponseHeaders(asHeaders(err), corsHeaders),
+    );
   }
 }
 

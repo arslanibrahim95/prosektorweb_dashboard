@@ -6,6 +6,7 @@ import {
 } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -15,6 +16,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +24,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const url = new URL(req.url);
 
     const parsedQuery = listPagesQuerySchema.safeParse({
@@ -52,13 +55,14 @@ export async function GET(req: Request) {
 
     return jsonOk(listPagesResponseSchema.parse(response));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
 
 export async function POST(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const body = await parseJson(req);
 
     const parsed = createPageRequestSchema.safeParse(body);
@@ -89,6 +93,6 @@ export async function POST(req: Request) {
     if (error) throw mapPostgrestError(error);
     return jsonOk(pageSchema.parse(data));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

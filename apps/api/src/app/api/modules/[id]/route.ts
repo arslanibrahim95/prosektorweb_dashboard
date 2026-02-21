@@ -1,6 +1,7 @@
 import { moduleInstanceSchema, updateModuleInstanceRequestSchema } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -10,6 +11,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,6 +19,7 @@ export const dynamic = "force-dynamic";
 export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const { id } = await ctxRoute.params;
     const body = await parseJson(req);
 
@@ -84,6 +87,6 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
 
     return jsonOk(moduleInstanceSchema.parse(data));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

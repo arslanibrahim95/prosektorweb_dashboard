@@ -12,6 +12,8 @@ import {
 import {
     updateTenantMemberRequestSchema,
 } from "@prosektor/contracts";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { canAssignRole } from "@/server/admin/utils";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
 import { enforceRateLimit, rateLimitAuthKey } from "@/server/rate-limit";
@@ -24,6 +26,90 @@ function safeUserName(email?: string, meta?: Record<string, unknown> | null): st
     const nameCandidate = meta?.name?.toString().trim();
     if (nameCandidate && nameCandidate.length > 0) return nameCandidate;
     return email;
+}
+
+interface TenantMemberRow {
+    id: string;
+    tenant_id: string;
+    user_id: string;
+    role: string;
+}
+
+function assertCanManageExistingMember(
+    actorRole: string,
+    actorUserId: string,
+    target: Pick<TenantMemberRow, "user_id" | "role">,
+): void {
+    if (target.user_id === actorUserId) {
+        throw new HttpError(400, {
+            code: "BAD_REQUEST",
+            message: "Kendi üyelik kaydınızı bu uç noktadan değiştiremezsiniz.",
+        });
+    }
+
+    if (!canAssignRole(actorRole, target.role)) {
+        throw new HttpError(403, {
+            code: "FORBIDDEN",
+            message: "Bu kullanıcıyı yönetmek için yetkiniz yok.",
+        });
+    }
+}
+
+function assertCanAssignTargetRole(actorRole: string, targetRole: string): void {
+    if (!canAssignRole(actorRole, targetRole)) {
+        throw new HttpError(403, {
+            code: "FORBIDDEN",
+            message: "Kendi yetki seviyenize eşit veya daha yüksek bir rol atayamazsınız.",
+        });
+    }
+}
+
+async function getOwnerCountForTenant(admin: SupabaseClient, tenantId: string): Promise<number> {
+    const { count, error } = await admin
+        .from("tenant_members")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .eq("role", "owner");
+
+    if (error) throw mapPostgrestError(error);
+    return count ?? 0;
+}
+
+async function assertOwnerIntegrityOnRoleChange(
+    admin: SupabaseClient,
+    tenantId: string,
+    existingRole: string,
+    nextRole: string,
+): Promise<void> {
+    if (existingRole !== "owner" || nextRole === "owner") {
+        return;
+    }
+
+    const ownerCount = await getOwnerCountForTenant(admin, tenantId);
+    if (ownerCount <= 1) {
+        throw new HttpError(409, {
+            code: "CONFLICT",
+            message: "Workspace en az bir owner içermelidir.",
+        });
+    }
+}
+
+async function assertOwnerIntegrityOnDelete(
+    admin: SupabaseClient,
+    tenantId: string,
+    existingRole: string,
+): Promise<void> {
+    if (existingRole !== "owner") {
+        return;
+    }
+
+    const ownerCount = await getOwnerCountForTenant(admin, tenantId);
+    if (ownerCount <= 1) {
+        throw new HttpError(409, {
+            code: "CONFLICT",
+            message: "Son owner silinemez.",
+        });
+    }
 }
 
 export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
@@ -117,6 +203,14 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
 
         if (existingError) throw mapPostgrestError(existingError);
         if (!existing) throw new HttpError(404, { code: "NOT_FOUND", message: "User not found" });
+        assertCanManageExistingMember(ctx.role, ctx.user.id, existing as TenantMemberRow);
+        assertCanAssignTargetRole(ctx.role, parsed.data.role);
+        await assertOwnerIntegrityOnRoleChange(
+            ctx.admin,
+            ctx.tenant.id,
+            (existing as TenantMemberRow).role,
+            parsed.data.role,
+        );
 
         const { data: updated, error: updateError } = await ctx.admin
             .from("tenant_members")
@@ -173,6 +267,8 @@ export async function DELETE(req: Request, ctxRoute: { params: Promise<{ id: str
 
         if (existingError) throw mapPostgrestError(existingError);
         if (!existing) throw new HttpError(404, { code: "NOT_FOUND", message: "User not found" });
+        assertCanManageExistingMember(ctx.role, ctx.user.id, existing as TenantMemberRow);
+        await assertOwnerIntegrityOnDelete(ctx.admin, ctx.tenant.id, (existing as TenantMemberRow).role);
 
         const { error: deleteError } = await ctx.admin
             .from("tenant_members")

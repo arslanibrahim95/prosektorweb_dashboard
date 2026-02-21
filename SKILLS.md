@@ -254,6 +254,52 @@ Her iş bitiminde:
 
 ---
 
+## 🚀 Skill 12: Pipeline Orchestration
+
+### Tetikleyici
+Yeni feature, sayfa, veya özellik geliştirme talebi
+
+### Komut
+```
+/pipeline-orchestrator <work item açıklaması>
+```
+
+### Ne Yapar?
+UX → UI → CSS → Frontend → Backend → Code Review → Test → QA
+zincirini otomatik olarak sırayla çalıştırır.
+
+### Code Review Gate
+Kritik veya Yüksek bulgu varsa pipeline DURUR, kullanıcıya bildirir.
+
+### QA Zorunluluğu
+QA `approved` olmadan hiçbir work item `done` sayılmaz.
+
+---
+
+## 🎯 Skill 13: Bireysel Agent Tetikleme
+
+### Tetikleyici
+Tek bir pipeline aşamasını çalıştırma talebi
+
+### Komutlar
+```
+/ux-agent      → IA + ekran spec + state tanımları
+/ui-agent      → Component spec + wireframe
+/css-agent     → Token değişim planı + dark/light
+/frontend-agent → Next.js sayfa + React component implementasyonu
+/backend-agent  → DB şema + RLS + API routes
+/code-reviewer  → Diff analizi + güvenlik + regresyon riski
+/test-engineer  → Unit/integration/E2E test yazımı
+/qa-agent      → DoD checklist + final onay
+```
+
+### Ne Zaman Kullan?
+- Tek bir aşamayı yeniden çalıştırman gerektiğinde
+- Pipeline'ın ortasında bir düzeltme yaptıktan sonra
+- Sadece o aşamayı test etmek istediğinde
+
+---
+
 ## 🔗 Skill Referansları
 
 | Skill | İlgili Dosya |

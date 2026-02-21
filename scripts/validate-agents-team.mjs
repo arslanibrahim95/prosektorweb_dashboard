@@ -12,7 +12,7 @@ const expectedAgents = [
   { name: "CSS/Design System Agent", tool: "OpenCode", model: "GLM5", trigger: "/css-agent", phase: "planning" },
   { name: "Frontend Agent", tool: "OpenCode", model: "Kimi 2.5", trigger: "/frontend-agent", phase: "execution" },
   { name: "Backend Agent", tool: "Codex", model: "5.3 High", trigger: "/backend-agent", phase: "execution" },
-  { name: "Code Reviewer", tool: "MiniMax", model: "2.5", trigger: "/code-reviewer", phase: "verification" },
+  { name: "Code Reviewer", tool: "OpenCode", model: "Kimi 2.5", trigger: "/code-reviewer", phase: "verification" },
   { name: "Test Engineer", tool: "Codex", model: "5.3 High", trigger: "/test-engineer", phase: "verification" },
   { name: "QA Agent", tool: "Opus", model: "4.6", trigger: "/qa-agent", phase: "verification" },
 ];

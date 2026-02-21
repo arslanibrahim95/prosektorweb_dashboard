@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { SEARCH_MIN_CHARS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+
+export type InboxStatusFilter = 'all' | 'unread' | 'read';
 
 export interface InboxFilterBarProps {
     /** Current search query */
@@ -21,8 +24,12 @@ export interface InboxFilterBarProps {
     onDateRangeChange?: (range: { from: string; to: string } | null) => void;
     /** Show date range picker */
     showDateRange?: boolean;
-    /** Unread count */
+    /** Unread count (used for tab badge) */
     unreadCount?: number;
+    /** Active status filter */
+    statusFilter?: InboxStatusFilter;
+    /** Status filter change handler */
+    onStatusFilterChange?: (status: InboxStatusFilter) => void;
     /** Export handler */
     onExport?: () => void;
     /** Bulk mark as read handler */
@@ -33,6 +40,12 @@ export interface InboxFilterBarProps {
     children?: React.ReactNode;
 }
 
+const STATUS_TABS: { value: InboxStatusFilter; label: string }[] = [
+    { value: 'all', label: 'Tümü' },
+    { value: 'unread', label: 'Okunmadı' },
+    { value: 'read', label: 'Okundu' },
+];
+
 export function InboxFilterBar({
     searchQuery,
     onSearchChange,
@@ -40,6 +53,9 @@ export function InboxFilterBar({
     dateRange,
     onDateRangeChange,
     showDateRange = true,
+    unreadCount = 0,
+    statusFilter = 'all',
+    onStatusFilterChange,
     onExport,
     onBulkMarkRead,
     selectedCount = 0,
@@ -49,6 +65,31 @@ export function InboxFilterBar({
 
     return (
         <>
+            {/* Status Tabs */}
+            {onStatusFilterChange && (
+                <div className="flex items-center gap-1 p-1 rounded-lg bg-muted/30 border border-border/50 self-start w-fit">
+                    {STATUS_TABS.map((tab) => (
+                        <button
+                            key={tab.value}
+                            onClick={() => onStatusFilterChange(tab.value)}
+                            className={cn(
+                                'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                                statusFilter === tab.value
+                                    ? 'bg-background text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground',
+                            )}
+                        >
+                            {tab.label}
+                            {tab.value === 'unread' && unreadCount > 0 && (
+                                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-warning/20 text-warning text-[10px] font-semibold flex items-center justify-center">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* Filters */}
             <div className="flex gap-4 flex-wrap p-4 rounded-lg bg-muted/30 border border-border/50">
                 <div className="relative flex-1 max-w-sm">

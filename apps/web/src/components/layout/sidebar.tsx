@@ -24,8 +24,9 @@ import {
     PanelLeftOpen,
     Shield,
     Database,
+    ArrowLeft,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSidebar } from './app-shell';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -33,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { useSite } from '@/components/site/site-provider';
 import { useUnreadCount } from '@/hooks/use-unread-count';
 import { useAuth } from '@/components/auth/auth-provider';
+import { adminNavItems, superAdminNavItems } from '@/features/admin/components/admin-sidebar';
 
 export interface NavItem {
     label: string;
@@ -108,7 +110,7 @@ function NavItemComponent({ item, depth = 0, collapsed = false, unreadCount = 0 
     const [isExpanded, setIsExpanded] = useState(
         item.children?.some(child => pathname.startsWith(child.href)) || false
     );
-    const { close } = useSidebar();
+    const { closeMobile } = useSidebar();
 
     const isActive = pathname === item.href ||
         (item.children && item.children.some(child => pathname.startsWith(child.href)));
@@ -124,10 +126,10 @@ function NavItemComponent({ item, depth = 0, collapsed = false, unreadCount = 0 
                 type="button"
                 onClick={() => !collapsed && setIsExpanded(!isExpanded)}
                 className={cn(
-                    'w-full flex items-center rounded-lg text-sm font-medium transition-all duration-200',
+                    'w-full flex items-center rounded-xl text-sm font-medium transition-all duration-300 ease-[var(--ease-spring)] hover-lift',
                     collapsed ? 'justify-center px-3 py-2.5' : 'justify-between px-3 py-2.5',
                     isActive
-                        ? 'bg-white/10 text-white'
+                        ? 'bg-white/10 text-white border border-white/5 shadow-lg'
                         : 'text-white/75 hover:bg-white/[0.06] hover:text-white/90'
                 )}
             >
@@ -197,13 +199,13 @@ function NavItemComponent({ item, depth = 0, collapsed = false, unreadCount = 0 
     const linkContent = (
         <Link
             href={item.href}
-            onClick={close}
+            onClick={closeMobile}
             className={cn(
-                'group flex items-center rounded-lg text-sm font-medium transition-all duration-200 relative',
+                'group flex items-center rounded-xl text-sm font-medium transition-all duration-300 ease-[var(--ease-spring)] relative hover-lift',
                 collapsed ? 'justify-center px-3 py-2.5' : 'gap-3 px-3 py-2.5',
                 depth > 0 && !collapsed ? 'py-2' : '',
                 pathname === item.href
-                    ? 'bg-sidebar-primary/15 text-white'
+                    ? 'bg-sidebar-primary/15 text-white border border-white/5 shadow-lg'
                     : 'text-white/75 hover:bg-white/[0.06] hover:text-white/90'
             )}
         >
@@ -248,7 +250,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
-    const { isOpen } = useSidebar();
+    const { isMobileOpen } = useSidebar();
     const site = useSite();
     const { data: unreadCount = 0 } = useUnreadCount(site.currentSiteId);
     const auth = useAuth();
@@ -256,18 +258,41 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
     // Check if user has admin or owner role
     const userRole = auth.me?.role;
     const isAdmin = userRole === 'owner' || userRole === 'admin' || userRole === 'super_admin';
+    const isSuperAdmin = userRole === 'super_admin';
+    const pathname = usePathname();
+    const isAdminPath = pathname.startsWith('/admin');
+
+    const currentNavItems = useMemo(() => {
+        if (isAdminPath) {
+            const items = isSuperAdmin ? [...adminNavItems, ...superAdminNavItems] : adminNavItems;
+            return items;
+        }
+        if (isSuperAdmin) {
+            return navItems;
+        }
+
+        return navItems.map((item) => {
+            if (item.href !== '/settings' || !item.children) {
+                return item;
+            }
+
+            return {
+                ...item,
+                children: item.children.filter((child) => child.href !== '/settings/supabase'),
+            };
+        });
+    }, [isAdminPath, isSuperAdmin]);
 
     return (
         <TooltipProvider>
             <aside className={cn(
-                'fixed top-0 left-0 z-50 h-screen gradient-sidebar transition-all duration-300 ease-[var(--ease-smooth)]',
+                'fixed top-4 left-4 z-50 h-[calc(100vh-32px)] glass-dark bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[24px] overflow-hidden smooth-shadow-xl transition-all duration-500 ease-[var(--ease-spring)]',
                 'lg:translate-x-0',
-                collapsed ? 'w-[var(--sidebar-width-collapsed)]' : 'w-[var(--sidebar-width)]',
-                isOpen ? 'translate-x-0' : '-translate-x-full'
+                collapsed ? 'w-[var(--sidebar-width-collapsed)]' : 'w-[calc(var(--sidebar-width)-16px)]',
+                isMobileOpen ? 'translate-x-0' : '-translate-x-[calc(100%+16px)]'
             )}>
-                {/* Logo */}
                 <div className={cn(
-                    'flex h-[var(--topbar-height)] items-center',
+                    'flex h-[var(--topbar-height)] items-center mt-2',
                     collapsed ? 'justify-center px-3' : 'px-5'
                 )}>
                     <Link href="/home" className="flex items-center gap-3 group">
@@ -289,13 +314,32 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
                 {/* Navigation */}
                 <ScrollArea className="h-[calc(100vh-var(--topbar-height)-var(--spacing-dashboard-content-y-mobile)-60px)] py-[var(--spacing-dashboard-content-y-mobile)] px-3">
                     <nav className="space-y-1">
-                        {navItems.map((item) => (
+                        {isAdminPath && (
+                            <div className="mb-4">
+                                <NavItemComponent
+                                    item={{
+                                        label: 'Dashboard\'a Dön',
+                                        href: '/home',
+                                        icon: <ArrowLeft className={NAV_ICON_SIZE_CLASS} />,
+                                    }}
+                                    collapsed={collapsed}
+                                    unreadCount={0}
+                                />
+                                <div className="mt-4 mx-1 h-px bg-white/[0.06]" />
+                                {!collapsed && (
+                                    <div className="px-3 py-2">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Yönetici Paneli</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {currentNavItems.map((item) => (
                             <NavItemComponent key={item.href} item={item} collapsed={collapsed} unreadCount={unreadCount} />
                         ))}
                     </nav>
 
-                    {/* Admin Panel Link - Only visible to owner/admin */}
-                    {isAdmin && (
+                    {/* Admin Panel Link - Only visible to owner/admin and when NOT on admin path */}
+                    {isAdmin && !isAdminPath && (
                         <>
                             {/* Separator before admin link */}
                             <div className="my-4 mx-1 h-px bg-white/[0.06]" />

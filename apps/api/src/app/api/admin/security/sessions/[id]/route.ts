@@ -6,6 +6,7 @@ import {
     jsonError,
     jsonOk,
 } from "@/server/api/http";
+import { canAssignRole } from "@/server/admin/utils";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
@@ -48,6 +49,14 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             throw new HttpError(400, {
                 code: "BAD_REQUEST",
                 message: "Kendi oturumunuzu sonlandıramazsınız",
+            });
+        }
+
+        // Role hierarchy guard: actor cannot terminate peers/higher roles.
+        if (!canAssignRole(ctx.role, member.role)) {
+            throw new HttpError(403, {
+                code: "FORBIDDEN",
+                message: "Bu kullanıcının oturumlarını sonlandırmak için yetkiniz yok.",
             });
         }
 

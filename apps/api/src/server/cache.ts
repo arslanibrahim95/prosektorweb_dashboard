@@ -328,7 +328,7 @@ export async function getOrSetCachedValue<T>(
   key: string,
   ttlSeconds: number,
   loader: () => Promise<T>,
-  timeoutMs: number = 30000,
+  timeoutMs: number = IN_FLIGHT_TIMEOUT_MS,
 ): Promise<T> {
   const cache = getCacheInstance();
   const cached = cache.get<T>(key);

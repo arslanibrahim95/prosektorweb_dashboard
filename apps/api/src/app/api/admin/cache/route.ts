@@ -2,6 +2,7 @@ import {
     HttpError,
     jsonOk,
     mapPostgrestError,
+    parseJson,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
@@ -101,7 +102,7 @@ export const PATCH = withAdminErrorHandling(async (req: Request) => {
 
         const rateLimit = await enforceAdminRateLimit(ctx, "admin_cache", "read");
 
-        const body = await req.json();
+        const body = await parseJson(req);
         const parsed = cacheSettingsSchema.safeParse(body);
 
         if (!parsed.success) {

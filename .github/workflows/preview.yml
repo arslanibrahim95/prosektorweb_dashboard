@@ -35,23 +35,29 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
-      # Uncomment when Vercel is configured
-      # - name: Deploy to Vercel Preview
-      #   uses: amondnet/vercel-action@v25
-      #   with:
-      #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
-      #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-      #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
-      #     scope: ${{ secrets.VERCEL_ORG_ID }}
+      - name: Deploy to Vercel Preview
+        id: vercel_preview
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' }}
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-args: "--yes"
 
       - name: Comment on PR
         uses: actions/github-script@v7
         with:
           script: |
+            const previewUrl = `${{ steps.vercel_preview.outputs['preview-url'] }}`.trim();
+            const body = previewUrl
+              ? `✅ Preview deploy tamamlandi: ${previewUrl}`
+              : '✅ Build başarılı! Preview deploy için Vercel secrets tanımlanmalı.';
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '✅ Build başarılı! Preview deploy için Vercel integration gerekli.'
+              body
             })

@@ -2,16 +2,37 @@ import {
     HttpError,
     jsonOk,
     mapPostgrestError,
+    parseJson,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
 import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
 import { rateLimitHeaders } from "@/server/rate-limit";
+import { cacheStore, getOrSetCachedValue } from "@/server/cache";
 import { z } from "zod";
 import { isIP } from "net";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const IP_BLOCKS_CACHE_TTL_SEC = 60;
+const IP_BLOCKS_CACHE_PREFIX = "admin-ip-blocks";
+
+function getIpBlocksCacheKey(tenantId: string, page: number, limit: number): string {
+    return [IP_BLOCKS_CACHE_PREFIX, tenantId, page, limit].join("|");
+}
+
+function clearIpBlocksCacheForTenant(tenantId: string): number {
+    const prefix = `${IP_BLOCKS_CACHE_PREFIX}|${tenantId}|`;
+    let cleared = 0;
+
+    for (const key of cacheStore.keys()) {
+        if (key.startsWith(prefix) && cacheStore.delete(key)) {
+            cleared += 1;
+        }
+    }
+
+    return cleared;
+}
 
 // Check if string is valid CIDR notation (IPv4)
 function isIpv4Cidr(value: string): boolean {
@@ -71,54 +92,55 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
         const limit = Math.min(Math.max(1, parseInt(url.searchParams.get("limit") || "20", 10)), 100);
         const offset = (page - 1) * limit;
+        const cacheKey = getIpBlocksCacheKey(ctx.tenant.id, page, limit);
 
-        // Get IP blocks
-        const { data: blocks, error, count } = await ctx.admin
-            .from("ip_blocks")
-            .select("id, ip_address, reason, blocked_until, created_by, created_at", { count: "exact" })
-            .eq("tenant_id", ctx.tenant.id)
-            .order("created_at", { ascending: false })
-            .range(offset, offset + limit - 1);
+        const payload = await getOrSetCachedValue(cacheKey, IP_BLOCKS_CACHE_TTL_SEC, async () => {
+            // Get IP blocks
+            const { data: blocks, error, count } = await ctx.admin
+                .from("ip_blocks")
+                .select("id, ip_address, reason, blocked_until, created_by, created_at", { count: "exact" })
+                .eq("tenant_id", ctx.tenant.id)
+                .order("created_at", { ascending: false })
+                .range(offset, offset + limit - 1);
 
-        if (error) throw mapPostgrestError(error);
+            if (error) throw mapPostgrestError(error);
 
-        // Get creator info
-        const creatorIds = Array.from(new Set((blocks ?? []).map((b) => b.created_by).filter(Boolean)));
-        const creatorsById = new Map<string, { email?: string }>();
+            // Get creator info
+            const creatorIds = Array.from(new Set((blocks ?? []).map((b) => b.created_by).filter(Boolean)));
+            const creatorsById = new Map<string, { email?: string }>();
 
-        if (creatorIds.length > 0) {
-            await Promise.all(
-                creatorIds.map(async (creatorId) => {
-                    try {
-                        const { data: userData } = await ctx.admin.auth.admin.getUserById(creatorId);
-                        if (userData?.user) {
-                            creatorsById.set(creatorId, { email: userData.user.email ?? undefined });
+            if (creatorIds.length > 0) {
+                await Promise.all(
+                    creatorIds.map(async (creatorId) => {
+                        try {
+                            const { data: userData } = await ctx.admin.auth.admin.getUserById(creatorId);
+                            if (userData?.user) {
+                                creatorsById.set(creatorId, { email: userData.user.email ?? undefined });
+                            }
+                        } catch {
+                            // Ignore errors for deleted users
                         }
-                    } catch {
-                        // Ignore errors for deleted users
-                    }
-                }),
-            );
-        }
+                    }),
+                );
+            }
 
-        const enrichedBlocks = (blocks ?? []).map((block) => {
-            const creator = block.created_by ? creatorsById.get(block.created_by) : null;
+            const enrichedBlocks = (blocks ?? []).map((block) => {
+                const creator = block.created_by ? creatorsById.get(block.created_by) : null;
+                return {
+                    ...block,
+                    created_by_email: creator?.email,
+                };
+            });
+
             return {
-                ...block,
-                created_by_email: creator?.email,
-            };
-        });
-
-        return jsonOk(
-            {
                 items: enrichedBlocks,
                 total: count ?? 0,
                 page,
                 limit,
-            },
-            200,
-            rateLimitHeaders(rateLimit),
-        );
+            };
+        });
+
+        return jsonOk(payload, 200, rateLimitHeaders(rateLimit));
 });
 
 // POST /api/admin/security/ip-blocks - Create IP block
@@ -132,7 +154,7 @@ export const POST = withAdminErrorHandling(async (req: Request) => {
             windowSeconds: 60,
         });
 
-        const body = await req.json();
+        const body = await parseJson(req);
         const parsed = ipBlockSchema.safeParse(body);
 
         if (!parsed.success) {
@@ -184,6 +206,8 @@ export const POST = withAdminErrorHandling(async (req: Request) => {
             meta: { ip_address, reason, blocked_until },
         });
 
+        clearIpBlocksCacheForTenant(ctx.tenant.id);
+
         return jsonOk({ block }, 201, rateLimitHeaders(rateLimit));
 });
 
@@ -208,7 +232,7 @@ export const PATCH = withAdminErrorHandling(async (req: Request) => {
             });
         }
 
-        const body = await req.json();
+        const body = await parseJson(req);
         const parsed = ipBlockSchema.safeParse(body);
 
         if (!parsed.success) {
@@ -279,6 +303,8 @@ export const PATCH = withAdminErrorHandling(async (req: Request) => {
             meta: { ip_address, reason, blocked_until },
         });
 
+        clearIpBlocksCacheForTenant(ctx.tenant.id);
+
         return jsonOk({ block }, 200, rateLimitHeaders(rateLimit));
 });
 
@@ -338,6 +364,8 @@ export const DELETE = withAdminErrorHandling(async (req: Request) => {
             entity_id: blockId,
             meta: { ip_address: existing.ip_address },
         });
+
+        clearIpBlocksCacheForTenant(ctx.tenant.id);
 
         return jsonOk({ success: true, id: blockId }, 200, rateLimitHeaders(rateLimit));
 });

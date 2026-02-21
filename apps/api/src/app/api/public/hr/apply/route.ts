@@ -20,6 +20,7 @@ import {
   sanitizeFilename,
 } from "@/server/security/file-validation";
 import { ErrorCodes, ErrorCode } from "@/server/errors/error-codes";
+import { getOrSetCachedValue } from "@/server/cache";
 
 function asString(value: FormDataEntryValue | null): string | undefined {
   if (typeof value === "string") return value;
@@ -37,11 +38,40 @@ function parseCheckbox(value: FormDataEntryValue | null): boolean | undefined {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const PUBLIC_PRECHECK_CACHE_TTL_SEC = 60;
+const PUBLIC_JOB_POST_PRECHECK_CACHE_TTL_SEC = 30;
+
+type PublicSiteLookup = {
+  id: string;
+  tenant_id: string;
+};
+
+function getPublicSiteCacheKey(siteId: string): string {
+  return ["public-site", siteId].join("|");
+}
+
+function getPublicModuleCacheKey(siteId: string, moduleKey: string): string {
+  return ["public-module-enabled", siteId, moduleKey].join("|");
+}
+
+function getPublicJobPostExistsCacheKey(tenantId: string, siteId: string, jobPostId: string): string {
+  return ["public-job-post-exists", tenantId, siteId, jobPostId].join("|");
+}
 
 export async function POST(req: Request) {
   try {
     const admin = createAdminClient();
     const env = getServerEnv();
+    const ip = getClientIp(req);
+    const ipHash = hashIp(ip);
+
+    // Protect expensive multipart parsing with an early IP-based limiter.
+    await enforceRateLimit(
+      admin,
+      `rl:public_hr_apply_pre:${ipHash}`,
+      env.publicHrApplyRlLimit,
+      env.publicHrApplyRlWindowSec
+    );
 
     const formData = await req.formData();
 
@@ -106,27 +136,41 @@ export async function POST(req: Request) {
 
     const { site_id } = await verifySiteToken(fieldsParsed.data.site_token);
 
-    const { data: site, error: siteError } = await admin
-      .from("sites")
-      .select("id, tenant_id")
-      .eq("id", site_id)
-      .maybeSingle();
-    if (siteError) throw mapPostgrestError(siteError);
+    const site = await getOrSetCachedValue<PublicSiteLookup | null>(
+      getPublicSiteCacheKey(site_id),
+      PUBLIC_PRECHECK_CACHE_TTL_SEC,
+      async () => {
+        const { data, error } = await admin
+          .from("sites")
+          .select("id, tenant_id")
+          .eq("id", site_id)
+          .maybeSingle();
+        if (error) throw mapPostgrestError(error);
+        return data;
+      }
+    );
+
     if (!site) throw new HttpError(404, { code: "SITE_NOT_FOUND", message: "Site not found" });
 
-    const { data: moduleInstance, error: moduleError } = await admin
-      .from("module_instances")
-      .select("enabled")
-      .eq("site_id", site.id)
-      .eq("module_key", "hr")
-      .maybeSingle();
-    if (moduleError) throw mapPostgrestError(moduleError);
-    if (!moduleInstance || !moduleInstance.enabled) {
+    const moduleEnabled = await getOrSetCachedValue<boolean>(
+      getPublicModuleCacheKey(site.id, "hr"),
+      PUBLIC_PRECHECK_CACHE_TTL_SEC,
+      async () => {
+        const { data, error } = await admin
+          .from("module_instances")
+          .select("enabled")
+          .eq("site_id", site.id)
+          .eq("module_key", "hr")
+          .maybeSingle();
+        if (error) throw mapPostgrestError(error);
+        return Boolean(data?.enabled);
+      }
+    );
+
+    if (!moduleEnabled) {
       throw new HttpError(404, { code: "MODULE_DISABLED", message: "Module disabled" });
     }
 
-    const ip = getClientIp(req);
-    const ipHash = hashIp(ip);
     const rateLimitResult = await enforceRateLimit(
       admin,
       rateLimitKey("public_hr_apply", site.id, ipHash),
@@ -134,16 +178,24 @@ export async function POST(req: Request) {
       env.publicHrApplyRlWindowSec
     );
 
-    const { data: jobPost, error: jobPostError } = await admin
-      .from("job_posts")
-      .select("id")
-      .eq("tenant_id", site.tenant_id)
-      .eq("site_id", site.id)
-      .eq("id", fieldsParsed.data.job_post_id)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (jobPostError) throw mapPostgrestError(jobPostError);
-    if (!jobPost) throw new HttpError(404, { code: "NOT_FOUND", message: "Job post not found" });
+    const jobPostExists = await getOrSetCachedValue<boolean>(
+      getPublicJobPostExistsCacheKey(site.tenant_id, site.id, fieldsParsed.data.job_post_id),
+      PUBLIC_JOB_POST_PRECHECK_CACHE_TTL_SEC,
+      async () => {
+        const { data, error } = await admin
+          .from("job_posts")
+          .select("id")
+          .eq("tenant_id", site.tenant_id)
+          .eq("site_id", site.id)
+          .eq("id", fieldsParsed.data.job_post_id)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (error) throw mapPostgrestError(error);
+        return Boolean(data);
+      }
+    );
+
+    if (!jobPostExists) throw new HttpError(404, { code: "NOT_FOUND", message: "Job post not found" });
 
     const nowIso = new Date().toISOString();
     const key = `tenant_${site.tenant_id}/cv/${Date.now()}_${randomId()}_${sanitizeFilename(

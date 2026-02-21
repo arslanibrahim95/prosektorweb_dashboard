@@ -3,6 +3,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { ErrorCode } from "../errors";
 import { translateError } from "../errors/messages.tr";
+import { getServerEnv } from "../env";
 
 export type ErrorDetails = Record<string, string[]>;
 
@@ -96,17 +97,64 @@ export function zodErrorToDetails(error: z.ZodError): ErrorDetails {
   return details;
 }
 
+export interface ParseJsonOptions {
+  maxBytes?: number;
+}
+
+const DEFAULT_JSON_MAX_BYTES = 1024 * 1024; // 1 MB
+
+function payloadTooLargeError(maxBytes: number): HttpError {
+  return new HttpError(413, {
+    code: "VALIDATION_ERROR",
+    message: `JSON body too large (max ${maxBytes} bytes)`,
+  });
+}
+
+function resolveJsonBodyMaxBytes(opts?: ParseJsonOptions): number {
+  if (opts?.maxBytes !== undefined) return opts.maxBytes;
+  try {
+    return getServerEnv().jsonBodyMaxBytes ?? DEFAULT_JSON_MAX_BYTES;
+  } catch {
+    return DEFAULT_JSON_MAX_BYTES;
+  }
+}
+
 /**
  * JSON body parse eder, başarısız olursa hata fırlatır
  */
-export async function parseJson(req: Request): Promise<unknown> {
+export async function parseJson(req: Request, opts?: ParseJsonOptions): Promise<unknown> {
+  const maxBytes = resolveJsonBodyMaxBytes(opts);
+  const contentLength = req.headers.get("content-length");
+  if (contentLength) {
+    const parsedLength = Number.parseInt(contentLength, 10);
+    if (Number.isFinite(parsedLength) && parsedLength > maxBytes) {
+      throw payloadTooLargeError(maxBytes);
+    }
+  }
+
   try {
-    return await req.json();
-  } catch {
-    throw new HttpError(400, {
-      code: "VALIDATION_ERROR",
-      message: translateError("VALIDATION_ERROR", "tr"),
-    });
+    const raw = await req.text();
+    const byteLength = new TextEncoder().encode(raw).byteLength;
+    if (byteLength > maxBytes) {
+      throw payloadTooLargeError(maxBytes);
+    }
+
+    if (raw.trim().length === 0) {
+      throw new Error("empty-json");
+    }
+
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error instanceof HttpError) {
+      throw error;
+    }
+    throw new HttpError(
+      400,
+      {
+        code: "VALIDATION_ERROR",
+        message: translateError("VALIDATION_ERROR", "tr"),
+      },
+    );
   }
 }
 

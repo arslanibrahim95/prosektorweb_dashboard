@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { z } from "zod";
 import { adminLogsQuerySchema } from "../../src/app/api/admin/logs/route";
 
 describe("admin logs query schema — security", () => {

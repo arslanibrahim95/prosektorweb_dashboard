@@ -7,6 +7,7 @@ import {
 } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -16,6 +17,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 import { assertPageEditableByPanelRole, getPageOriginForTenant } from "@/server/pages/origin-guard";
 
 export const runtime = "nodejs";
@@ -24,6 +26,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const { id } = await ctxRoute.params;
     const pageIdParsed = uuidSchema.safeParse(id);
     if (!pageIdParsed.success) {
@@ -46,13 +49,14 @@ export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string
 
     return jsonOk(listRevisionsResponseSchema.parse(response));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
 
 export async function POST(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const { id } = await ctxRoute.params;
     const pageIdParsed = uuidSchema.safeParse(id);
     if (!pageIdParsed.success) {
@@ -125,6 +129,6 @@ export async function POST(req: Request, ctxRoute: { params: Promise<{ id: strin
 
     return jsonOk(response);
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

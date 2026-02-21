@@ -40,13 +40,16 @@ export const publicJobApplyFieldsSchema = z.object({
 
 export const cvFileSchema = z
   .custom<File>((v) => typeof File !== "undefined" && v instanceof File, "Invalid file")
+  // SAFARI/ANDROID: browsers often send empty or application/octet-stream; defer real validation to server sniffing
   .refine(
-    (file) =>
-      [
+    (file) => {
+      if (!file.type || file.type === "application/octet-stream") return true;
+      return [
         "application/pdf",
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ].includes(file.type),
+      ].includes(file.type);
+    },
     "Only PDF, DOC, DOCX allowed",
   )
   .refine((file) => file.size <= 5 * 1024 * 1024, "Max 5MB");

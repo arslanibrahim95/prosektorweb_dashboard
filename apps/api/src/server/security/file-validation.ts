@@ -662,6 +662,11 @@ export function detectZipBomb(buffer: ArrayBuffer, maxRatio: number = MAX_COMPRE
         return false; // Not a ZIP, can't be a ZIP bomb
     }
 
+    // Invalid ratio values are treated as suspicious configuration/input.
+    if (!Number.isFinite(maxRatio) || maxRatio <= 0) {
+        return true;
+    }
+
     // This is a simplified check - real implementation would parse ZIP headers
     // and check compressed vs uncompressed sizes
 

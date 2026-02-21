@@ -1,14 +1,14 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
-import { getSupabaseSettings } from './update-env';
+import { getSupabaseAdminSettings } from './update-env';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu.';
 }
 
 async function getAdminClient() {
-    const settings = await getSupabaseSettings();
+    const settings = await getSupabaseAdminSettings();
     if (!settings.url || !settings.serviceRoleKey) {
         throw new Error('Supabase URL or Service Role Key is missing. Admin access required.');
     }

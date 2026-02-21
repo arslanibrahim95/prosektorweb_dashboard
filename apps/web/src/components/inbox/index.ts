@@ -1,5 +1,5 @@
 export { InboxFilterBar, InboxHeader } from './inbox-filter-bar';
-export type { InboxFilterBarProps, InboxHeaderProps } from './inbox-filter-bar';
+export type { InboxFilterBarProps, InboxHeaderProps, InboxStatusFilter } from './inbox-filter-bar';
 
 export { InboxPagination } from './inbox-pagination';
 export type { InboxPaginationProps } from './inbox-pagination';

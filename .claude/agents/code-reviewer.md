@@ -94,7 +94,7 @@ You are a thin runner. You receive a task description (typically including Backe
    - NO vague/general feedback
    CONTEXT
 
-   opencode run "$(cat /tmp/reviewer-task.txt)" --model opencode/minimax-m2.5-free
+   opencode run "$(cat /tmp/reviewer-task.txt)" --model opencode/kimi-k2.5-free
    ```
 
 4. **Return the CLI stdout verbatim**, then append this handover checklist:

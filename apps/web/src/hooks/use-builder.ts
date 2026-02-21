@@ -7,6 +7,8 @@
 
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+import { produce } from 'immer';
+import deepmerge from 'deepmerge';
 import { api } from '@/server/api';
 import { useMemo } from 'react';
 
@@ -359,10 +361,10 @@ export const useBuilderStore = create<BuilderState>()(
                     if (!component) return;
 
                     // SECURITY: Use crypto.randomUUID() instead of Date.now() to prevent ID collisions
-                    // Deep clone with structuredClone to avoid shared children/props references
-                    const duplicated: BuilderComponent = structuredClone(component);
-                    duplicated.id = crypto.randomUUID();
-                    duplicated.name = `${component.name} (Kopya)`;
+                    const duplicated = produce(component, draft => {
+                        draft.id = crypto.randomUUID();
+                        draft.name = `${component.name} (Kopya)`;
+                    });
 
                     const index = state.layoutData.components.findIndex(
                         (c) => c.id === id
@@ -427,9 +429,12 @@ export const useBuilderStore = create<BuilderState>()(
                 // History
                 pushHistory: (description) => {
                     const state = get();
+
+                    // Optimization: Use immer for structural sharing rather than explosive deep cloning
+                    const clonedData = produce(state.layoutData, draft => draft);
+
                     const newEntry: HistoryEntry = {
-                        // Use structuredClone for proper deep copy (handles Date, undefined, etc.)
-                        layoutData: structuredClone(state.layoutData),
+                        layoutData: clonedData as LayoutData,
                         timestamp: Date.now(),
                         description,
                     };
@@ -442,8 +447,8 @@ export const useBuilderStore = create<BuilderState>()(
 
                     newHistory.push(newEntry);
 
-                    // Keep only last 50 entries
-                    if (newHistory.length > 50) {
+                    // Reduced history limit to prevent memory bloat over long sessions
+                    if (newHistory.length > 30) {
                         newHistory.shift();
                     }
 
@@ -667,17 +672,17 @@ export function getEffectiveProps(
 ): Record<string, unknown> {
     let effectiveProps = { ...baseProps };
 
-    // Apply device-specific props
+    // Apply device-specific props using deepmerge to prevent shallow reference bleeds (style leaks)
     if (deviceProps) {
         const deviceSpecificProps = deviceProps[currentDevice];
         if (deviceSpecificProps) {
-            effectiveProps = { ...effectiveProps, ...deviceSpecificProps };
+            effectiveProps = deepmerge(effectiveProps, deviceSpecificProps);
         }
     }
 
     // Apply live device overrides (from editing)
     if (deviceOverrides) {
-        effectiveProps = { ...effectiveProps, ...deviceOverrides };
+        effectiveProps = deepmerge(effectiveProps, deviceOverrides);
     }
 
     return effectiveProps;

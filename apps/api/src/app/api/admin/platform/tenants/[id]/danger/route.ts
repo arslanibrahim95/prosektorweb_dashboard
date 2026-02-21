@@ -11,6 +11,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 import { assertSuperAdminRole } from "@/server/admin/access";
 import { loadPlatformTenantCounts } from "@/server/admin/platform-tenants";
 import { withAdminErrorHandling } from "@/server/admin/route-utils";
@@ -29,6 +30,7 @@ export const POST = withAdminErrorHandling(async (
   ctxRoute: { params: Promise<{ id: string }> },
 ) => {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     assertSuperAdminRole(ctx.role);
 
     const { id } = await ctxRoute.params;

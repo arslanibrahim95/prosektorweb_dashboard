@@ -1,6 +1,7 @@
 import { siteSchema, updateSiteRequestSchema } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -10,6 +11,7 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 import { clearOriginDecisionCache } from "@/server/security/origin";
 
 export const runtime = "nodejs";
@@ -18,6 +20,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const { id } = await ctxRoute.params;
 
     const { data, error } = await ctx.supabase
@@ -32,13 +35,14 @@ export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string
     clearOriginDecisionCache();
     return jsonOk(siteSchema.parse(data));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
 
 export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const { id } = await ctxRoute.params;
     const body = await parseJson(req);
 
@@ -63,6 +67,6 @@ export async function PATCH(req: Request, ctxRoute: { params: Promise<{ id: stri
 
     return jsonOk(siteSchema.parse(data));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

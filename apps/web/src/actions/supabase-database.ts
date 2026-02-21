@@ -1,19 +1,18 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
-import { getSupabaseSettings } from './update-env';
+import { getSupabaseAdminSettings } from './update-env';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu.';
 }
 
 async function getClient() {
-    const settings = await getSupabaseSettings();
-    if (!settings.url || !settings.anonKey) {
-        throw new Error('Supabase URL or Anon Key is missing');
+    const settings = await getSupabaseAdminSettings();
+    if (!settings.url || !settings.serviceRoleKey) {
+        throw new Error('Supabase URL or Service Role Key is missing');
     }
-    const key = settings.serviceRoleKey || settings.anonKey;
-    return createClient(settings.url, key);
+    return createClient(settings.url, settings.serviceRoleKey);
 }
 
 export async function listTables() {

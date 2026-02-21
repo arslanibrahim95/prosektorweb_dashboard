@@ -191,7 +191,12 @@ export interface Domain {
     updated_at: string;
 }
 
-// === User Types ===
+export interface User {
+    id: string;
+    email: string;
+    name: string;
+    avatar_url?: string;
+}
 
 export interface TenantMember {
     id: string;
@@ -199,12 +204,7 @@ export interface TenantMember {
     user_id: string;
     role: 'owner' | 'admin' | 'editor' | 'viewer';
     created_at: string;
-    user?: {
-        id: string;
-        email: string;
-        name: string;
-        avatar_url?: string;
-    };
+    user?: User;
     status?: 'active' | 'pending' | 'suspended';
 }
 

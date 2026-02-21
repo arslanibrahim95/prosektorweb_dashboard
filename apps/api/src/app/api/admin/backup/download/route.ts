@@ -7,6 +7,8 @@ import {
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
+import { enforceAdminRateLimit } from "@/server/admin/route-utils";
+import { rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +18,7 @@ export async function GET(req: Request) {
     try {
         const ctx = await requireAuthContext(req);
         assertAdminRole(ctx.role);
+        const rateLimit = await enforceAdminRateLimit(ctx, "admin_backup_download", "export");
 
         const { searchParams } = new URL(req.url);
         const backupId = searchParams.get("id");
@@ -71,6 +74,7 @@ export async function GET(req: Request) {
                 "Content-Type": "application/json",
                 "Content-Disposition": `attachment; filename="${filename}"`,
                 "Cache-Control": "no-store",
+                ...rateLimitHeaders(rateLimit),
             },
         });
     } catch (err) {

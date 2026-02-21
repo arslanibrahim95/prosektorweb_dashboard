@@ -241,6 +241,29 @@ describe('Contract Tests: Public Form Schemas', () => {
             expect(() => publicJobApplyFieldsSchema.parse(invalidUuid)).toThrow();
         });
     });
+
+    describe('cvFileSchema', () => {
+        it('accepts allowed mime types', () => {
+            const pdf = new File(['x'], 'resume.pdf', { type: 'application/pdf' });
+            const doc = new File(['x'], 'resume.doc', { type: 'application/msword' });
+            const docx = new File(['x'], 'resume.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            expect(() => cvFileSchema.parse(pdf)).not.toThrow();
+            expect(() => cvFileSchema.parse(doc)).not.toThrow();
+            expect(() => cvFileSchema.parse(docx)).not.toThrow();
+        });
+
+        it('accepts blank or octet-stream mime (Safari/Android) and defers to server sniffing', () => {
+            const blankType = new File(['x'], 'resume.pdf', { type: '' });
+            const octet = new File(['x'], 'resume.pdf', { type: 'application/octet-stream' });
+            expect(() => cvFileSchema.parse(blankType)).not.toThrow();
+            expect(() => cvFileSchema.parse(octet)).not.toThrow();
+        });
+
+        it('rejects disallowed mime types', () => {
+            const exe = new File(['x'], 'malware.exe', { type: 'application/x-msdownload' });
+            expect(() => cvFileSchema.parse(exe)).toThrow();
+        });
+    });
 });
 
 describe('Contract Tests: HR Schemas', () => {

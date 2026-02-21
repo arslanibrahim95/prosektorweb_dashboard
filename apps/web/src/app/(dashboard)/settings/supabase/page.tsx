@@ -28,11 +28,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useAuth } from '@/components/auth/auth-provider';
 
 const formSchema = z.object({
     url: z.string().url({ message: 'Geçerli bir URL giriniz.' }),
     anonKey: z.string().min(1, { message: 'Anon Key gereklidir.' }),
-    serviceRoleKey: z.string().optional(),
+    hasServiceRoleKey: z.boolean(),
 });
 
 interface SupabaseBucket {
@@ -60,6 +61,7 @@ interface SupabaseFileEntry {
 type SupabaseAuthUser = Pick<SupabaseUser, 'id' | 'email' | 'role' | 'email_confirmed_at'>;
 
 export default function SupabaseSettingsPage() {
+    const auth = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [buckets, setBuckets] = useState<SupabaseBucket[]>([]);
     const [isLoadingBuckets, setIsLoadingBuckets] = useState(false);
@@ -96,7 +98,7 @@ export default function SupabaseSettingsPage() {
         defaultValues: {
             url: '',
             anonKey: '',
-            serviceRoleKey: '',
+            hasServiceRoleKey: false,
         },
     });
 
@@ -107,7 +109,7 @@ export default function SupabaseSettingsPage() {
                 form.reset({
                     url: settings.url || '',
                     anonKey: settings.anonKey || '',
-                    serviceRoleKey: settings.serviceRoleKey || '',
+                    hasServiceRoleKey: settings.hasServiceRoleKey ?? false,
                 });
             } catch (error) {
                 console.error('Failed to load settings:', error);
@@ -325,6 +327,17 @@ export default function SupabaseSettingsPage() {
         );
     }
 
+    if (auth.me?.role !== 'super_admin') {
+        return (
+            <Card className="glass border-border/50">
+                <CardHeader>
+                    <CardTitle>Yetkisiz Erişim</CardTitle>
+                    <CardDescription>Bu sayfa yalnızca super_admin kullanıcılarına açıktır.</CardDescription>
+                </CardHeader>
+            </Card>
+        );
+    }
+
     return (
         <div className="space-y-6">
             <div>
@@ -371,7 +384,7 @@ export default function SupabaseSettingsPage() {
 
                             <div className="grid gap-2">
                                 <Label>Service Role Key</Label>
-                                <Input value={form.getValues().serviceRoleKey ? '****************' : 'Tanımlı Değil'} readOnly className="bg-muted font-mono" />
+                                <Input value={form.getValues().hasServiceRoleKey ? '****************' : 'Tanımlı Değil'} readOnly className="bg-muted font-mono" />
                             </div>
 
                             <div className="rounded-md bg-blue-50 p-4 text-sm text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">

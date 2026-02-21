@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Languages,
     Plus,
@@ -37,7 +38,10 @@ import {
     Download,
     Search,
 } from "lucide-react";
-import { useUpdateAdminSettings } from "@/hooks/use-admin";
+import { localeNames } from "@/i18n";
+import enMessages from "@/i18n/messages/en.json";
+import trMessages from "@/i18n/messages/tr.json";
+import { useAdminSettings, useUpdateAdminSettings } from "@/hooks/use-admin";
 import { toast } from "sonner";
 
 interface Language {
@@ -57,61 +61,84 @@ interface Translation {
     status: "translated" | "untranslated" | "review";
 }
 
-const mockLanguages: Language[] = [
-    {
-        id: "1",
-        name: "Türkçe",
-        code: "tr",
-        status: "active",
-        isDefault: true,
-        progress: 100,
-    },
-    {
-        id: "2",
-        name: "English",
-        code: "en",
-        status: "active",
-        isDefault: false,
-        progress: 85,
-    },
-    {
-        id: "3",
-        name: "Deutsch",
-        code: "de",
-        status: "active",
-        isDefault: false,
-        progress: 45,
-    },
-    {
-        id: "4",
-        name: "العربية",
-        code: "ar",
-        status: "inactive",
-        isDefault: false,
-        progress: 30,
-    },
-];
+interface I18nSettings {
+    defaultLanguage?: string;
+    enabledLanguages?: string[];
+    languages?: Language[];
+    translations?: Record<string, Record<string, string>>;
+}
 
-const mockTranslations: Translation[] = [
-    { id: "1", key: "nav.home", turkish: "Ana Sayfa", target: "Home", status: "translated" },
-    { id: "2", key: "nav.settings", turkish: "Ayarlar", target: "Settings", status: "translated" },
-    { id: "3", key: "nav.profile", turkish: "Profil", target: "Profile", status: "translated" },
-    { id: "4", key: "common.save", turkish: "Kaydet", target: "Save", status: "translated" },
-    { id: "5", key: "common.cancel", turkish: "İptal", target: "Cancel", status: "translated" },
-    { id: "6", key: "common.delete", turkish: "Sil", target: "Delete", status: "translated" },
-    { id: "7", key: "common.edit", turkish: "Düzenle", target: "Edit", status: "translated" },
-    { id: "8", key: "common.create", turkish: "Oluştur", target: "Create", status: "translated" },
-    { id: "9", key: "common.search", turkish: "Ara", target: "Search", status: "translated" },
-    { id: "10", key: "common.filter", turkish: "Filtrele", target: "Filter", status: "translated" },
-    { id: "11", key: "auth.login", turkish: "Giriş Yap", target: "Login", status: "translated" },
-    { id: "12", key: "auth.logout", turkish: "Çıkış Yap", target: "Logout", status: "translated" },
-    { id: "13", key: "auth.register", turkish: "Kayıt Ol", target: "Register", status: "translated" },
-    { id: "14", key: "error.notFound", turkish: "Sayfa bulunamadı", target: "", status: "untranslated" },
-    { id: "15", key: "error.serverError", turkish: "Sunucu hatası", target: "Server error", status: "review" },
-    { id: "16", key: "user.profile", turkish: "Kullanıcı Profili", target: "User Profile", status: "translated" },
-    { id: "17", key: "user.settings", turkish: "Kullanıcı Ayarları", target: "", status: "untranslated" },
-    { id: "18", key: "dashboard.title", turkish: "Kontrol Paneli", target: "Dashboard", status: "translated" },
-];
+interface AdminSettingsResponse {
+    tenant?: {
+        settings?: {
+            i18n?: I18nSettings;
+        };
+    };
+}
+
+const messageCatalog: Record<string, Record<string, unknown>> = {
+    tr: trMessages as Record<string, unknown>,
+    en: enMessages as Record<string, unknown>,
+};
+
+const defaultLanguageCode = "tr";
+
+function normalizeCode(code: string): string {
+    return code.trim().toLowerCase();
+}
+
+function flattenMessages(
+    input: Record<string, unknown>,
+    prefix = "",
+): Record<string, string> {
+    return Object.entries(input).reduce<Record<string, string>>((acc, [key, value]) => {
+        const nextKey = prefix ? `${prefix}.${key}` : key;
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+            Object.assign(acc, flattenMessages(value as Record<string, unknown>, nextKey));
+            return acc;
+        }
+        if (typeof value === "string") {
+            acc[nextKey] = value;
+        }
+        return acc;
+    }, {});
+}
+
+function resolveLanguageName(code: string): string {
+    if (code === "tr") return localeNames.tr;
+    if (code === "en") return localeNames.en;
+    return code.toUpperCase();
+}
+
+function normalizeTranslations(
+    value: unknown,
+): Record<string, Record<string, string>> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return {};
+    }
+
+    const entries = Object.entries(value as Record<string, unknown>);
+    const result: Record<string, Record<string, string>> = {};
+
+    for (const [language, mapValue] of entries) {
+        if (!mapValue || typeof mapValue !== "object" || Array.isArray(mapValue)) {
+            continue;
+        }
+
+        const normalizedLanguage = normalizeCode(language);
+        const normalizedMap: Record<string, string> = {};
+
+        for (const [key, translation] of Object.entries(mapValue as Record<string, unknown>)) {
+            if (typeof translation === "string") {
+                normalizedMap[key] = translation;
+            }
+        }
+
+        result[normalizedLanguage] = normalizedMap;
+    }
+
+    return result;
+}
 
 export default function LocalizationPage() {
     const [activeTab, setActiveTab] = useState("languages");
@@ -120,10 +147,159 @@ export default function LocalizationPage() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState("");
-    const [languages] = useState<Language[]>(mockLanguages);
-    const [translations, setTranslations] = useState<Translation[]>(mockTranslations);
+    const [languages, setLanguages] = useState<Language[]>([]);
+    const [translationsByLanguage, setTranslationsByLanguage] = useState<Record<string, Record<string, string>>>({});
 
+    const { data: settingsData, isLoading } = useAdminSettings();
     const updateSettings = useUpdateAdminSettings();
+
+    const baseTurkishMap = useMemo(
+        () => flattenMessages(trMessages as Record<string, unknown>),
+        [],
+    );
+    const allTranslationKeys = useMemo(
+        () => Object.keys(baseTurkishMap).sort(),
+        [baseTurkishMap],
+    );
+
+    useEffect(() => {
+        const response = settingsData as AdminSettingsResponse | undefined;
+        const i18n = response?.tenant?.settings?.i18n;
+        const normalizedTranslations = normalizeTranslations(i18n?.translations);
+        const defaultCode = normalizeCode(i18n?.defaultLanguage ?? defaultLanguageCode);
+        const enabledCodes = new Set(
+            (i18n?.enabledLanguages ?? [defaultCode]).map((code) => normalizeCode(code)),
+        );
+        enabledCodes.add(defaultCode);
+
+        const knownCodes = new Set<string>(Object.keys(messageCatalog));
+        knownCodes.add(defaultCode);
+        for (const code of i18n?.enabledLanguages ?? []) {
+            knownCodes.add(normalizeCode(code));
+        }
+        for (const language of i18n?.languages ?? []) {
+            knownCodes.add(normalizeCode(language.code));
+        }
+
+        const computeProgress = (code: string): number => {
+            if (code === defaultLanguageCode) return 100;
+
+            const baseLanguageMap = flattenMessages(messageCatalog[code] ?? {});
+            const overrides = normalizedTranslations[code] ?? {};
+            const total = allTranslationKeys.length;
+            if (total === 0) return 0;
+
+            let translated = 0;
+            for (const key of allTranslationKeys) {
+                const value = overrides[key] ?? baseLanguageMap[key] ?? "";
+                if (value.trim().length > 0) {
+                    translated += 1;
+                }
+            }
+            return Math.round((translated / total) * 100);
+        };
+
+        const byCode = new Map<string, Language>();
+        for (const code of knownCodes) {
+            byCode.set(code, {
+                id: code,
+                name: resolveLanguageName(code),
+                code,
+                status: enabledCodes.has(code) ? "active" : "inactive",
+                isDefault: code === defaultCode,
+                progress: computeProgress(code),
+            });
+        }
+
+        for (const language of i18n?.languages ?? []) {
+            const code = normalizeCode(language.code);
+            byCode.set(code, {
+                id: language.id || code,
+                name: language.name || resolveLanguageName(code),
+                code,
+                status: language.status,
+                isDefault: language.isDefault,
+                progress: computeProgress(code),
+            });
+        }
+
+        if (!byCode.has(defaultLanguageCode)) {
+            byCode.set(defaultLanguageCode, {
+                id: defaultLanguageCode,
+                name: resolveLanguageName(defaultLanguageCode),
+                code: defaultLanguageCode,
+                status: "active",
+                isDefault: defaultCode === defaultLanguageCode,
+                progress: 100,
+            });
+        }
+
+        const nextLanguages = Array.from(byCode.values()).sort((a, b) => {
+            if (a.isDefault) return -1;
+            if (b.isDefault) return 1;
+            return a.name.localeCompare(b.name, "tr");
+        });
+
+        setTranslationsByLanguage(normalizedTranslations);
+        setLanguages(nextLanguages);
+    }, [allTranslationKeys, settingsData]);
+
+    const selectableLanguages = useMemo(
+        () => languages.filter((language) => language.code !== defaultLanguageCode),
+        [languages],
+    );
+
+    useEffect(() => {
+        if (selectableLanguages.length === 0) {
+            setSelectedLanguage(defaultLanguageCode);
+            return;
+        }
+
+        const exists = selectableLanguages.some((language) => language.code === selectedLanguage);
+        if (!exists) {
+            setSelectedLanguage(selectableLanguages[0].code);
+        }
+    }, [selectableLanguages, selectedLanguage]);
+
+    const selectedLanguageMap = useMemo(
+        () => flattenMessages(messageCatalog[selectedLanguage] ?? {}),
+        [selectedLanguage],
+    );
+
+    const translationRows = useMemo<Translation[]>(() => {
+        const selectedOverrides = translationsByLanguage[selectedLanguage] ?? {};
+
+        return allTranslationKeys.map((key) => {
+            const turkish = baseTurkishMap[key] ?? "";
+            const target = selectedOverrides[key] ?? selectedLanguageMap[key] ?? "";
+            const trimmedTarget = target.trim();
+            const status: Translation["status"] = !trimmedTarget
+                ? "untranslated"
+                : selectedLanguage !== defaultLanguageCode && trimmedTarget === turkish.trim()
+                    ? "review"
+                    : "translated";
+
+            return {
+                id: key,
+                key,
+                turkish,
+                target,
+                status,
+            };
+        });
+    }, [allTranslationKeys, baseTurkishMap, selectedLanguage, selectedLanguageMap, translationsByLanguage]);
+
+    const filteredTranslations = useMemo(() => {
+        return translationRows.filter((translation) => {
+            const query = searchQuery.toLowerCase().trim();
+            const matchesSearch = !query
+                || translation.key.toLowerCase().includes(query)
+                || translation.turkish.toLowerCase().includes(query)
+                || translation.target.toLowerCase().includes(query);
+            const matchesStatus = statusFilter === "all" || translation.status === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+    }, [searchQuery, statusFilter, translationRows]);
 
     const getStatusBadge = (status: string) => {
         const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
@@ -137,45 +313,70 @@ export default function LocalizationPage() {
         return <Badge variant={config.variant}>{config.label}</Badge>;
     };
 
-    const filteredTranslations = translations.filter((t) => {
-        const matchesSearch =
-            t.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.turkish.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.target.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === "all" || t.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
-
     const handleStartEdit = (id: string, currentValue: string) => {
+        if (selectedLanguage === defaultLanguageCode) return;
         setEditingId(id);
         setEditValue(currentValue);
     };
 
-    const handleSaveEdit = () => {
-        if (editingId) {
-            setTranslations(prev => prev.map(t =>
-                t.id === editingId
-                    ? { ...t, target: editValue, status: editValue ? 'translated' as const : 'untranslated' as const }
-                    : t
-            ));
-            toast.success('Çeviri kaydedildi');
-        }
-        setEditingId(null);
-        setEditValue("");
-    };
+    const handleSaveEdit = async () => {
+        if (!editingId) return;
 
-    const handleSaveI18nSettings = async () => {
+        const languageCode = normalizeCode(selectedLanguage);
+        const current = translationsByLanguage[languageCode] ?? {};
+        const nextLanguageMap = { ...current };
+        const nextValue = editValue.trim();
+
+        if (nextValue) {
+            nextLanguageMap[editingId] = nextValue;
+        } else {
+            delete nextLanguageMap[editingId];
+        }
+
         try {
             await updateSettings.mutateAsync({
                 i18n: {
-                    defaultLanguage: languages.find(l => l.isDefault)?.code || 'tr',
-                    enabledLanguages: languages.filter(l => l.status === 'active').map(l => l.code),
-                    languages: languages,
+                    translations: {
+                        [languageCode]: nextLanguageMap,
+                    },
                 },
             });
-            toast.success('Dil ayarları kaydedildi');
+
+            setTranslationsByLanguage((prev) => ({
+                ...prev,
+                [languageCode]: nextLanguageMap,
+            }));
+            toast.success("Çeviri kaydedildi");
         } catch {
-            toast.error('Dil ayarları kaydedilemedi');
+            toast.error("Çeviri kaydedilemedi");
+        } finally {
+            setEditingId(null);
+            setEditValue("");
+        }
+    };
+
+    const handleSaveI18nSettings = async () => {
+        const defaultLang = languages.find((language) => language.isDefault)?.code ?? defaultLanguageCode;
+        const enabledLanguages = Array.from(
+            new Set(
+                languages
+                    .filter((language) => language.status === "active")
+                    .map((language) => language.code)
+                    .concat(defaultLang),
+            ),
+        );
+
+        try {
+            await updateSettings.mutateAsync({
+                i18n: {
+                    defaultLanguage: defaultLang,
+                    enabledLanguages,
+                    languages,
+                },
+            });
+            toast.success("Dil ayarları kaydedildi");
+        } catch {
+            toast.error("Dil ayarları kaydedilemedi");
         }
     };
 
@@ -184,14 +385,87 @@ export default function LocalizationPage() {
         setEditValue("");
     };
 
+    const handleSetDefaultLanguage = (languageCode: string) => {
+        setLanguages((prev) => prev.map((language) => {
+            if (language.code === languageCode) {
+                return {
+                    ...language,
+                    status: "active",
+                    isDefault: true,
+                };
+            }
+            return {
+                ...language,
+                isDefault: false,
+            };
+        }));
+    };
+
+    const handleToggleLanguageStatus = (languageCode: string) => {
+        setLanguages((prev) => prev.map((language) => {
+            if (language.code !== languageCode) return language;
+            if (language.isDefault) return language;
+            return {
+                ...language,
+                status: language.status === "active" ? "inactive" : "active",
+            };
+        }));
+    };
+
+    const handleAddLanguage = () => {
+        const availableCode = Object.keys(messageCatalog).find(
+            (code) => !languages.some((language) => language.code === code),
+        );
+
+        if (!availableCode) {
+            toast.info("Eklenecek yeni sistem dili bulunamadı");
+            return;
+        }
+
+        const progress = availableCode === defaultLanguageCode
+            ? 100
+            : Math.round(
+                (Object.keys(flattenMessages(messageCatalog[availableCode] ?? {})).length
+                    / Math.max(1, allTranslationKeys.length))
+                * 100,
+            );
+
+        setLanguages((prev) => [
+            ...prev,
+            {
+                id: availableCode,
+                name: resolveLanguageName(availableCode),
+                code: availableCode,
+                status: "inactive",
+                isDefault: false,
+                progress,
+            },
+        ]);
+    };
+
+    if (isLoading) {
+        return (
+            <div className="space-y-6">
+                <AdminPageHeader
+                    title="Yerelleştirme (i18n)"
+                    description="Dil ayarlarını ve çevirileri yönetin"
+                />
+                <div className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-[420px] w-full" />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             <AdminPageHeader
                 title="Yerelleştirme (i18n)"
-                description="Dil ayarlarını ve çevirileri yönetin (Demo mod - veriler oturum boyunca korunur)"
+                description="Dil ayarlarını ve çevirileri yönetin"
                 actions={
                     <Button onClick={handleSaveI18nSettings} disabled={updateSettings.isPending}>
-                        {updateSettings.isPending ? 'Kaydediliyor...' : 'Dil Ayarlarını Kaydet'}
+                        {updateSettings.isPending ? "Kaydediliyor..." : "Dil Ayarlarını Kaydet"}
                     </Button>
                 }
             />
@@ -209,7 +483,7 @@ export default function LocalizationPage() {
 
                 <TabsContent value="languages" className="space-y-4">
                     <div className="flex justify-end">
-                        <Button>
+                        <Button onClick={handleAddLanguage}>
                             <Plus className="mr-2 h-4 w-4" />
                             Yeni Dil Ekle
                         </Button>
@@ -271,17 +545,18 @@ export default function LocalizationPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem>
-                                                                <Edit className="mr-2 h-4 w-4" />
-                                                                Düzenle
-                                                            </DropdownMenuItem>
                                                             {!language.isDefault && (
-                                                                <DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleSetDefaultLanguage(language.code)}
+                                                                >
                                                                     <Check className="mr-2 h-4 w-4" />
                                                                     Varsayılan Yap
                                                                 </DropdownMenuItem>
                                                             )}
-                                                            <DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleToggleLanguageStatus(language.code)}
+                                                                disabled={language.isDefault}
+                                                            >
                                                                 {language.status === "active" ? (
                                                                     <>
                                                                         <X className="mr-2 h-4 w-4" />
@@ -314,18 +589,30 @@ export default function LocalizationPage() {
                                 <Input
                                     placeholder="Çeviri ara..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(event) => setSearchQuery(event.target.value)}
                                     className="pl-9"
                                 />
                             </div>
-                            <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                            <Select
+                                value={selectedLanguage}
+                                onValueChange={setSelectedLanguage}
+                                disabled={selectableLanguages.length === 0}
+                            >
                                 <SelectTrigger className="w-[180px]">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="en">English</SelectItem>
-                                    <SelectItem value="de">Deutsch</SelectItem>
-                                    <SelectItem value="ar">العربية</SelectItem>
+                                    {selectableLanguages.length === 0 ? (
+                                        <SelectItem value={defaultLanguageCode}>
+                                            {resolveLanguageName(defaultLanguageCode)}
+                                        </SelectItem>
+                                    ) : (
+                                        selectableLanguages.map((language) => (
+                                            <SelectItem key={language.code} value={language.code}>
+                                                {language.name}
+                                            </SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -341,11 +628,11 @@ export default function LocalizationPage() {
                             </Select>
                         </div>
                         <div className="flex gap-2">
-                            <Button variant="outline">
+                            <Button variant="outline" disabled>
                                 <Upload className="mr-2 h-4 w-4" />
                                 Toplu İçe Aktar
                             </Button>
-                            <Button variant="outline">
+                            <Button variant="outline" disabled>
                                 <Download className="mr-2 h-4 w-4" />
                                 Dışa Aktar
                             </Button>
@@ -356,9 +643,7 @@ export default function LocalizationPage() {
                         <CardHeader>
                             <CardTitle>Çeviriler</CardTitle>
                             <CardDescription>
-                                {selectedLanguage === "en" && "İngilizce çevirileri düzenleyin"}
-                                {selectedLanguage === "de" && "Almanca çevirileri düzenleyin"}
-                                {selectedLanguage === "ar" && "Arapça çevirileri düzenleyin"}
+                                {resolveLanguageName(selectedLanguage)} çevirilerini düzenleyin
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -369,9 +654,7 @@ export default function LocalizationPage() {
                                             <th className="pb-3 text-left text-sm font-medium">Anahtar</th>
                                             <th className="pb-3 text-left text-sm font-medium">Türkçe</th>
                                             <th className="pb-3 text-left text-sm font-medium">
-                                                {selectedLanguage === "en" && "English"}
-                                                {selectedLanguage === "de" && "Deutsch"}
-                                                {selectedLanguage === "ar" && "العربية"}
+                                                {resolveLanguageName(selectedLanguage)}
                                             </th>
                                             <th className="pb-3 text-left text-sm font-medium">Durum</th>
                                             <th className="pb-3 text-right text-sm font-medium">İşlemler</th>
@@ -393,14 +676,13 @@ export default function LocalizationPage() {
                                                         <div className="flex items-center gap-2">
                                                             <Input
                                                                 value={editValue}
-                                                                onChange={(e) => setEditValue(e.target.value)}
+                                                                onChange={(event) => setEditValue(event.target.value)}
                                                                 className="h-8"
                                                                 autoFocus
                                                             />
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className=""
                                                                 onClick={handleSaveEdit}
                                                             >
                                                                 <Check className="h-4 w-4" />
@@ -408,7 +690,6 @@ export default function LocalizationPage() {
                                                             <Button
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className=""
                                                                 onClick={handleCancelEdit}
                                                             >
                                                                 <X className="h-4 w-4" />
@@ -419,6 +700,7 @@ export default function LocalizationPage() {
                                                             onClick={() => handleStartEdit(translation.id, translation.target)}
                                                             className="text-sm hover:underline"
                                                             aria-label={`${translation.key} çevirisini düzenle`}
+                                                            disabled={selectedLanguage === defaultLanguageCode}
                                                         >
                                                             {translation.target || (
                                                                 <span className="text-muted-foreground italic">
@@ -434,12 +716,23 @@ export default function LocalizationPage() {
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => handleStartEdit(translation.id, translation.target)}
+                                                        disabled={selectedLanguage === defaultLanguageCode}
                                                     >
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
                                                 </td>
                                             </tr>
                                         ))}
+                                        {filteredTranslations.length === 0 && (
+                                            <tr>
+                                                <td
+                                                    className="py-8 text-center text-sm text-muted-foreground"
+                                                    colSpan={5}
+                                                >
+                                                    Eşleşen çeviri kaydı bulunamadı
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

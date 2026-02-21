@@ -405,47 +405,68 @@ export default function AdminOverviewPage() {
             {/* System Status — Live */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Sistem Durumu</CardTitle>
-                    <CardDescription>
-                        Sunucu ve veritabanı metrikleri (canlı).
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Sistem Durumu</CardTitle>
+                            <CardDescription>
+                                Sunucu ve veritabanı metrikleri — her 30 saniyede yenilenir.
+                            </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            {healthLoading ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                                </span>
+                            )}
+                            <span>Canlı</span>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    {healthLoading ? (
+                    {healthLoading && !healthData ? (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             Durum kontrol ediliyor…
                         </div>
                     ) : healthData ? (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">API Durumu</span>
-                                    <span className={`flex items-center gap-1.5 font-medium ${statusColor(healthData.api.status)}`}>
-                                        <StatusIcon status={healthData.api.status} />
-                                        {statusLabel(healthData.api.status)}
-                                        <span className="text-xs text-muted-foreground font-normal">({healthData.api.uptime})</span>
-                                    </span>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                            {/* API */}
+                            <div className="rounded-lg border bg-card p-3 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">API</span>
+                                    <StatusIcon status={healthData.api.status} />
                                 </div>
+                                <p className={`text-sm font-semibold ${statusColor(healthData.api.status)}`}>
+                                    {statusLabel(healthData.api.status)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Uptime: {healthData.api.uptime}</p>
                             </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">Veritabanı</span>
-                                    <span className={`flex items-center gap-1.5 font-medium ${statusColor(healthData.database.status)}`}>
-                                        <StatusIcon status={healthData.database.status} />
-                                        {statusLabel(healthData.database.status)}
-                                        <span className="text-xs text-muted-foreground font-normal">({healthData.database.latency_ms}ms)</span>
-                                    </span>
+                            {/* DB */}
+                            <div className="rounded-lg border bg-card p-3 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Veritabanı</span>
+                                    <StatusIcon status={healthData.database.status} />
                                 </div>
+                                <p className={`text-sm font-semibold ${statusColor(healthData.database.status)}`}>
+                                    {statusLabel(healthData.database.status)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Latency: {healthData.database.latency_ms}ms</p>
                             </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">Cache</span>
-                                    <span className={`flex items-center gap-1.5 font-medium ${statusColor(healthData.cache.status)}`}>
-                                        <StatusIcon status={healthData.cache.status} />
-                                        {statusLabel(healthData.cache.status)}
-                                    </span>
+                            {/* Cache */}
+                            <div className="rounded-lg border bg-card p-3 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cache</span>
+                                    <StatusIcon status={healthData.cache.status} />
                                 </div>
+                                <p className={`text-sm font-semibold ${statusColor(healthData.cache.status)}`}>
+                                    {statusLabel(healthData.cache.status)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    {new Date(healthData.timestamp).toLocaleTimeString('tr-TR')} itibarıyla
+                                </p>
                             </div>
                         </div>
                     ) : (

@@ -15,7 +15,6 @@ import {
 } from "@/server/api/http";
 import { getOrSetCachedValue } from "@/server/cache";
 import { requireAuthContext } from "@/server/auth/context";
-import { hasPermission } from "@/server/auth/permissions";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 

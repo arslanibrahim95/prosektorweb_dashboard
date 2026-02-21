@@ -6,6 +6,7 @@ export interface ServerEnv {
   customJwtSecret: string; // Dedicated secret for custom JWT authentication
   storageBucketPrivateCv: string;
   storageBucketPublicMedia: string;
+  jsonBodyMaxBytes: number;
   dashboardReadRateLimit: number;
   dashboardReadRateWindowSec: number;
   dashboardSearchRateLimit: number;
@@ -89,6 +90,7 @@ export function getServerEnv(): ServerEnv {
     customJwtSecret,
     storageBucketPrivateCv: pickEnv("STORAGE_BUCKET_PRIVATE_CV") ?? "private-cv",
     storageBucketPublicMedia: pickEnv("STORAGE_BUCKET_PUBLIC_MEDIA") ?? "public-media",
+    jsonBodyMaxBytes: pickPositiveInt("JSON_BODY_MAX_BYTES", 1024 * 1024),
     dashboardReadRateLimit: pickPositiveInt("DASHBOARD_READ_RL_LIMIT", 120),
     dashboardReadRateWindowSec: pickPositiveInt("DASHBOARD_READ_RL_WINDOW_SEC", 60),
     dashboardSearchRateLimit: pickPositiveInt("DASHBOARD_SEARCH_RL_LIMIT", 30),

@@ -21,6 +21,23 @@ import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/r
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+type AdminUserStatus = "active" | "invited";
+type AdminUserSort = "created_at" | "role";
+type AdminUserOrder = "asc" | "desc";
+
+interface AdminTenantUserRpcRow {
+    id: string;
+    tenant_id: string;
+    user_id: string;
+    role: string;
+    created_at: string;
+    email: string | null;
+    name: string | null;
+    avatar_url: string | null;
+    invited_at: string | null;
+    last_sign_in_at: string | null;
+    total_count: number | string | null;
+}
 
 function normalizeRoleFilter(value: string | undefined): string | undefined {
     if (!value) return undefined;
@@ -36,10 +53,41 @@ function normalizeRoleFilter(value: string | undefined): string | undefined {
     return parsed.data;
 }
 
-function safeUserName(email?: string, meta?: Record<string, unknown> | null): string | undefined {
-    const nameCandidate = meta?.name?.toString().trim();
-    if (nameCandidate && nameCandidate.length > 0) return nameCandidate;
-    return email;
+function normalizeStatusFilter(value: string | undefined): AdminUserStatus | undefined {
+    if (value === "active" || value === "invited") return value;
+    return undefined;
+}
+
+function normalizeSortFilter(value: string | undefined): AdminUserSort {
+    if (value === "role") return "role";
+    return "created_at";
+}
+
+function normalizeOrderFilter(value: string | undefined): AdminUserOrder {
+    if (value === "asc") return "asc";
+    return "desc";
+}
+
+function parsePositiveInt(value: string | null, fallback: number): number {
+    if (!value) return fallback;
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+        return fallback;
+    }
+    return parsed;
+}
+
+function normalizeTotalCount(value: number | string | null | undefined, fallback: number): number {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+    if (typeof value === "string") {
+        const parsed = Number.parseInt(value, 10);
+        if (Number.isFinite(parsed)) {
+            return parsed;
+        }
+    }
+    return fallback;
 }
 
 export async function GET(req: Request) {
@@ -57,116 +105,54 @@ export async function GET(req: Request) {
         );
 
         const url = new URL(req.url);
-        const search = url.searchParams.get("search") || undefined;
+        const searchRaw = url.searchParams.get("search") ?? undefined;
+        const search = searchRaw?.trim() ? searchRaw.trim() : undefined;
         const role = normalizeRoleFilter(url.searchParams.get("role") || undefined);
-        const status = url.searchParams.get("status") || undefined;
-        const page = parseInt(url.searchParams.get("page") || "1", 10);
-        const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10), 100);
-        const sort = url.searchParams.get("sort") || "created_at";
-        const order = url.searchParams.get("order") === "asc" ? "ascending" : "descending";
+        const status = normalizeStatusFilter(url.searchParams.get("status") || undefined);
+        const page = parsePositiveInt(url.searchParams.get("page"), 1);
+        const limit = Math.min(parsePositiveInt(url.searchParams.get("limit"), 20), 100);
+        const sort = normalizeSortFilter(url.searchParams.get("sort") || undefined);
+        const order = normalizeOrderFilter(url.searchParams.get("order") || undefined);
 
         const offset = (page - 1) * limit;
 
-        // Build query
-        let query = ctx.admin
-            .from("tenant_members")
-            .select("*", { count: "exact" })
-            .eq("tenant_id", ctx.tenant.id);
-
-        if (role) {
-            query = query.eq("role", role);
-        }
-
-        // Apply sorting
-        if (sort === "created_at") {
-            query = query.order("created_at", { ascending: order === "ascending" });
-        } else if (sort === "role") {
-            query = query.order("role", { ascending: order === "ascending" });
-        }
-
-        query = query.range(offset, offset + limit - 1);
-
-        const { data, error, count } = await query;
+        const { data, error } = await ctx.admin.rpc("admin_list_tenant_users", {
+            _tenant_id: ctx.tenant.id,
+            _search: search ?? null,
+            _role: role ?? null,
+            _status: status ?? null,
+            _sort: sort,
+            _order: order,
+            _limit: limit,
+            _offset: offset,
+        });
         if (error) throw mapPostgrestError(error);
 
-        const userIds = Array.from(new Set((data ?? []).map((m) => (m as { user_id: string }).user_id)));
-        const usersById = new Map<
-            string,
-            {
-                id: string;
-                email?: string;
-                name?: string;
-                avatar_url?: string;
-                invited_at?: string | null;
-                last_sign_in_at?: string | null;
-            }
-        >();
+        const rows = (data ?? []) as AdminTenantUserRpcRow[];
+        const total = rows.length > 0 ? normalizeTotalCount(rows[0].total_count, rows.length) : 0;
 
-        // PERFORMANCE FIX: Batch user fetches to avoid overwhelming Supabase Admin API rate limits
-        // Process in chunks of 10 to balance parallelism and rate limiting
-        const BATCH_SIZE = 10;
-        for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
-            const batch = userIds.slice(i, i + BATCH_SIZE);
-            const results = await Promise.allSettled(
-                batch.map((userId) => ctx.admin.auth.admin.getUserById(userId))
-            );
-
-            for (let j = 0; j < results.length; j++) {
-                const result = results[j];
-                if (result.status !== 'fulfilled') continue;
-                const { data: userData, error: userError } = result.value;
-                if (userError) continue;
-                const user = userData.user;
-                if (!user) continue;
-
-                const email = user.email ?? undefined;
-                const userMeta = (user.user_metadata ?? {}) as Record<string, unknown>;
-                const avatar_url = userMeta.avatar_url?.toString() || undefined;
-                const name = safeUserName(email, userMeta);
-
-                usersById.set(batch[j], {
-                    id: batch[j],
-                    email,
-                    name,
-                    avatar_url,
-                    invited_at: (user as unknown as { invited_at?: string | null }).invited_at ?? null,
-                    last_sign_in_at: (user as unknown as { last_sign_in_at?: string | null }).last_sign_in_at ?? null,
-                });
-            }
-        }
-
-        const items = (data ?? []).map((m) => {
-            const member = m as {
-                id: string;
-                tenant_id: string;
-                user_id: string;
-                role: string;
-                created_at: string;
-            };
-            const user = usersById.get(member.user_id);
-
-            // Apply search filter on user data
-            if (search && user) {
-                const searchLower = search.toLowerCase();
-                const matchesEmail = user.email?.toLowerCase().includes(searchLower);
-                const matchesName = user.name?.toLowerCase().includes(searchLower);
-                if (!matchesEmail && !matchesName) return null;
-            }
-
-            // Apply status filter
-            if (status === "active" && !user?.last_sign_in_at) return null;
-            if (status === "invited" && user?.last_sign_in_at) return null;
-
+        const items = rows.map((row) => {
             return {
-                ...member,
-                user,
+                id: row.id,
+                tenant_id: row.tenant_id,
+                user_id: row.user_id,
+                role: row.role,
+                created_at: row.created_at,
+                user: {
+                    id: row.user_id,
+                    email: row.email ?? undefined,
+                    name: row.name ?? row.email ?? undefined,
+                    avatar_url: row.avatar_url ?? undefined,
+                    invited_at: row.invited_at,
+                    last_sign_in_at: row.last_sign_in_at,
+                },
             };
-        }).filter(Boolean);
+        });
 
         return jsonOk(
             {
                 items,
-                total: count ?? items.length,
+                total,
             },
             200,
             rateLimitHeaders(rateLimit),

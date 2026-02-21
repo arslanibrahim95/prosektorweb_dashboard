@@ -1,15 +1,34 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { requireAuthContext } from '@/server/auth/context'
-import { z } from 'zod'
+import { NextRequest } from "next/server";
+import { requireAuthContext, type AuthContext } from "@/server/auth/context";
+import { z } from "zod";
 import {
+    asErrorBody,
+    asHeaders,
+    asStatus,
     HttpError,
-    zodErrorToDetails,
     jsonError,
-    mapPostgrestError
-} from '@/server/api/http'
+    jsonOk,
+    mapPostgrestError,
+    parseJson,
+    zodErrorToDetails,
+} from "@/server/api/http";
+import { getServerEnv } from "@/server/env";
+import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const AB_TEST_WRITE_LIMIT = 30;
+const AB_TEST_WRITE_WINDOW_SECONDS = 3600;
+
+function assertCanWriteAbTests(ctx: AuthContext): void {
+    if (ctx.role === "viewer") {
+        throw new HttpError(403, {
+            code: "FORBIDDEN",
+            message: "A/B test güncelleme yetkiniz yok",
+        });
+    }
+}
 
 // A/B Test güncelleme şeması
 const updateAbTestSchema = z.object({
@@ -33,7 +52,7 @@ const updateAbTestSchema = z.object({
     start_date: z.string().datetime().optional(),
     end_date: z.string().datetime().optional(),
     confidence_level: z.number().min(0).max(100).optional()
-})
+});
 
 // GET - Tek A/B test detaylarını getir
 export async function GET(
@@ -41,34 +60,39 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const ctx = await requireAuthContext(request)
-        const { id } = await params
+        const ctx = await requireAuthContext(request);
+        const env = getServerEnv();
+        const { id } = await params;
 
-        const { data, error } = await ctx.admin
-            .from('ab_tests')
-            .select('*')
-            .eq('id', id)
-            .eq('tenant_id', ctx.tenant.id)
-            .single()
+        const rateLimit = await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("ab_tests_detail", ctx.tenant.id, ctx.user.id),
+            env.dashboardReadRateLimit,
+            env.dashboardReadRateWindowSec,
+        );
+
+        // SECURITY: Use user-scoped client so RLS policies are enforced per role.
+        const { data, error } = await ctx.supabase
+            .from("ab_tests")
+            .select("*")
+            .eq("id", id)
+            .eq("tenant_id", ctx.tenant.id)
+            .single();
 
         if (error) {
-            throw mapPostgrestError(error)
+            throw mapPostgrestError(error);
         }
 
         // Parse JSON fields
         const parsedData = {
             ...data,
-            variants: typeof data.variants === 'string' ? JSON.parse(data.variants) : data.variants,
-            goals: typeof data.goals === 'string' ? JSON.parse(data.goals) : data.goals
-        }
+            variants: typeof data.variants === "string" ? JSON.parse(data.variants) : data.variants,
+            goals: typeof data.goals === "string" ? JSON.parse(data.goals) : data.goals,
+        };
 
-        return NextResponse.json({ data: parsedData })
+        return jsonOk({ data: parsedData }, 200, rateLimitHeaders(rateLimit));
     } catch (error) {
-        if (error instanceof HttpError) {
-            return jsonError(error.body, error.status, error.headers)
-        }
-        console.error('A/B Test get error:', error)
-        return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500)
+        return jsonError(asErrorBody(error), asStatus(error), asHeaders(error));
     }
 }
 
@@ -78,17 +102,26 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const ctx = await requireAuthContext(request)
-        const { id } = await params
-        const body = await request.json()
-        const validation = updateAbTestSchema.safeParse(body)
+        const ctx = await requireAuthContext(request);
+        assertCanWriteAbTests(ctx);
+
+        const rateLimit = await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("ab_tests_write", ctx.tenant.id, ctx.user.id),
+            AB_TEST_WRITE_LIMIT,
+            AB_TEST_WRITE_WINDOW_SECONDS,
+        );
+
+        const { id } = await params;
+        const body = await parseJson(request);
+        const validation = updateAbTestSchema.safeParse(body);
 
         if (!validation.success) {
             throw new HttpError(400, {
-                code: 'VALIDATION_ERROR',
-                message: 'Validation failed',
-                details: zodErrorToDetails(validation.error)
-            })
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                details: zodErrorToDetails(validation.error),
+            });
         }
 
         const updateData: Record<string, unknown> = { ...validation.data }
@@ -101,25 +134,22 @@ export async function PUT(
             updateData.goals = JSON.stringify(updateData.goals)
         }
 
-        const { data, error } = await ctx.admin
-            .from('ab_tests')
+        // SECURITY: Use user-scoped client so RLS policies are enforced per role.
+        const { data, error } = await ctx.supabase
+            .from("ab_tests")
             .update(updateData)
-            .eq('id', id)
-            .eq('tenant_id', ctx.tenant.id)
+            .eq("id", id)
+            .eq("tenant_id", ctx.tenant.id)
             .select()
-            .single()
+            .single();
 
         if (error) {
-            throw mapPostgrestError(error)
+            throw mapPostgrestError(error);
         }
 
-        return NextResponse.json({ data })
+        return jsonOk({ data }, 200, rateLimitHeaders(rateLimit));
     } catch (error) {
-        if (error instanceof HttpError) {
-            return jsonError(error.body, error.status, error.headers)
-        }
-        console.error('A/B Test update error:', error)
-        return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500)
+        return jsonError(asErrorBody(error), asStatus(error), asHeaders(error));
     }
 }
 
@@ -129,25 +159,31 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const ctx = await requireAuthContext(request)
-        const { id } = await params
+        const ctx = await requireAuthContext(request);
+        assertCanWriteAbTests(ctx);
 
-        const { error } = await ctx.admin
-            .from('ab_tests')
+        const rateLimit = await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("ab_tests_write", ctx.tenant.id, ctx.user.id),
+            AB_TEST_WRITE_LIMIT,
+            AB_TEST_WRITE_WINDOW_SECONDS,
+        );
+
+        const { id } = await params;
+
+        // SECURITY: Use user-scoped client so RLS policies are enforced per role.
+        const { error } = await ctx.supabase
+            .from("ab_tests")
             .delete()
-            .eq('id', id)
-            .eq('tenant_id', ctx.tenant.id)
+            .eq("id", id)
+            .eq("tenant_id", ctx.tenant.id);
 
         if (error) {
-            throw mapPostgrestError(error)
+            throw mapPostgrestError(error);
         }
 
-        return NextResponse.json({ success: true })
+        return jsonOk({ success: true }, 200, rateLimitHeaders(rateLimit));
     } catch (error) {
-        if (error instanceof HttpError) {
-            return jsonError(error.body, error.status, error.headers)
-        }
-        console.error('A/B Test delete error:', error)
-        return jsonError({ code: 'INTERNAL_ERROR', message: 'Internal server error' }, 500)
+        return jsonError(asErrorBody(error), asStatus(error), asHeaders(error));
     }
 }

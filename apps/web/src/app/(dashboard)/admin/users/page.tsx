@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -27,7 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { MoreHorizontal, Search, UserPlus, FileDown, Users } from 'lucide-react';
+import { MoreHorizontal, Search, UserPlus, FileDown, Users, ChevronDown, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -76,15 +77,53 @@ export default function AdminUsersPage() {
     const [inviteRole, setInviteRole] = useState('viewer');
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [roleChangeTarget, setRoleChangeTarget] = useState<{ userId: string; userName: string; currentRole: string; newRole: string } | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
-        setPage(1); // Reset to first page on search
+        setPage(1);
+        setSelectedIds(new Set());
     };
 
     const handleRoleFilterChange = (value: string) => {
         setRoleFilter(value);
-        setPage(1); // Reset to first page on filter change
+        setPage(1);
+        setSelectedIds(new Set());
+    };
+
+    const toggleSelect = (id: string) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (!usersData?.items) return;
+        if (selectedIds.size === usersData.items.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(usersData.items.map((u) => u.id)));
+        }
+    };
+
+    const handleBulkExport = () => {
+        if (!usersData?.items) return;
+        const selected = usersData.items.filter((u) => selectedIds.has(u.id));
+        const csv = [
+            'Name,Email,Role,Created At',
+            ...selected.map((u) => `"${u.name ?? ''}","${u.email ?? ''}","${u.role}","${u.created_at}"`),
+        ].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'users-export.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        setSelectedIds(new Set());
     };
 
     // Debounce search and filter to prevent excessive API calls
@@ -182,7 +221,20 @@ export default function AdminUsersPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={() => {
+                        if (!usersData?.items) return;
+                        const csv = [
+                            'Name,Email,Role,Created At',
+                            ...usersData.items.map((u) => `"${u.name ?? ''}","${u.email ?? ''}","${u.role}","${u.created_at}"`),
+                        ].join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'users-export.csv';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }}>
                         <FileDown className="mr-2 h-4 w-4" />
                         Dışa Aktar
                     </Button>
@@ -192,6 +244,40 @@ export default function AdminUsersPage() {
                     </Button>
                 </div>
             </div>
+
+            {/* Bulk Action Toolbar */}
+            {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
+                    <span className="text-sm font-medium">{selectedIds.size} kullanıcı seçildi</span>
+                    <div className="flex items-center gap-2 ml-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                    Rol Değiştir <ChevronDown className="ml-1 h-3 w-3" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {['viewer', 'editor', 'admin'].map((r) => (
+                                    <DropdownMenuItem key={r} onClick={async () => {
+                                        if (!usersData?.items) return;
+                                        const targets = usersData.items.filter((u) => selectedIds.has(u.id) && u.role !== r);
+                                        await Promise.all(targets.map((u) => updateRoleMutation.mutateAsync({ id: u.id, role: r })));
+                                        toast.success(`${targets.length} kullanıcı rolü güncellendi`);
+                                        setSelectedIds(new Set());
+                                    }} className="capitalize">{r}</DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button variant="outline" size="sm" onClick={handleBulkExport}>
+                            <FileDown className="mr-1.5 h-3 w-3" />
+                            Dışa Aktar
+                        </Button>
+                    </div>
+                    <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setSelectedIds(new Set())}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
 
             <div className="flex items-center gap-2">
                 <div className="relative flex-1 md:max-w-sm">
@@ -228,6 +314,13 @@ export default function AdminUsersPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead className="w-10">
+                                <Checkbox
+                                    checked={usersData?.items && usersData.items.length > 0 && selectedIds.size === usersData.items.length}
+                                    onCheckedChange={toggleSelectAll}
+                                    aria-label="Tümünü seç"
+                                />
+                            </TableHead>
                             <TableHead>Kullanıcı</TableHead>
                             <TableHead>Rol</TableHead>
                             <TableHead>Son Giriş</TableHead>
@@ -239,6 +332,7 @@ export default function AdminUsersPage() {
                         {isLoading ? (
                             Array.from({ length: 5 }).map((_, i) => (
                                 <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <Skeleton className="h-9 w-9 rounded-full" />
@@ -264,7 +358,7 @@ export default function AdminUsersPage() {
                             ))
                         ) : !usersData?.items || usersData.items.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-32 text-center">
+                                <TableCell colSpan={6} className="h-32 text-center">
                                     <div className="flex flex-col items-center gap-2">
                                         <Users className="h-8 w-8 text-muted-foreground/50" />
                                         <p className="text-muted-foreground">Kullanıcı bulunamadı.</p>
@@ -285,7 +379,14 @@ export default function AdminUsersPage() {
                             </TableRow>
                         ) : (
                             usersData.items.map((user) => (
-                                <TableRow key={user.id}>
+                                <TableRow key={user.id} data-state={selectedIds.has(user.id) ? 'selected' : undefined}>
+                                    <TableCell>
+                                        <Checkbox
+                                            checked={selectedIds.has(user.id)}
+                                            onCheckedChange={() => toggleSelect(user.id)}
+                                            aria-label={`${user.name ?? user.email} seç`}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-9 w-9">

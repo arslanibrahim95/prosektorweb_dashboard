@@ -1,6 +1,7 @@
 import { getCvSignedUrlResponseSchema } from "@prosektor/contracts";
 import {
   asErrorBody,
+  asHeaders,
   asStatus,
   HttpError,
   jsonError,
@@ -9,6 +10,7 @@ import {
 } from "@/server/api/http";
 import { getServerEnv } from "@/server/env";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +18,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
     const env = getServerEnv();
     const { id } = await ctxRoute.params;
 
@@ -52,6 +55,6 @@ export async function GET(req: Request, ctxRoute: { params: Promise<{ id: string
       }),
     );
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

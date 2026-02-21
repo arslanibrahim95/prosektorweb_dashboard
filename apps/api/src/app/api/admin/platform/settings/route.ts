@@ -13,9 +13,12 @@ import { requireAuthContext } from "@/server/auth/context";
 import { assertSuperAdminRole } from "@/server/admin/access";
 import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
 import { rateLimitHeaders } from "@/server/rate-limit";
+import { deleteCachedValue, getOrSetCachedValue } from "@/server/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const PLATFORM_SETTINGS_CACHE_KEY = "platform-settings";
+const PLATFORM_SETTINGS_CACHE_TTL_SEC = 120;
 
 export const GET = withAdminErrorHandling(async (req: Request) => {
     const ctx = await requireAuthContext(req);
@@ -23,20 +26,20 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
 
     const rateLimit = await enforceAdminRateLimit(ctx, "platform_settings", "read");
 
-    const { data, error } = await ctx.admin
-      .from("platform_settings")
-      .select("key, value, updated_by, updated_at")
-      .order("key", { ascending: true });
+    const payload = await getOrSetCachedValue(PLATFORM_SETTINGS_CACHE_KEY, PLATFORM_SETTINGS_CACHE_TTL_SEC, async () => {
+      const { data, error } = await ctx.admin
+        .from("platform_settings")
+        .select("key, value, updated_by, updated_at")
+        .order("key", { ascending: true });
 
-    if (error) throw mapPostgrestError(error);
+      if (error) throw mapPostgrestError(error);
 
-    return jsonOk(
-      platformSettingsResponseSchema.parse({
+      return platformSettingsResponseSchema.parse({
         items: data ?? [],
-      }),
-      200,
-      rateLimitHeaders(rateLimit),
-    );
+      });
+    });
+
+    return jsonOk(payload, 200, rateLimitHeaders(rateLimit));
 });
 
 export const PATCH = withAdminErrorHandling(async (req: Request) => {
@@ -82,6 +85,9 @@ export const PATCH = withAdminErrorHandling(async (req: Request) => {
       .select("id")
       .single();
     if (auditError) throw mapPostgrestError(auditError);
+
+    // Clear cached platform settings so subsequent reads always fetch fresh values.
+    deleteCachedValue(PLATFORM_SETTINGS_CACHE_KEY);
 
     const { data, error } = await ctx.admin
       .from("platform_settings")

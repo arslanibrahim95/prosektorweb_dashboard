@@ -36,6 +36,12 @@ jobs:
       - name: Run ESLint
         run: pnpm lint
 
+      - name: Backend hardening inventory check
+        run: pnpm inventory:backend:check
+
+      - name: Migration sync check
+        run: pnpm db:migrations:sync-check
+
   test-contracts:
     name: 📜 Contract Tests
     runs-on: ubuntu-latest

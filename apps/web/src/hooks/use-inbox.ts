@@ -31,10 +31,13 @@ export const inboxKeys = {
         ['inbox', 'applications', siteId, 'list', filters] as const,
 };
 
+type InboxStatus = 'read' | 'unread';
+
 // === Offers ===
-export function useOffers(siteId: string | null, filters?: { search?: string; page?: number }) {
+export function useOffers(siteId: string | null, filters?: { search?: string; page?: number; status?: InboxStatus }) {
     const search = filters?.search?.trim();
     const page = filters?.page ?? PAGINATION.DEFAULT_PAGE;
+    const status = filters?.status;
     return useQuery({
         queryKey: inboxKeys.offersList(siteId ?? '', { ...filters, page }),
         queryFn: () =>
@@ -45,6 +48,7 @@ export function useOffers(siteId: string | null, filters?: { search?: string; pa
                     page,
                     limit: PAGINATION.DEFAULT_LIMIT,
                     search: search && search.length >= SEARCH_MIN_CHARS ? search : undefined,
+                    status,
                 } as QueryParams,
                 listOfferRequestsResponseSchema,
             ),
@@ -53,9 +57,10 @@ export function useOffers(siteId: string | null, filters?: { search?: string; pa
 }
 
 // === Contacts ===
-export function useContacts(siteId: string | null, filters?: { search?: string; page?: number }) {
+export function useContacts(siteId: string | null, filters?: { search?: string; page?: number; status?: InboxStatus }) {
     const search = filters?.search?.trim();
     const page = filters?.page ?? PAGINATION.DEFAULT_PAGE;
+    const status = filters?.status;
     return useQuery({
         queryKey: inboxKeys.contactsList(siteId ?? '', { ...filters, page }),
         queryFn: () =>
@@ -66,6 +71,7 @@ export function useContacts(siteId: string | null, filters?: { search?: string; 
                     page,
                     limit: PAGINATION.DEFAULT_LIMIT,
                     search: search && search.length >= SEARCH_MIN_CHARS ? search : undefined,
+                    status,
                 } as QueryParams,
                 listContactMessagesResponseSchema,
             ),
@@ -76,10 +82,11 @@ export function useContacts(siteId: string | null, filters?: { search?: string; 
 // === Applications ===
 export function useApplications(
     siteId: string | null,
-    filters?: { search?: string; jobPostId?: string; page?: number },
+    filters?: { search?: string; jobPostId?: string; page?: number; status?: InboxStatus },
 ) {
     const search = filters?.search?.trim();
     const page = filters?.page ?? PAGINATION.DEFAULT_PAGE;
+    const status = filters?.status;
     return useQuery({
         queryKey: inboxKeys.applicationsList(siteId ?? '', { ...filters, page }),
         queryFn: () =>
@@ -91,6 +98,7 @@ export function useApplications(
                     limit: PAGINATION.DEFAULT_LIMIT,
                     search: search && search.length >= SEARCH_MIN_CHARS ? search : undefined,
                     job_post_id: filters?.jobPostId || undefined,
+                    status,
                 } as QueryParams,
                 listJobApplicationsResponseSchema,
             ),

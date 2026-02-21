@@ -1,4 +1,6 @@
+import { publishBuilderLayoutResponseSchema, updateBuilderLayoutRequestSchema } from "@prosektor/contracts";
 import {
+    asHeaders,
     asErrorBody,
     asStatus,
     HttpError,
@@ -6,12 +8,20 @@ import {
     jsonOk,
     mapPostgrestError,
     parseJson,
+    zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
 import { assertPageEditableByPanelRole, getPageOriginForTenant } from "@/server/pages/origin-guard";
+import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
+import { getServerEnv } from "@/server/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const BUILDER_LAYOUT_WRITE_LIMIT = 240;
+const BUILDER_LAYOUT_WRITE_WINDOW_SECONDS = 60;
+const BUILDER_LAYOUT_PUBLISH_LIMIT = 30;
+const BUILDER_LAYOUT_PUBLISH_WINDOW_SECONDS = 3600;
 
 interface RouteParams {
     params: Promise<{ pageId: string }>;
@@ -25,7 +35,15 @@ interface RouteParams {
 export async function GET(req: Request, { params }: RouteParams) {
     try {
         const ctx = await requireAuthContext(req);
+        const env = getServerEnv();
         const { pageId } = await params;
+
+        const rateLimit = await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("builder_layouts", ctx.tenant.id, ctx.user.id),
+            env.dashboardReadRateLimit,
+            env.dashboardReadRateWindowSec,
+        );
 
         // Get page info
         const { data: page, error: pageError } = await ctx.supabase
@@ -63,9 +81,9 @@ export async function GET(req: Request, { params }: RouteParams) {
             page,
             layout: layout || null,
             history: history || [],
-        });
+        }, 200, rateLimitHeaders(rateLimit));
     } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err));
+        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
     }
 }
 
@@ -78,13 +96,27 @@ export async function PUT(req: Request, { params }: RouteParams) {
     try {
         const ctx = await requireAuthContext(req);
         const { pageId } = await params;
-        const body = await parseJson(req) as Record<string, unknown>;
+        const rateLimit = await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("builder_layouts_write", ctx.tenant.id, ctx.user.id),
+            BUILDER_LAYOUT_WRITE_LIMIT,
+            BUILDER_LAYOUT_WRITE_WINDOW_SECONDS,
+        );
+        const parsedBody = updateBuilderLayoutRequestSchema.safeParse(await parseJson(req));
+        if (!parsedBody.success) {
+            throw new HttpError(400, {
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                details: zodErrorToDetails(parsedBody.error),
+            });
+        }
+        const body = parsedBody.data;
 
         const page = await getPageOriginForTenant(ctx, pageId);
         assertPageEditableByPanelRole(page.origin, ctx.role);
 
-        const layout_data = body.layout_data as Record<string, unknown> | undefined;
-        const preview_data = body.preview_data as Record<string, unknown> | undefined;
+        const layout_data = body.layout_data;
+        const preview_data = body.preview_data;
 
         // Check if layout exists
         const { data: existingLayout } = await ctx.supabase
@@ -142,9 +174,9 @@ export async function PUT(req: Request, { params }: RouteParams) {
             layout = data;
         }
 
-        return jsonOk(layout);
+        return jsonOk(layout, 200, rateLimitHeaders(rateLimit));
     } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err));
+        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
     }
 }
 
@@ -157,6 +189,12 @@ export async function POST(req: Request, { params }: RouteParams) {
     try {
         const ctx = await requireAuthContext(req);
         const { pageId } = await params;
+        const rateLimit = await enforceRateLimit(
+            ctx.admin,
+            rateLimitAuthKey("builder_layouts_publish", ctx.tenant.id, ctx.user.id),
+            BUILDER_LAYOUT_PUBLISH_LIMIT,
+            BUILDER_LAYOUT_PUBLISH_WINDOW_SECONDS,
+        );
 
         const page = await getPageOriginForTenant(ctx, pageId);
         assertPageEditableByPanelRole(page.origin, ctx.role);
@@ -207,8 +245,12 @@ export async function POST(req: Request, { params }: RouteParams) {
             })
             .eq('id', layout.id);
 
-        return jsonOk({ success: true, revision_id: revision.id });
+        return jsonOk(
+            publishBuilderLayoutResponseSchema.parse({ success: true, revision_id: revision.id }),
+            200,
+            rateLimitHeaders(rateLimit),
+        );
     } catch (err) {
-        return jsonError(asErrorBody(err), asStatus(err));
+        return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
     }
 }

@@ -1,6 +1,7 @@
 import { listTenantMembersResponseSchema, tenantMemberSchema } from "@prosektor/contracts";
-import { asErrorBody, asStatus, jsonError, jsonOk, mapPostgrestError } from "@/server/api/http";
+import { asErrorBody, asHeaders, asStatus, jsonError, jsonOk, mapPostgrestError } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceAuthRouteRateLimit } from "@/server/auth/route-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ function safeUserName(email?: string, meta?: Record<string, unknown> | null): st
 export async function GET(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    await enforceAuthRouteRateLimit(ctx, req);
 
     const { data, error, count } = await ctx.supabase
       .from("tenant_members")
@@ -80,7 +82,6 @@ export async function GET(req: Request) {
       }),
     );
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }
-

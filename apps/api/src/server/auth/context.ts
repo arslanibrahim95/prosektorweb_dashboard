@@ -214,29 +214,6 @@ async function getTenantById(
   return tenant;
 }
 
-async function getTenantsByIds(
-  supabase: SupabaseClient,
-  tenantIds: string[],
-): Promise<TenantSummary[]> {
-  if (tenantIds.length === 0) return [];
-
-  const { data, error } = await supabase
-    .from("tenants")
-    .select("id, name, slug, plan, status")
-    .in("id", tenantIds)
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    throw createError({
-      code: "DATABASE_ERROR",
-      message: "Tenant listesi yüklenemedi.",
-      originalError: error,
-    });
-  }
-
-  return (data ?? []) as TenantSummary[];
-}
-
 async function getAllTenants(admin: SupabaseClient): Promise<TenantSummary[]> {
   const { data, error } = await admin
     .from("tenants")

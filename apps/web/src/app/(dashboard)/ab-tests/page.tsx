@@ -1,9 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
-import { Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
     Dialog,
     DialogContent,
@@ -24,29 +23,19 @@ const ABTestForm = dynamic(
 
 export default function ABTestsPage() {
     const [isCreateOpen, setIsCreateOpen] = useState(false)
-    const [selectedTestId, setSelectedTestId] = useState<string | null>(null)
-    // TODO: Add results view mode or navigation
+    const queryClient = useQueryClient()
 
     const handleCreateSuccess = () => {
         setIsCreateOpen(false)
-        // Refresh dashboard handled by component's internal state usually, 
-        // or we can add a refresh trigger if needed. 
-        // For now, ABTestDashboard fetches on mount/update. 
-        // Actually, we might need to trigger a re-fetch.
-        // Ideally useQuery invalidation. 
-        // As a simple fix, we can force re-mount or pass a refresh key.
-        window.location.reload() // MVP simple refresh
+        // Invalidate AB tests queries to trigger a fresh fetch
+        void queryClient.invalidateQueries({ queryKey: ['ab-tests'] })
     }
 
     const handleTestSelect = (id: string) => {
-        // Navigate to details or show results
-        // For MVP, maybe just log or show a "Not implemented" toast
-        // OR: implement a results dialog/page
-        // router.push(`/ab-tests/${id}`)
+        // Navigate to details - implement navigation when detail page is ready
+        // For MVP: navigate to the detail page if it exists
+        // For now: router.push(`/ab-tests/${id}`)
         console.log('Selected test:', id)
-        // Check if we want to show results in a dialog or navigate
-        // For now, let's keep it simple.
-        window.location.href = `/ab-tests/${id}` // If we had a detail page
     }
 
     return (

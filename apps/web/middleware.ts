@@ -22,6 +22,7 @@ const PUBLIC_PATHS = [
 
 // Protected paths that require authentication
 const PROTECTED_PATH_PREFIXES = [
+  '/admin',
   '/home',
   '/site',
   '/sites',

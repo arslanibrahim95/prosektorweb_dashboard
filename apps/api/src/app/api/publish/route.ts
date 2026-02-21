@@ -1,6 +1,7 @@
 import { publishSiteRequestSchema, publishSiteResponseSchema, uuidSchema } from "@prosektor/contracts";
 import { z } from "zod";
 import {
+  asHeaders,
   asErrorBody,
   asStatus,
   HttpError,
@@ -11,10 +12,14 @@ import {
   zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import { sendPublishWebhook } from "@/server/webhooks/publish";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const PUBLISH_WRITE_LIMIT = 30;
+const PUBLISH_WRITE_WINDOW_SECONDS = 3600;
 
 const publishSiteRpcResponseSchema = z.object({
   site_id: uuidSchema,
@@ -43,6 +48,12 @@ function mapPublishRpcError(error: { code?: string; message?: string }) {
 export async function POST(req: Request) {
   try {
     const ctx = await requireAuthContext(req);
+    const rateLimit = await enforceRateLimit(
+      ctx.admin,
+      rateLimitAuthKey("publish", ctx.tenant.id, ctx.user.id),
+      PUBLISH_WRITE_LIMIT,
+      PUBLISH_WRITE_WINDOW_SECONDS,
+    );
     const body = await parseJson(req);
 
     const parsed = publishSiteRequestSchema.safeParse(body);
@@ -108,8 +119,8 @@ export async function POST(req: Request) {
       });
     }
 
-    return jsonOk(responseData);
+    return jsonOk(responseData, 200, rateLimitHeaders(rateLimit));
   } catch (err) {
-    return jsonError(asErrorBody(err), asStatus(err));
+    return jsonError(asErrorBody(err), asStatus(err), asHeaders(err));
   }
 }

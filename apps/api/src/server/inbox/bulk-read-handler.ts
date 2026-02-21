@@ -15,6 +15,9 @@ import {
     zodErrorToDetails,
 } from "@/server/api/http";
 import { requireAuthContext } from "@/server/auth/context";
+import { hasPermission } from "@/server/auth/permissions";
+import { getServerEnv } from "@/server/env";
+import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import { getInboxDbClient } from "./query-utils";
 
 /**
@@ -25,6 +28,19 @@ export function createBulkReadHandler(tableName: string) {
     return async function POST(req: Request) {
         try {
             const ctx = await requireAuthContext(req);
+            const env = getServerEnv();
+
+            // Authorization parity with inbox list/export
+            if (!hasPermission(ctx.permissions, "inbox:read")) {
+                throw new HttpError(403, { code: "FORBIDDEN", message: "Bu işlem için yetkiniz yok." });
+            }
+
+            const rateLimit = await enforceRateLimit(
+                ctx.admin,
+                rateLimitAuthKey("inbox_bulk_read", ctx.tenant.id, ctx.user.id),
+                env.dashboardReadRateLimit,
+                env.dashboardReadRateWindowSec,
+            );
             const body = await parseJson(req);
 
             const parsed = bulkMarkReadRequestSchema.safeParse(body);
@@ -60,6 +76,8 @@ export function createBulkReadHandler(tableName: string) {
                 bulkMarkReadResponseSchema.parse({
                     updated: data?.length ?? 0,
                 }),
+                200,
+                rateLimitHeaders(rateLimit),
             );
         } catch (err) {
             return jsonError(asErrorBody(err), asStatus(err));

@@ -73,13 +73,6 @@ function normalCDF(x: number): number {
 }
 
 /**
- * Normal dağılım PDF fonksiyonu
- */
-function normalPDF(x: number): number {
-    return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI)
-}
-
-/**
  * Z-score hesapla
  */
 export function calculateZScore(
@@ -466,12 +459,6 @@ export function calculateBayesianAB(
     variantVisitors: number,
     variantConversions: number
 ): BayesianResult {
-    // Beta dağılımı parametreleri (Prior: Beta(1,1) - uniform)
-    const alphaControl = controlConversions + 1
-    const betaControl = controlVisitors - controlConversions + 1
-    const alphaVariant = variantConversions + 1
-    const betaVariant = variantVisitors - variantConversions + 1
-
     // Basit Monte Carlo simülasyonu
     const samples = 10000
     let wins = 0

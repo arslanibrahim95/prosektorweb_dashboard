@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { use } from 'react'
 import dynamic from 'next/dynamic'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'

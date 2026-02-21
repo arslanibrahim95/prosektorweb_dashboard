@@ -75,6 +75,13 @@ export interface InboxHandlerConfig<TQuery extends BaseInboxQuery = BaseInboxQue
     responseSchema: z.ZodType<{ items: unknown[]; total: number }>;
 }
 
+function getItemId(item: unknown): unknown {
+    if (typeof item !== "object" || item === null || !("id" in item)) {
+        return undefined;
+    }
+    return (item as { id?: unknown }).id;
+}
+
 /**
  * Creates a generic inbox GET handler with all common logic
  */
@@ -145,9 +152,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                 .range(from, to);
 
             // 6. Apply common filters (status, date range, search, additional)
-            // Type-safe query builder - using explicit type for Supabase compatibility
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const dataQuery: any = applyInboxFilters(
+            const dataQuery = applyInboxFilters(
                 baseDataQuery,
                 parsed,
                 searchFields,
@@ -190,8 +195,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                         .eq("site_id", parsed.site_id);
 
                     // Apply same filters using shared helper
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const countQuery: any = applyInboxFilters(
+                    const countQuery = applyInboxFilters(
                         baseCountQuery,
                         parsed,
                         searchFields,
@@ -206,18 +210,19 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
             );
 
             // 13. Parse and validate response (safeParse to avoid unhandled throws)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const parsedItems = (data ?? []).map((item: any) => {
-                const result = itemSchema.safeParse(item);
-                if (!result.success) {
-                    console.error('[Inbox] Item validation failed:', {
-                        errors: result.error.issues,
-                        itemId: item?.id,
-                    });
-                    return null;
-                }
-                return result.data;
-            }).filter(Boolean);
+            const parsedItems = (data ?? [])
+                .map((item: unknown) => {
+                    const result = itemSchema.safeParse(item);
+                    if (!result.success) {
+                        console.error('[Inbox] Item validation failed:', {
+                            errors: result.error.issues,
+                            itemId: getItemId(item),
+                        });
+                        return null;
+                    }
+                    return result.data;
+                })
+                .filter((item): item is Record<string, unknown> => item !== null);
 
             const responseParsed = responseSchema.safeParse({
                 items: parsedItems,

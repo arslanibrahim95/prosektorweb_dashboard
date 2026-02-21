@@ -2,10 +2,8 @@
  * A/B Test Dashboard Bileşeni
  * Tüm testlerin genel görünümünü sağlar
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
-    ABTest,
-    DashboardStats,
     ABTestStatus
 } from '../types'
 import { useABTests, useABTestDashboard } from '../hooks/useABTests'
@@ -16,15 +14,11 @@ interface ABTestDashboardProps {
 }
 
 export function ABTestDashboard({ onTestSelect, onCreateNew }: ABTestDashboardProps) {
-    const { tests, loading, error, fetchTests } = useABTests()
-    const { fetchDashboard } = useABTestDashboard()
-    const [stats, setStats] = useState<DashboardStats | null>(null)
+    const { data: testsData, isLoading: loading, error } = useABTests()
+    const { data: stats } = useABTestDashboard()
     const [filter, setFilter] = useState<string>('all')
 
-    useEffect(() => {
-        fetchTests()
-        fetchDashboard().then(setStats).catch(console.error)
-    }, [fetchTests, fetchDashboard])
+    const tests = testsData?.data || []
 
     const filteredTests = filter === 'all'
         ? tests
@@ -50,7 +44,7 @@ export function ABTestDashboard({ onTestSelect, onCreateNew }: ABTestDashboardPr
         )
     }
 
-    if (loading && !tests.length) {
+    if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -181,7 +175,7 @@ export function ABTestDashboard({ onTestSelect, onCreateNew }: ABTestDashboardPr
 
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-                    {error}
+                    {error instanceof Error ? error.message : 'Testler yüklenirken bir hata oluştu'}
                 </div>
             )}
         </div>

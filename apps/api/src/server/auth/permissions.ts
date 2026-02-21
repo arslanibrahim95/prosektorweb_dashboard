@@ -7,7 +7,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "sites:*",
     "pages:*",
     "builder:*",
-    "theme:*",
+    // "theme:*" — Phase-2 feature, not in MVP
     "menus:*",
     "media:*",
     "domains:*",
@@ -28,7 +28,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "sites:*",
     "pages:*",
     "builder:*",
-    "theme:*",
+    // "theme:*" — Phase-2 feature, not in MVP
     "menus:*",
     "media:*",
     "domains:create,read,update",
@@ -48,7 +48,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "sites:read",
     "pages:*",
     "builder:*",
-    "theme:read,update",
+    // "theme:read,update" — Phase-2 feature, not in MVP
     "menus:*",
     "media:*",
     "domains:read",
@@ -67,7 +67,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     "sites:read",
     "pages:read",
     "builder:read",
-    "theme:read",
+    // "theme:read" — Phase-2 feature, not in MVP
     "menus:read",
     "media:read",
     "domains:read",

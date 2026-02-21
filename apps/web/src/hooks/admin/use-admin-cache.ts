@@ -18,8 +18,8 @@ export function useAdminHealth() {
     return useQuery({
         queryKey: adminKeys.health(),
         queryFn: () => api.get('/admin/health'),
-        staleTime: 60 * 1000,
-        refetchInterval: 60 * 1000,
+        staleTime: 30 * 1000,
+        refetchInterval: 30 * 1000,
     });
 }
 
