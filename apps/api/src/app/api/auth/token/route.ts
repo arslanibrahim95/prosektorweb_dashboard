@@ -66,9 +66,9 @@ export async function POST(req: NextRequest) {
     const allowedOrigin = await assertAllowedWebOrigin(origin, admin);
     corsHeaders = allowedOrigin
       ? {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        Vary: 'Origin',
-      }
+          'Access-Control-Allow-Origin': allowedOrigin,
+          Vary: 'Origin',
+        }
       : undefined;
 
     // SECURITY: Rate limit by IP address first (before authentication)
@@ -84,13 +84,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Request body parse
-    const body = await req.json().catch(() => null);
-    if (!body) {
-      throw createError({
-        code: 'INVALID_REQUEST_BODY',
-        message: 'Invalid JSON body format.',
-      });
-    }
+    const body = await req.json().catch(() => ({}));
     const parsed = tokenExchangeRequestSchema.safeParse(body);
 
     if (!parsed.success) {

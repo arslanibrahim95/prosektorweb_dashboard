@@ -1,0 +1,444 @@
+/**
+ * ProsektorWeb Design Tokens - 2026 Edition
+ * 
+ * 2026 Trend Rationale:
+ * - OKLCH colors for wider gamut and better dark mode
+ * - Doygun, canlı gradyanlar for premium feel
+ * - Neomorfizm ve glassmorphism blend
+ * - Dinamik tipografi with fluid scaling
+ * - AI-ready theming support
+ */
+
+:root {
+  /* ========================================
+   * PRIMITIVE COLORS (OKLCH Palette)
+   * 2026: Geniş renk gamutu ve mükemmel karanlık mod
+   * ======================================== */
+
+  /* Neutral scale - Ultra dark for depth */
+  --color-neutral-0: oklch(1 0 0);
+  --color-neutral-50: oklch(0.985 0 0);
+  --color-neutral-100: oklch(0.97 0 0);
+  --color-neutral-200: oklch(0.922 0 0);
+  --color-neutral-300: oklch(0.87 0 0);
+  --color-neutral-400: oklch(0.708 0 0);
+  --color-neutral-500: oklch(0.556 0 0);
+  --color-neutral-600: oklch(0.44 0 0);
+  --color-neutral-700: oklch(0.35 0 0);
+  --color-neutral-800: oklch(0.269 0 0);
+  --color-neutral-900: oklch(0.205 0 0);
+  --color-neutral-950: oklch(0.145 0 0);
+  --color-neutral-1000: oklch(0 0 0);
+
+  /* Brand Primary - Vibrant Blue with chroma */
+  --color-brand-50: oklch(0.97 0.02 250);
+  --color-brand-100: oklch(0.93 0.04 250);
+  --color-brand-200: oklch(0.86 0.08 250);
+  --color-brand-300: oklch(0.76 0.12 250);
+  --color-brand-400: oklch(0.65 0.16 250);
+  --color-brand-500: oklch(0.55 0.20 250);
+  --color-brand-600: oklch(0.48 0.18 250);
+  --color-brand-700: oklch(0.40 0.15 250);
+  --color-brand-800: oklch(0.33 0.12 250);
+  --color-brand-900: oklch(0.27 0.09 250);
+  --color-brand-950: oklch(0.20 0.06 250);
+
+  /* ========================================
+   * 2026 TREND: Doygun Renk Paletleri
+   * Modern, premium hissi için canlı renkler
+   * ======================================== */
+
+  /* Coral/Salmon - Enerjik accent */
+  --color-coral-50: oklch(0.97 0.05 25);
+  --color-coral-100: oklch(0.93 0.08 25);
+  --color-coral-200: oklch(0.86 0.12 25);
+  --color-coral-300: oklch(0.76 0.18 25);
+  --color-coral-400: oklch(0.65 0.22 25);
+  --color-coral-500: oklch(0.58 0.25 25);
+  --color-coral-600: oklch(0.50 0.22 25);
+  --color-coral-700: oklch(0.42 0.18 25);
+
+  /* Turquoise - Fresh accent */
+  --color-turquoise-50: oklch(0.97 0.06 180);
+  --color-turquoise-100: oklch(0.93 0.10 180);
+  --color-turquoise-200: oklch(0.86 0.14 180);
+  --color-turquoise-300: oklch(0.76 0.18 180);
+  --color-turquoise-400: oklch(0.65 0.22 180);
+  --color-turquoise-500: oklch(0.55 0.24 180);
+  --color-turquoise-600: oklch(0.45 0.20 180);
+  --color-turquoise-700: oklch(0.38 0.16 180);
+
+  /* Violet - Premium accent */
+  --color-violet-50: oklch(0.97 0.04 290);
+  --color-violet-100: oklch(0.93 0.08 290);
+  --color-violet-200: oklch(0.86 0.12 290);
+  --color-violet-300: oklch(0.76 0.16 290);
+  --color-violet-400: oklch(0.65 0.20 290);
+  --color-violet-500: oklch(0.55 0.22 290);
+  --color-violet-600: oklch(0.45 0.18 290);
+  --color-violet-700: oklch(0.38 0.14 290);
+
+  /* Amber - Warm accent */
+  --color-amber-50: oklch(0.97 0.04 70);
+  --color-amber-100: oklch(0.93 0.08 70);
+  --color-amber-200: oklch(0.86 0.12 70);
+  --color-amber-300: oklch(0.76 0.16 70);
+  --color-amber-400: oklch(0.68 0.18 70);
+  --color-amber-500: oklch(0.60 0.20 70);
+  --color-amber-600: oklch(0.52 0.18 70);
+  --color-amber-700: oklch(0.45 0.14 70);
+
+  /* Emerald - Success evolution */
+  --color-emerald-50: oklch(0.97 0.06 160);
+  --color-emerald-100: oklch(0.93 0.10 160);
+  --color-emerald-200: oklch(0.86 0.14 160);
+  --color-emerald-300: oklch(0.76 0.18 160);
+  --color-emerald-400: oklch(0.65 0.22 160);
+  --color-emerald-500: oklch(0.55 0.24 160);
+  --color-emerald-600: oklch(0.45 0.20 160);
+  --color-emerald-700: oklch(0.38 0.16 160);
+
+  /* Semantic Colors */
+  --color-red-500: oklch(0.577 0.245 27.325);
+  --color-green-500: oklch(0.62 0.17 145);
+  --color-amber-500: oklch(0.75 0.18 85);
+  --color-blue-500: oklch(0.65 0.15 230);
+
+  /* ========================================
+   * SEMANTIC TOKENS (Shadcn Compatible)
+   * Light Mode Defaults
+   * ======================================== */
+
+  --background: var(--color-neutral-50);
+  --foreground: var(--color-neutral-950);
+
+  --card: var(--color-neutral-0);
+  --card-foreground: var(--color-neutral-950);
+
+  --popover: var(--color-neutral-0);
+  --popover-foreground: var(--color-neutral-950);
+
+  --primary: var(--color-brand-600);
+  --primary-foreground: var(--color-neutral-50);
+
+  --secondary: var(--color-neutral-100);
+  --secondary-foreground: var(--color-neutral-900);
+
+  --muted: var(--color-neutral-100);
+  --muted-foreground: var(--color-neutral-500);
+
+  --accent: var(--color-brand-100);
+  --accent-foreground: var(--color-brand-900);
+
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: var(--color-neutral-50);
+
+  --border: var(--color-neutral-200);
+  --input: var(--color-neutral-200);
+  --ring: var(--color-brand-400);
+
+  /* Charts */
+  --chart-1: oklch(0.55 0.20 250);
+  --chart-2: oklch(0.62 0.17 145);
+  --chart-3: oklch(0.75 0.18 85);
+  --chart-4: oklch(0.65 0.15 230);
+  --chart-5: oklch(0.577 0.245 27.325);
+
+  /* Sidebar */
+  --sidebar-background: oklch(0.16 0.025 250);
+  --sidebar-foreground: oklch(1 0 0 / 0.9);
+  --sidebar-primary: var(--color-brand-400);
+  --sidebar-primary-foreground: var(--color-neutral-0);
+  --sidebar-accent: oklch(1 0 0 / 0.08);
+  --sidebar-accent-foreground: oklch(1 0 0 / 0.9);
+  --sidebar-border: oklch(1 0 0 / 0.08);
+  --sidebar-ring: var(--color-brand-400);
+  --sidebar-muted: oklch(1 0 0 / 0.4);
+
+  /* Status Colors */
+  --success: oklch(0.55 0.24 160);
+  --success-foreground: var(--color-neutral-50);
+  --warning: oklch(0.68 0.18 70);
+  --warning-foreground: var(--color-neutral-950);
+  --info: var(--color-blue-500);
+  --info-foreground: var(--color-neutral-50);
+
+  /* 2026: AI Theme Support */
+  --ai-gradient-start: oklch(0.65 0.22 250);
+  --ai-gradient-end: oklch(0.55 0.24 290);
+
+  /* ========================================
+   * 2026 TREND: Dinamik Tipografi
+   * Fluid scaling ve variable font desteği
+   * ======================================== */
+  /* Font Families */
+  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+
+  /* Font Sizes - Extended for 2026 */
+  --font-size-xs: 0.625rem;
+  /* 10px */
+  --font-size-sm: 0.75rem;
+  /* 12px */
+  --font-size-base: 0.875rem;
+  /* 14px */
+  --font-size-md: 1rem;
+  /* 16px */
+  --font-size-lg: 1.125rem;
+  /* 18px */
+  --font-size-xl: 1.25rem;
+  /* 20px */
+  --font-size-2xl: 1.5rem;
+  /* 24px - Hero headings */
+  --font-size-3xl: 1.875rem;
+  /* 30px */
+  --font-size-4xl: 2.25rem;
+  /* 36px */
+  --font-size-5xl: 3rem;
+  /* 48px */
+
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Letter Spacing */
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+
+  /* ========================================
+   * LAYOUT DIMENSIONS
+   * 2026: Daha fazla esneklik için genişletildi
+   * ======================================== */
+  --sidebar-width: 260px;
+  --sidebar-width-collapsed: 72px;
+  --topbar-height: 64px;
+  --header-height: 64px;
+  --icon-size-sm: 16px;
+  --icon-size-md: 18px;
+  --icon-size-lg: 20px;
+  --icon-size-xl: 24px;
+
+  /* 2026: Asymmetric layout support */
+  --content-max-width: 1440px;
+  --content-narrow: 768px;
+  --content-wide: 1200px;
+
+  /* Table columns */
+  --table-col-xs: 50px;
+  --table-col-sm: 100px;
+  --table-col-md: 240px;
+
+  /* ========================================
+   * RADIUS & SPACING
+   * 2026: Neomorfizm için daha yumuşak radius
+   * ======================================== */
+  --radius-sm: 0.25rem;
+  /* 4px - Subtle */
+  --radius-md: 0.5rem;
+  /* 8px - Default */
+  --radius-lg: 0.75rem;
+  /* 12px - Cards */
+  --radius-xl: 1rem;
+  /* 16px - Modals */
+  --radius-2xl: 1.5rem;
+  /* 24px - Hero elements */
+  --radius-3xl: 2rem;
+  /* 32px - 2026 trend */
+  --radius-full: 9999px;
+
+  --radius: var(--radius-md);
+
+  /* Dashboard spacing */
+  --spacing-dashboard-page-gap: 1.5rem;
+  --spacing-dashboard-content-x-mobile: 1rem;
+  --spacing-dashboard-content-x-tablet: 1.5rem;
+  --spacing-dashboard-content-x-desktop: 2rem;
+  --spacing-dashboard-content-y-mobile: 1rem;
+  --spacing-dashboard-content-y-tablet: 1.5rem;
+  --spacing-dashboard-content-y-desktop: 2rem;
+  --size-dashboard-content-narrow: 42rem;
+
+  /* 2026: Extended spacing for whitespace usage */
+  --spacing-page-header: 2rem;
+  --spacing-section-gap: 1.5rem;
+  --spacing-component-gap: 1rem;
+  --spacing-element-gap: 0.5rem;
+
+  /* 2026: Large whitespace for premium feel */
+  --spacing-whitespace-sm: 1rem;
+  --spacing-whitespace-md: 2rem;
+  --spacing-whitespace-lg: 4rem;
+  --spacing-whitespace-xl: 8rem;
+
+  /* Transitions */
+  --transition-fast: 150ms;
+  --transition-normal: 200ms;
+  --transition-slow: 300ms;
+  --transition-micro: 100ms;
+  /* 2026: Mikro-etkileşimler için */
+
+  /* ========================================
+   * 2026 TREND: Gelişmiş Animasyon Timing
+   * Spring physics ve fluid motions
+   * ======================================== */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
+
+  /* ========================================
+   * SHADOW SCALE
+   * 2026: Neomorfizm için yeni shadow kombinasyonları
+   * ======================================== */
+  /* Flat shadows */
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px oklch(0 0 0 / 0.05), 0 2px 4px oklch(0 0 0 / 0.03);
+  --shadow-lg: 0 10px 15px oklch(0 0 0 / 0.06), 0 4px 6px oklch(0 0 0 / 0.03);
+  --shadow-xl: 0 20px 25px oklch(0 0 0 / 0.08), 0 8px 10px oklch(0 0 0 / 0.04);
+  --shadow-2xl: 0 25px 50px oklch(0 0 0 / 0.12);
+
+  /* 2026: Neomorfizm shadows */
+  --shadow-neomorphism-light:
+    8px 8px 16px oklch(0 0 0 / 0.06),
+    -8px -8px 16px oklch(1 0 0 / 0.5);
+  --shadow-neomorphism-dark:
+    8px 8px 16px oklch(0 0 0 / 0.3),
+    -8px -8px 16px oklch(1 0 0 / 0.05);
+
+  /* 2026: Glassmorphism shadows */
+  --shadow-glass: 0 8px 32px oklch(0 0 0 / 0.08);
+  --shadow-glass-strong: 0 12px 48px oklch(0 0 0 / 0.15);
+
+  /* Glow effects */
+  --glow-primary: 0 0 20px oklch(0.55 0.20 250 / 0.25);
+  --glow-success: 0 0 12px oklch(0.55 0.24 160 / 0.3);
+  --glow-coral: 0 0 20px oklch(0.58 0.25 25 / 0.25);
+  --glow-turquoise: 0 0 20px oklch(0.55 0.24 180 / 0.25);
+  --glow-violet: 0 0 20px oklch(0.55 0.22 290 / 0.25);
+}
+
+/* ========================================
+ * DARK MODE OVERRIDES
+ * 2026: Daha derin, premium karanlık tema
+ * ======================================== */
+.dark {
+  --background: oklch(0.10 0.015 250);
+  --foreground: var(--color-neutral-50);
+
+  --card: oklch(0.14 0.018 250);
+  --card-foreground: var(--color-neutral-50);
+
+  --popover: oklch(0.14 0.018 250);
+  --popover-foreground: var(--color-neutral-50);
+
+  --primary: var(--color-brand-400);
+  --primary-foreground: var(--color-neutral-950);
+
+  --secondary: oklch(0.18 0.02 250);
+  --secondary-foreground: var(--color-neutral-50);
+
+  --muted: oklch(0.18 0.02 250);
+  --muted-foreground: var(--color-neutral-400);
+
+  --accent: oklch(0.25 0.04 250);
+  --accent-foreground: var(--color-brand-200);
+
+  --destructive: oklch(0.50 0.22 25);
+  --destructive-foreground: var(--color-neutral-50);
+
+  --border: oklch(1 0 0 / 0.12);
+  --input: oklch(1 0 0 / 0.12);
+  --ring: var(--color-brand-400);
+
+  /* Charts (Dark) */
+  --chart-1: oklch(0.65 0.16 250);
+  --chart-2: oklch(0.55 0.24 160);
+  --chart-3: oklch(0.68 0.18 70);
+  --chart-4: oklch(0.65 0.15 230);
+  --chart-5: oklch(0.55 0.22 25);
+
+  /* Sidebar (Dark) */
+  --sidebar-background: oklch(0.08 0.02 250);
+  --sidebar-foreground: oklch(1 0 0 / 0.9);
+  --sidebar-primary: var(--color-brand-400);
+  --sidebar-primary-foreground: var(--color-neutral-0);
+  --sidebar-accent: oklch(1 0 0 / 0.06);
+  --sidebar-accent-foreground: oklch(1 0 0 / 0.9);
+  --sidebar-border: oklch(1 0 0 / 0.06);
+  --sidebar-ring: var(--color-brand-400);
+
+  /* 2026: AI Theme Dark */
+  --ai-gradient-start: oklch(0.55 0.20 250);
+  --ai-gradient-end: oklch(0.45 0.22 290);
+
+  /* Shadows (Dark) - Elevated for depth */
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.2);
+  --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.25), 0 1px 2px oklch(0 0 0 / 0.15);
+  --shadow-md: 0 4px 6px oklch(0 0 0 / 0.25), 0 2px 4px oklch(0 0 0 / 0.15);
+  --shadow-lg: 0 10px 15px oklch(0 0 0 / 0.3), 0 4px 6px oklch(0 0 0 / 0.15);
+  --shadow-xl: 0 20px 25px oklch(0 0 0 / 0.35), 0 8px 10px oklch(0 0 0 / 0.2);
+  --shadow-2xl: 0 25px 50px oklch(0 0 0 / 0.45);
+
+  /* 2026: Neomorfism Dark */
+  --shadow-neomorphism-dark:
+    8px 8px 20px oklch(0 0 0 / 0.4),
+    -8px -8px 20px oklch(1 0 0 / 0.03);
+
+  /* 2026: Glassmorphism Dark */
+  --shadow-glass: 0 8px 32px oklch(0 0 0 / 0.3);
+  --shadow-glass-strong: 0 12px 48px oklch(0 0 0 / 0.5);
+}
+
+/* ========================================
+ * 2026: AI THEMING
+ * Yapay zeka destekli kişiselleştirme
+ * ======================================== */
+[data-theme="ai-assist"] {
+  --primary: oklch(0.60 0.18 280);
+  --accent: oklch(0.90 0.06 280);
+  --ai-gradient-start: oklch(0.60 0.18 280);
+  --ai-gradient-end: oklch(0.50 0.20 300);
+}
+
+/* ========================================
+ * ACCESSIBILITY - REDUCED MOTION
+ * 2026: Enhanced reduced motion support
+ * ======================================== */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ========================================
+ * 2026: FLUID TYPOGRAPHY
+ * Viewport-based text scaling
+ * ======================================== */
+@supports (font-size: clamp(1rem, 2vw, 2rem)) {
+  :root {
+    --font-size-fluid-sm: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+    --font-size-fluid-base: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+    --font-size-fluid-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+    --font-size-fluid-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+    --font-size-fluid-2xl: clamp(1.5rem, 1.3rem + 1vw, 1.875rem);
+    --font-size-fluid-3xl: clamp(1.875rem, 1.6rem + 1.375vw, 2.25rem);
+    --font-size-fluid-4xl: clamp(2.25rem, 1.9rem + 1.75vw, 3rem);
+  }
+}

@@ -21,14 +21,10 @@ interface CacheConfig {
   defaultTtlSeconds: number;
 }
 
-const MEGABYTE = 1024 * 1024;
-const DEFAULT_MAX_MEMORY_MB = 100;
-const DEFAULT_TTL_MINUTES = 5;
-
 const DEFAULT_CONFIG: CacheConfig = {
   maxEntries: 2000,
-  maxMemoryBytes: DEFAULT_MAX_MEMORY_MB * MEGABYTE,
-  defaultTtlSeconds: DEFAULT_TTL_MINUTES * 60,
+  maxMemoryBytes: 100 * 1024 * 1024, // 100MB default
+  defaultTtlSeconds: 300, // 5 minutes
 };
 
 // SECURITY: TTL bounds to prevent cache poisoning with extreme values
@@ -79,16 +75,12 @@ class CacheStore {
   private head: LRUNode;
   private tail: LRUNode;
 
-  private createSentinel(): LRUNode {
-    return { key: '', entry: {} as CacheEntry<unknown>, prev: null, next: null };
-  }
-
   constructor(config: Partial<CacheConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
 
     // Create sentinel nodes (dummy head/tail)
-    this.head = this.createSentinel();
-    this.tail = this.createSentinel();
+    this.head = { key: '', entry: null as unknown as CacheEntry, prev: null, next: null };
+    this.tail = { key: '', entry: null as unknown as CacheEntry, prev: null, next: null };
     this.head.next = this.tail;
     this.tail.prev = this.head;
   }
@@ -102,9 +94,8 @@ class CacheStore {
       const serialized = JSON.stringify(value);
       // UTF-8 encoding: 1 byte per ASCII char, up to 4 bytes for Unicode
       return Buffer.byteLength(serialized, 'utf8');
-    } catch (error) {
+    } catch {
       // If we can't serialize, assume a reasonable size
-      logger.warn("[Cache] Failed to serialize entry for size estimation, using default size", { error });
       return 1024;
     }
   }

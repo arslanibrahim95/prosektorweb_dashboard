@@ -20,21 +20,6 @@ interface TenantSummary {
   status: "active" | "suspended" | "deleted";
 }
 
-function isTenantSummaryArray(data: unknown): data is TenantSummary[] {
-  if (!Array.isArray(data)) return false;
-  return data.every((item: unknown) => {
-    if (typeof item !== "object" || item === null) return false;
-    const typed = item as Record<string, unknown>;
-    return (
-      typeof typed['id'] === "string" &&
-      typeof typed['name'] === "string" &&
-      typeof typed['slug'] === "string" &&
-      ["demo", "starter", "pro"].includes(typed['plan'] as string) &&
-      ["active", "suspended", "deleted"].includes(typed['status'] as string)
-    );
-  });
-}
-
 export interface AuthContext {
   supabase: SupabaseClient;
   /**
@@ -84,10 +69,7 @@ export function getDataClient(ctx: AuthContext): SupabaseClient {
  * Super admin rolü yalnızca app_metadata kaynağından okunur.
  */
 function isSuperAdmin(user: { app_metadata?: unknown; user_metadata?: unknown }): boolean {
-  const appMeta =
-    typeof user.app_metadata === "object" && user.app_metadata !== null
-      ? (user.app_metadata as { role?: unknown; roles?: unknown })
-      : {};
+  const appMeta = (user.app_metadata ?? {}) as Record<string, unknown>;
 
   // Check app_metadata (secure) first
   if (appMeta.role === "super_admin") return true;
@@ -102,9 +84,8 @@ function isSuperAdmin(user: { app_metadata?: unknown; user_metadata?: unknown })
  */
 function extractUserEmail(user: User): string {
   const emailCandidate =
-    (user.user_metadata as Record<string, unknown> | null)?.['email']?.toString() ??
     user.email ??
-    undefined;
+    ((user.user_metadata as Record<string, unknown> | null)?.email?.toString() ?? undefined);
 
   if (!emailCandidate) {
     throw createError({
@@ -120,7 +101,7 @@ function extractUserEmail(user: User): string {
  */
 function extractUserName(user: User, defaultEmail: string): string {
   return (
-    (user.user_metadata as Record<string, unknown> | null)?.['name']?.toString() ??
+    (user.user_metadata as Record<string, unknown> | null)?.name?.toString() ??
     defaultEmail
   );
 }
@@ -247,15 +228,7 @@ async function getAllTenants(admin: SupabaseClient): Promise<TenantSummary[]> {
     });
   }
 
-  const result = data ?? [];
-  if (!isTenantSummaryArray(result)) {
-    throw createError({
-      code: "INTERNAL_ERROR",
-      message: "Veritabanından geçersiz formatta data döndü.",
-    });
-  }
-
-  return result;
+  return (data ?? []) as TenantSummary[];
 }
 
 async function ensureSuperAdminMirrorMembership(
@@ -449,26 +422,17 @@ export async function requireAuthContext(req: Request): Promise<AuthContext> {
 
   const permissions = permissionsForRole(role);
 
-  const userObj: AuthContext["user"] = {
-    id: user.id,
-    email,
-    name,
-    app_metadata: user.app_metadata,
-    user_metadata: user.user_metadata,
-  };
-
-  const avatarUrl = user.user_metadata && typeof (user.user_metadata as Record<string, unknown>)['avatar_url'] === 'string'
-    ? (user.user_metadata as Record<string, unknown>)['avatar_url'] as string
-    : undefined;
-
-  if (avatarUrl) {
-    userObj.avatar_url = avatarUrl;
-  }
-
   return {
     supabase,
     admin,
-    user: userObj,
+    user: {
+      id: user.id,
+      email,
+      name,
+      avatar_url: (user.user_metadata as Record<string, unknown> | null)?.avatar_url as string | undefined,
+      app_metadata: user.app_metadata,
+      user_metadata: user.user_metadata,
+    },
     tenant,
     activeTenantId: tenant.id,
     availableTenants,

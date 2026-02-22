@@ -47,11 +47,10 @@ async function runStartupSync(admin: SupabaseClient, emails: string[]): Promise<
       syncedEmails.add(email);
       if (hasSuperAdminRole(user)) continue;
 
-      const nextAppMeta = Object.assign(
-        {},
-        (user.app_metadata ?? {}) as Record<string, unknown>,
-        { role: "super_admin" }
-      );
+      const nextAppMeta = {
+        ...((user.app_metadata ?? {}) as Record<string, unknown>),
+        role: "super_admin",
+      };
 
       const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
         app_metadata: nextAppMeta,
@@ -88,9 +87,8 @@ export async function ensureSuperAdminStartupSync(admin: SupabaseClient): Promis
   }
 
   const emails = parseSuperAdminEmails();
-  startupSyncPromise = runStartupSync(admin, emails).catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.error("[super-admin-sync] Unexpected startup sync error", { error: message });
+  startupSyncPromise = runStartupSync(admin, emails).catch((error) => {
+    logger.error("[super-admin-sync] Unexpected startup sync error", { error });
   });
 
   await startupSyncPromise;
@@ -107,11 +105,10 @@ export async function ensureSuperAdminBootstrapForUser(
   if (!allowlist.includes(email)) return user;
   if (hasSuperAdminRole(user)) return user;
 
-  const nextAppMeta = Object.assign(
-    {},
-    (user.app_metadata ?? {}) as Record<string, unknown>,
-    { role: "super_admin" }
-  );
+  const nextAppMeta = {
+    ...((user.app_metadata ?? {}) as Record<string, unknown>),
+    role: "super_admin",
+  };
 
   const { error } = await admin.auth.admin.updateUserById(user.id, {
     app_metadata: nextAppMeta,

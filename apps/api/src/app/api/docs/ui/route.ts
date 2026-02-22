@@ -26,15 +26,14 @@ export async function GET() {
     data-url="/api/docs"
     data-configuration='{"theme":"purple","layout":"modern","showSidebar":true}'
   ></script>
-  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.25.64/dist/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
 </body>
 </html>`;
 
     return new NextResponse(html, {
         headers: {
             'Content-Type': 'text/html',
-            'Cache-Control': 'public, max-age=3600',
-            'Content-Security-Policy': "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; object-src 'none'; base-uri 'self';",
+            'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
         },
     });
 }

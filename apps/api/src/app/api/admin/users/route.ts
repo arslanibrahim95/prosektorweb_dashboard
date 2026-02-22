@@ -129,10 +129,7 @@ export async function GET(req: Request) {
         if (error) throw mapPostgrestError(error);
 
         const rows = (data ?? []) as AdminTenantUserRpcRow[];
-        const [firstRow, ...rest] = rows;
-        if (rows.length > 0 && !firstRow) {
-            throw new HttpError(404, { code: "NOT_FOUND", message: "User not found" });
-        }
+        const firstRow = rows[0];
         const total = rows.length > 0 && firstRow ? normalizeTotalCount(firstRow.total_count, rows.length) : 0;
 
         const items = rows.map((row) => {
