@@ -3,6 +3,10 @@
  *
  * Renders JSON-LD structured data for SEO.
  * Supports WebSite, Organization, BreadcrumbList, and Article schemas.
+ * 
+ * SECURITY: Uses children instead of dangerouslySetInnerHTML to prevent XSS.
+ * The JSON is serialized and placed as text content, which is safe because
+ * <script type="application/ld+json"> does not execute JavaScript.
  */
 import React from "react";
 
@@ -15,11 +19,10 @@ export function StructuredData({ data }: StructuredDataProps) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(data),
-      }}
       data-slot="structured-data"
-    />
+    >
+      {JSON.stringify(data)}
+    </script>
   );
 }
 

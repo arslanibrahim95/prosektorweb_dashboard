@@ -4,6 +4,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "./micro-interactions";
+import { logger } from "@/lib/logger";
 
 /**
  * AI Personalization & Accessibility Components - Production Ready
@@ -46,10 +47,10 @@ const safeStorageSet = (key: string, value: string): void => {
   try {
     localStorage.setItem(key, value);
   } catch (e) {
-    if (e instanceof DOMException) {
-      if (e.name === "QuotaExceededError") {
-        // Try to clear old items
-        console.warn(`localStorage quota exceeded for key: ${key}. Clearing old items...`);
+        if (e instanceof DOMException) {
+            if (e.name === "QuotaExceededError") {
+                // Try to clear old items
+                logger.warn(`localStorage quota exceeded for key`, { key });
         
         // Remove old theme-related items
         const keysToRemove = Object.keys(localStorage).filter(
@@ -66,9 +67,9 @@ const safeStorageSet = (key: string, value: string): void => {
       } else if (e.name === "SecurityError") {
         throw new StorageError("Storage access denied", "SECURITY_ERROR");
       }
+        }
+        throw new StorageError("Failed to save preference", "UNKNOWN_ERROR");
     }
-    throw new StorageError("Failed to save preference", "UNKNOWN_ERROR");
-  }
 };
 
 /**
@@ -77,10 +78,10 @@ const safeStorageSet = (key: string, value: string): void => {
 const safeStorageGet = (key: string): string | null => {
   try {
     return localStorage.getItem(key);
-  } catch (e) {
-    console.warn(`Failed to read from localStorage: ${key}`, e);
-    return null;
-  }
+    } catch (e) {
+        logger.warn(`Failed to read from localStorage`, { key, error: e });
+        return null;
+    }
 };
 
 // =============================================================================
@@ -284,7 +285,7 @@ export const SmartThemeProvider: React.FC<SmartThemeProviderProps> = ({
 
   // Error fallback
   if (error) {
-    console.error("SmartThemeProvider error:", error);
+    logger.error("SmartThemeProvider error", { error });
   }
 
   return (
@@ -666,7 +667,7 @@ export const AccessibleTabs: React.FC<AccessibleTabsProps> = ({
 
     e.preventDefault();
     const nextTab = tabs[nextIndex];
-    if (!nextTab.disabled) {
+    if (nextTab && !nextTab.disabled) {
       handleTabChange(nextTab.id);
       tabRefs.current.get(nextTab.id)?.focus();
     }

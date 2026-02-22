@@ -22,6 +22,7 @@ import {
   getRefreshService,
   type TokenRefreshService,
 } from '@/lib/auth/token-refresh';
+import { logger } from '@/lib/logger';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 const ACTIVE_TENANT_STORAGE_KEY = 'prosektor.active_tenant_id';
@@ -36,7 +37,7 @@ function safeLocalStorageGetItem(key: string): string | null {
     return window.localStorage.getItem(key);
   } catch (err) {
     // Common errors: quota exceeded, private mode, security restrictions
-    console.warn('[AuthProvider] Failed to read from localStorage:', err);
+    logger.warn('[AuthProvider] Failed to read from localStorage', { error: err });
     return null;
   }
 }
@@ -52,7 +53,7 @@ function safeLocalStorageSetItem(key: string, value: string): boolean {
     return true;
   } catch (err) {
     // Common errors: quota exceeded, private mode
-    console.warn('[AuthProvider] Failed to write to localStorage:', err);
+    logger.warn('[AuthProvider] Failed to write to localStorage', { error: err });
     return false;
   }
 }
@@ -66,7 +67,7 @@ function safeLocalStorageRemoveItem(key: string): boolean {
     window.localStorage.removeItem(key);
     return true;
   } catch (err) {
-    console.warn('[AuthProvider] Failed to remove from localStorage:', err);
+    logger.warn('[AuthProvider] Failed to remove from localStorage', { error: err });
     return false;
   }
 }
@@ -118,7 +119,7 @@ async function getAccessTokenSafely(): Promise<string | null> {
 
     // DEBUG: Log token durumunu
     if (process.env.NODE_ENV === 'development') {
-      console.log('[Auth] getAccessTokenSafely:', {
+      logger.info('[Auth] getAccessTokenSafely', {
         hasSession: !!data.session,
         hasToken: !!data.session?.access_token,
         error: error?.message,
@@ -127,7 +128,7 @@ async function getAccessTokenSafely(): Promise<string | null> {
 
     return data.session?.access_token ?? null;
   } catch (err) {
-    console.error('[Auth] getAccessTokenSafely error:', err);
+    logger.error('[Auth] getAccessTokenSafely error', { error: err });
     return null;
   }
 }
@@ -264,7 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (err) {
-      console.error('Failed to extend session:', err);
+      logger.error('Failed to extend session', { error: err });
     }
   }, [supabase]);
 

@@ -4,6 +4,7 @@ import * as React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { logger } from '@/lib/logger';
 
 export interface ErrorBoundaryProps {
     /** Child components */
@@ -32,7 +33,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
         // Log error to console in development
         if (process.env.NODE_ENV === 'development') {
-            console.error('Error boundary caught an error:', error, errorInfo);
+            logger.error('Error boundary caught an error', { error, errorInfo });
         }
 
         // Call custom error handler if provided

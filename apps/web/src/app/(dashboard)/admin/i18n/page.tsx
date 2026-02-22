@@ -255,9 +255,10 @@ export default function LocalizationPage() {
             return;
         }
 
+        const firstLang = selectableLanguages[0];
         const exists = selectableLanguages.some((language) => language.code === selectedLanguage);
-        if (!exists) {
-            setSelectedLanguage(selectableLanguages[0].code);
+        if (!exists && firstLang) {
+            setSelectedLanguage(firstLang.code);
         }
     }, [selectableLanguages, selectedLanguage]);
 
@@ -309,8 +310,8 @@ export default function LocalizationPage() {
             untranslated: { variant: "destructive", label: "Çevrilmedi" },
             review: { variant: "outline", label: "İncelenmeli" },
         };
-        const config = variants[status] || variants.active;
-        return <Badge variant={config.variant}>{config.label}</Badge>;
+        const config = variants[status] ?? variants.active;
+        return <Badge variant={config?.variant ?? "default"}>{config?.label ?? status}</Badge>;
     };
 
     const handleStartEdit = (id: string, currentValue: string) => {

@@ -8,6 +8,7 @@
 import { HttpError } from '../api/http';
 import { ErrorCode, ErrorCodeToStatus } from './error-codes';
 import { translateError } from './messages.tr';
+import { logger } from '@/lib/logger';
 
 /**
  * Error details tipi - Zod validasyon hataları için
@@ -84,7 +85,9 @@ export function createError(options: CreateErrorOptions): HttpError {
 
     // Log the original error for debugging (in production, use proper logging)
     if (options.originalError && process.env.NODE_ENV === 'development') {
-        console.error(`[Error ${options.code}]`, options.originalError);
+        logger.error(`[Error ${options.code}]`, {
+            originalError: options.originalError,
+        });
     }
 
     return new HttpError(status, {

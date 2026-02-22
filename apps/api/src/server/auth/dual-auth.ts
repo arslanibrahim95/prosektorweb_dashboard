@@ -209,10 +209,13 @@ export function extractBearerToken(req: Request): string | null {
   if (authHeader.length > MAX_TOKEN_LENGTH + 20) return null;
 
   const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') return null;
+  const firstPart = parts[0];
+  const secondPart = parts[1];
+  if (parts.length !== 2 || !firstPart || firstPart.toLowerCase() !== 'bearer') return null;
+  if (!secondPart) return null;
 
-  const token = parts[1];
-  if (!token || token.length === 0 || token.length > MAX_TOKEN_LENGTH) return null;
+  const token = secondPart;
+  if (token.length === 0 || token.length > MAX_TOKEN_LENGTH) return null;
   if (token.split('.').length !== 3) return null;
 
   return token;

@@ -499,8 +499,12 @@ export const CountUp = React.forwardRef<HTMLSpanElement, CountUpProps>(
       (num: number) => {
         const fixed = num.toFixed(decimals);
         const parts = fixed.split(".");
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, separator);
-        return parts.join(".");
+        const intPart = parts[0] ?? '';
+        const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, separator);
+        if (parts[1]) {
+          return `${formattedInt}.${parts[1]}`;
+        }
+        return formattedInt;
       },
       [decimals, separator]
     );
@@ -769,15 +773,18 @@ export const Confetti: React.FC<ConfettiProps> = ({
       return;
     }
 
-    const newPieces: ConfettiPiece[] = Array.from({ length: particleCount }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      rotation: Math.random() * 360,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      size: Math.random() * 8 + 4,
-      delay: Math.random() * 0.3,
-    }));
+    const newPieces: ConfettiPiece[] = Array.from({ length: particleCount }, (_, i) => {
+      const colorIndex = Math.floor(Math.random() * colors.length);
+      return {
+        id: i,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        rotation: Math.random() * 360,
+        color: colors[colorIndex] ?? '#3b82f6',
+        size: Math.random() * 8 + 4,
+        delay: Math.random() * 0.3,
+      };
+    });
     setPieces(newPieces);
 
     timeoutRef.current = setTimeout(() => {

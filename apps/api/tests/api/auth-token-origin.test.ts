@@ -11,8 +11,7 @@ const mocks = vi.hoisted(() => {
       from(table: string) {
         const filters: Record<string, unknown> = {};
         const neqFilters: Record<string, unknown> = {};
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const chain: any = {};
+        const chain: Record<string, unknown> = {};
         chain.select = vi.fn(() => chain);
         chain.eq = vi.fn((column: string, value: unknown) => {
           filters[column] = value;

@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Mail, CheckCircle2, X, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { safeLocalStorageGetItem, safeLocalStorageSetItem } from '@/lib/storage';
+import { logger } from '@/lib/logger';
 
 interface EmailVerificationReminderProps {
     className?: string;
@@ -68,7 +69,7 @@ export function EmailVerificationReminder({ className }: EmailVerificationRemind
             //   email: user.email,
             // })
         } catch (error) {
-            console.error('Failed to resend email:', error);
+            logger.error('Failed to resend email', { error });
             toast.error('E-posta gönderilirken bir hata oluştu');
         } finally {
             setIsResending(false);

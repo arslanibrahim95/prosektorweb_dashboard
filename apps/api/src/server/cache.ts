@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 /**
  * In-memory cache with O(1) LRU eviction and memory-based limits
  *
@@ -137,7 +139,11 @@ class CacheStore {
 
     // SECURITY: Check if single entry exceeds max memory
     if (sizeBytes > this.config.maxMemoryBytes) {
-      console.warn(`[Cache] Entry size (${sizeBytes} bytes) exceeds max memory limit (${this.config.maxMemoryBytes} bytes). Entry not cached.`);
+      logger.warn(`[Cache] Entry size exceeds max memory limit`, {
+        key,
+        sizeBytes,
+        limitBytes: this.config.maxMemoryBytes,
+      });
       return;
     }
 
@@ -258,7 +264,11 @@ class CacheStore {
   }
 
   private addToTail(node: LRUNode): void {
-    const prev = this.tail.prev!;
+    const prev = this.tail.prev;
+    if (!prev) {
+      logger.warn('[Cache] Corrupted state: tail.prev is null, skipping add');
+      return;
+    }
     prev.next = node;
     node.prev = prev;
     node.next = this.tail;
@@ -299,7 +309,7 @@ function getCacheInstance(config?: Partial<CacheConfig>): CacheStore {
  */
 export function initializeCache(config?: Partial<CacheConfig>): void {
   if (cacheInstance) {
-    console.warn('[Cache] Cache already initialized, ignoring new config');
+    logger.warn('[Cache] Cache already initialized, ignoring new config');
     return;
   }
   cacheInstance = new CacheStore(config);

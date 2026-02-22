@@ -11,6 +11,7 @@ import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/ro
 import { rateLimitHeaders } from "@/server/rate-limit";
 import { deepMerge } from "@/utils/object";
 import { settingsPatchSchema } from "@/schemas/admin-settings";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -235,8 +236,12 @@ export const PATCH = withAdminErrorHandling(async (req: Request) => {
             .from("audit_logs")
             .insert(auditLogsToInsert);
         if (auditError) {
-            // NON-BLOCKING: Ana işlem başarılıysa audit hatası kullanıcıya yansımasın
-            console.error("[AUDIT] audit_logs bulk insert failed:", auditError);
+            // NON-BLOCKING: audit hatası kullanıcıya yansımasın (loglama yeterli)
+            logger.error("[AUDIT] audit_logs bulk insert failed", {
+                error: auditError,
+                tenantId: ctx.tenant.id,
+                logCount: auditLogsToInsert.length,
+            });
         }
     }
 

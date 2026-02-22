@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
+import { logger } from '@/lib/logger'
 
 // Components - Dynamic import to avoid SSR issues with some deps if any
 const ABTestDashboard = dynamic(
@@ -35,7 +36,7 @@ export default function ABTestsPage() {
         // Navigate to details - implement navigation when detail page is ready
         // For MVP: navigate to the detail page if it exists
         // For now: router.push(`/ab-tests/${id}`)
-        console.log('Selected test:', id)
+        logger.info('Selected test', { id })
     }
 
     return (

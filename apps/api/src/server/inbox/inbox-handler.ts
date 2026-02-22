@@ -23,6 +23,7 @@ import { INBOX_COUNT_CACHE_TTL_SEC } from "./constants";
 import type { BaseInboxQuery } from "./base-schema";
 import { parseInboxQueryParams } from "./query-params";
 import { applyInboxFilters, getInboxDbClient, type InboxAdditionalFilters } from "./query-utils";
+import { logger } from "@/lib/logger";
 
 /**
  * Configuration for inbox handler factory
@@ -214,7 +215,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
                 .map((item: unknown) => {
                     const result = itemSchema.safeParse(item);
                     if (!result.success) {
-                        console.error('[Inbox] Item validation failed:', {
+                        logger.error('[Inbox] Item validation failed', {
                             errors: result.error.issues,
                             itemId: getItemId(item),
                         });
@@ -230,7 +231,7 @@ export function createInboxHandler<TQuery extends BaseInboxQuery = BaseInboxQuer
             });
 
             if (!responseParsed.success) {
-                console.error('[Inbox] Response schema validation failed:', {
+                logger.error('[Inbox] Response schema validation failed', {
                     errors: responseParsed.error.issues,
                 });
                 throw new HttpError(500, {

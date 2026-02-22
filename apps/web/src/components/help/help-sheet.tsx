@@ -218,7 +218,8 @@ function getHelpContent(pathname: string): HelpContent {
   const prefixes = Object.keys(helpContentMap).sort((a, b) => b.length - a.length);
   for (const prefix of prefixes) {
     if (pathname.startsWith(prefix)) {
-      return helpContentMap[prefix];
+      const content = helpContentMap[prefix];
+      if (content) return content;
     }
   }
 

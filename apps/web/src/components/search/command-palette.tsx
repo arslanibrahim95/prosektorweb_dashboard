@@ -89,8 +89,9 @@ export function CommandPalette() {
   const grouped = useMemo(() => {
     const groups: Record<string, FlatItem[]> = {};
     for (const item of filtered) {
-      if (!groups[item.category]) groups[item.category] = [];
-      groups[item.category].push(item);
+      const category = item.category;
+      if (!groups[category]) groups[category] = [];
+      groups[category]!.push(item);
     }
     return groups;
   }, [filtered]);

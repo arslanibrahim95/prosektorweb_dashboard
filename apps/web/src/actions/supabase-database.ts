@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseAdminSettings } from './update-env';
+import { logger } from '@/lib/logger';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu.';
@@ -36,7 +37,7 @@ export async function listTables() {
         };
 
     } catch (error: unknown) {
-        console.error('Error listing tables:', error);
+        logger.error('Error listing tables', { error });
         return { success: false, error: getErrorMessage(error) };
     }
 }

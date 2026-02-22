@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import type { ContentPost } from '@/types/admin';
 
 const contentFormSchema = z.object({
@@ -135,7 +136,7 @@ export function ContentFormDialog({
             form.reset();
             onOpenChange(false);
         } catch (error) {
-            console.error('Form submission error:', error);
+            logger.error('Form submission error', { error });
         } finally {
             setIsSubmitting(false);
         }

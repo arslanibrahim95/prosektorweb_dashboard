@@ -233,7 +233,8 @@ export function estimateTestDuration(
     dailyTraffic: number,
     trafficSplit: number[] = [50, 50]
 ): number {
-    const variantTraffic = (dailyTraffic * (trafficSplit[1] / 100))
+    const variantTrafficPct = trafficSplit[1] ?? 50;
+    const variantTraffic = (dailyTraffic * (variantTrafficPct / 100))
     if (variantTraffic === 0) return Infinity
     return Math.ceil(requiredSampleSize / variantTraffic)
 }

@@ -480,11 +480,11 @@ describe('applyInboxFilters behavior', () => {
 
 describe('cache key generation', () => {
     it('additionalCacheKeyParts should be called with parsed params', () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mockCacheKeyParts = (params: any) => [params.site_id, 'extra'];
+        type BaseInboxQuery = z.infer<typeof baseInboxQuerySchema>;
+        const mockCacheKeyParts = (params: BaseInboxQuery) => [params.site_id, 'extra'];
         const validUuid = '550e8400-e29b-41d4-a716-446655440000';
 
-        const result = mockCacheKeyParts({ site_id: validUuid });
+        const result = mockCacheKeyParts({ site_id: validUuid } as BaseInboxQuery);
         expect(result).toEqual([validUuid, 'extra']);
     });
 

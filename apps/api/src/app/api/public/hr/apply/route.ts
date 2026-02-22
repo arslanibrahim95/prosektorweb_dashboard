@@ -15,6 +15,7 @@ import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, getClientIp, hashIp, randomId, rateLimitKey, rateLimitHeaders } from "@/server/rate-limit";
 import { verifySiteToken } from "@/server/site-token";
 import { createAdminClient } from "@/server/supabase";
+import { logger } from "@/lib/logger";
 import {
   validateCVFile,
   sanitizeFilename,
@@ -244,9 +245,15 @@ export async function POST(req: Request) {
           if (!error) {
             return; // Success
           }
-          console.warn(`[Cleanup] Attempt ${attempt} failed:`, error.message);
+          logger.warn(`[Cleanup] Attempt ${attempt} failed`, {
+            attempt,
+            error: error.message,
+          });
         } catch (err) {
-          console.warn(`[Cleanup] Attempt ${attempt} threw:`, err);
+          logger.warn(`[Cleanup] Attempt ${attempt} threw`, {
+            attempt,
+            error: err instanceof Error ? err.message : err,
+          });
         }
 
         // Wait before retry (exponential backoff)
@@ -256,7 +263,10 @@ export async function POST(req: Request) {
       }
 
       // Log final failure for manual cleanup
-      console.error(`[Cleanup] Failed to remove file after ${maxRetries} attempts:`, filePath);
+      logger.error(`[Cleanup] Failed to remove file after ${maxRetries} attempts`, {
+        filePath,
+        tenantId: site?.tenant_id,
+      });
     }
 
     return jsonOk(

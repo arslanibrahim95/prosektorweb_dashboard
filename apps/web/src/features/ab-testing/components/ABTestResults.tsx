@@ -3,6 +3,7 @@
  */
 import { useABTestResults, useUpdateTestStatus } from '../hooks/useABTests'
 import { VariantResultDetail, TestRecommendation } from '../types'
+import { logger } from '@/lib/logger'
 
 interface ABTestResultsProps {
     testId: string
@@ -16,7 +17,7 @@ export function ABTestResults({ testId }: ABTestResultsProps) {
         try {
             await updateStatusMutation.mutateAsync({ id: testId, status })
         } catch (err) {
-            console.error('Error updating status:', err)
+            logger.error('Error updating status', { error: err })
         }
     }
 

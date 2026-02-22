@@ -5,6 +5,8 @@
  * PostHog, Mixpanel, Google Analytics veya benzeri bir analytics servisi ile entegre edilebilir.
  */
 
+import { logger } from "@/lib/logger";
+
 export type OnboardingEvent =
     | 'onboarding_started'
     | 'onboarding_welcome_viewed'
@@ -45,7 +47,7 @@ export function trackOnboardingEvent(
 
     // Console log for development
     if (process.env.NODE_ENV === 'development') {
-        console.log('[Onboarding Analytics]', event, eventData);
+        logger.info('[Onboarding Analytics]', { event, eventData });
     }
 
     // SECURITY FIX: Wrap analytics calls in try-catch to prevent UI crashes
@@ -76,7 +78,7 @@ export function trackOnboardingEvent(
         // }).catch(console.error);
     } catch (error) {
         // Silently fail to prevent breaking the UI
-        console.warn('[Analytics] Tracking failed:', error);
+        logger.warn('[Analytics] Tracking failed', { error });
     }
 }
 

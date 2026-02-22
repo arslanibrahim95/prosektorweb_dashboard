@@ -14,6 +14,17 @@ export const dynamic = "force-dynamic";
 
 const PERIOD_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
 
+interface TableResult {
+    current: number;
+    previous: number;
+}
+
+interface TableResults {
+    offers: TableResult;
+    contacts: TableResult;
+    applications: TableResult;
+}
+
 function changePct(current: number, previous: number): number {
     if (previous === 0) return current > 0 ? 100 : 0;
     return Math.round(((current - previous) / previous) * 100);
@@ -44,7 +55,11 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
                 { name: "job_applications" as const, key: "applications" as const },
             ];
 
-            const results: Record<string, { current: number; previous: number }> = {};
+            const results: TableResults = {
+                offers: { current: 0, previous: 0 },
+                contacts: { current: 0, previous: 0 },
+                applications: { current: 0, previous: 0 },
+            };
 
             for (const t of tables) {
                 const [curRes, prevRes] = await Promise.all([
@@ -67,7 +82,7 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
                 results[t.key] = {
                     current: curRes.count ?? 0,
                     previous: prevRes.count ?? 0,
-                };
+                } as TableResult;
             }
 
             // Get timeline data (daily counts for the current period)
@@ -76,7 +91,7 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
             // Generate daily buckets
             for (let i = 0; i < days; i++) {
                 const date = new Date(now.getTime() - i * 86400000);
-                const dateStr = date.toISOString().split("T")[0];
+                const dateStr = date.toISOString().split("T")[0] ?? date.toISOString().slice(0, 10);
                 const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
                 const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).toISOString();
 

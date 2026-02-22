@@ -186,7 +186,7 @@ function NavItemComponent({ item, depth = 0, collapsed = false, unreadCount = 0 
                         isExpanded ? 'max-h-96 opacity-100 mt-1' : 'max-h-0 opacity-0'
                     )}>
                         <div className="ml-4 space-y-0.5 border-l border-white/[0.06] pl-3">
-                            {item.children!.map((child) => (
+                            {item.children?.map((child) => (
                                 <NavItemComponent key={child.href} item={child} depth={depth + 1} collapsed={collapsed} unreadCount={unreadCount} />
                             ))}
                         </div>

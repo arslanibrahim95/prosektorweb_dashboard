@@ -15,6 +15,7 @@ import {
 import { SkipForward, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
+import { logger } from '@/lib/logger';
 
 interface SkipOnboardingButtonProps {
     variant?: 'link' | 'outline' | 'ghost';
@@ -44,7 +45,7 @@ export function SkipOnboardingButton({
             // Redirect to dashboard
             router.push('/home');
         } catch (error) {
-            console.error('Skip onboarding error:', error);
+            logger.error('Skip onboarding error', { error });
             toast.error('Bir hata oluştu. Lütfen tekrar deneyin.');
         } finally {
             setIsLoading(false);

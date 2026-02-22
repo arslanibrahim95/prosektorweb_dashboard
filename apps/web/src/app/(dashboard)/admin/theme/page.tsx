@@ -167,7 +167,18 @@ export default function ThemeCustomizationPage() {
 
     const themeSettings = (settingsData as AdminSettingsResponse | undefined)?.tenant?.settings?.theme;
 
-    const colors = colorsOverride ?? themeSettings?.colors ?? presetThemes[0].colors;
+    const defaultPresetColors = presetThemes[0]?.colors ?? presetThemes[1]?.colors ?? {
+        primary: "#3b82f6",
+        secondary: "#64748b",
+        accent: "#8b5cf6",
+        background: "#ffffff",
+        text: "#0f172a",
+        success: "#10b981",
+        warning: "#f59e0b",
+        error: "#ef4444",
+    };
+
+    const colors = colorsOverride ?? themeSettings?.colors ?? defaultPresetColors;
     const fontFamily = fontFamilyOverride ?? themeSettings?.fontFamily ?? "inter";
     const baseFontSize = baseFontSizeOverride ?? themeSettings?.baseFontSize ?? 16;
     const headingFont = headingFontOverride ?? themeSettings?.headingFont ?? "inter";
@@ -207,7 +218,7 @@ export default function ThemeCustomizationPage() {
     };
 
     const handleReset = () => {
-        setColorsOverride({ ...presetThemes[0].colors });
+        setColorsOverride({ ...defaultPresetColors });
         setFontFamilyOverride("inter");
         setBaseFontSizeOverride(16);
         setHeadingFontOverride("inter");

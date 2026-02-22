@@ -48,6 +48,7 @@ export async function batchFetchUsers(
 
         for (let j = 0; j < results.length; j++) {
             const result = results[j];
+            if (!result) continue;
             if (result.status !== "fulfilled") continue;
             const { data: userData, error: userError } = result.value;
             if (userError) continue;
@@ -59,8 +60,10 @@ export async function batchFetchUsers(
             const avatar_url = userMeta.avatar_url?.toString() || undefined;
             const name = safeUserName(email, userMeta);
 
-            usersById.set(batch[j], {
-                id: batch[j],
+            const userId = batch[j];
+            if (!userId) continue;
+            usersById.set(userId, {
+                id: userId,
                 email,
                 name,
                 avatar_url,
@@ -96,7 +99,8 @@ export function canAssignRole(actorRole: string, targetRole: string): boolean {
     const targetLevel = ROLE_HIERARCHY[targetRole] ?? 0;
 
     // owner and super_admin can assign any role
-    if (actorLevel >= ROLE_HIERARCHY.owner) return true;
+    const ownerLevel = ROLE_HIERARCHY["owner"];
+    if (typeof ownerLevel === "number" && actorLevel >= ownerLevel) return true;
 
     // Others can only assign roles strictly below their own level
     return targetLevel < actorLevel;

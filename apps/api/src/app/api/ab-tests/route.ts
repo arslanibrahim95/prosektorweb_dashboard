@@ -90,11 +90,23 @@ export async function GET(request: NextRequest) {
             throw mapPostgrestError(error);
         }
 
-        // Parse JSON fields
+        // Parse JSON fields safely
+        function safeParseJson<T>(value: string | T, field: string): T {
+            if (typeof value !== "string") return value;
+            try {
+                return JSON.parse(value);
+            } catch {
+                throw new HttpError(500, {
+                    code: "INTERNAL_ERROR",
+                    message: `Invalid JSON in field '${field}'`,
+                });
+            }
+        }
+
         const parsedData = (data || []).map(test => ({
             ...test,
-            variants: typeof test.variants === "string" ? JSON.parse(test.variants) : test.variants,
-            goals: typeof test.goals === "string" ? JSON.parse(test.goals) : test.goals,
+            variants: safeParseJson(test.variants, "variants"),
+            goals: safeParseJson(test.goals, "goals"),
         }));
 
         return jsonOk({

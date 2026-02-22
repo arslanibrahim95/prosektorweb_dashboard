@@ -55,7 +55,8 @@ export function hasPermission(
             const allMatch = permParts.every((part, idx) => {
                 if (idx === permParts.length - 1) {
                     // Last segment: check comma-separated actions
-                    return part.split(',').includes(requiredParts[idx]);
+                    const requiredPart = requiredParts[idx];
+                    return requiredPart ? part.split(',').includes(requiredPart) : false;
                 }
                 return part === requiredParts[idx];
             });

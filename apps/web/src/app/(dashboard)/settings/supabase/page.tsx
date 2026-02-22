@@ -14,6 +14,7 @@ import { listBuckets, createBucket, deleteBucket, listFiles, uploadFile, deleteF
 import { listTables } from '@/actions/supabase-database';
 import { listAuthUsers, deleteAuthUser } from '@/actions/supabase-auth';
 import { Loader2, Database, HardDrive, Settings, RefreshCw, Trash2, Plus, Folder, User, ShieldAlert, Upload, X, FileIcon, ImageIcon } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -112,7 +113,7 @@ export default function SupabaseSettingsPage() {
                     hasServiceRoleKey: settings.hasServiceRoleKey ?? false,
                 });
             } catch (error) {
-                console.error('Failed to load settings:', error);
+                logger.error('Failed to load settings', { error });
                 toast.error('Ayarlar yüklenirken bir hata oluştu.');
             } finally {
                 setIsLoading(false);
@@ -131,7 +132,7 @@ export default function SupabaseSettingsPage() {
                 toast.error(`Bucket list hatası: ${result.error}`);
             }
         } catch (error) {
-            console.error('Failed to fetch buckets:', error);
+            logger.error('Failed to fetch buckets', { error });
             toast.error('Bucketlar yüklenemedi.');
         } finally {
             setIsLoadingBuckets(false);
@@ -150,7 +151,7 @@ export default function SupabaseSettingsPage() {
                 toast.error(`Tablo list hatası: ${result.error}`);
             }
         } catch (error) {
-            console.error('Failed to fetch tables:', error);
+            logger.error('Failed to fetch tables', { error });
             toast.error('Tablolar yüklenemedi.');
         } finally {
             setIsLoadingTables(false);
@@ -168,7 +169,7 @@ export default function SupabaseSettingsPage() {
                 setAuthError(result.error || 'Kullanıcılar yüklenemedi. Service Role Key gerekli olabilir.');
             }
         } catch (error) {
-            console.error('Failed to fetch auth users:', error);
+            logger.error('Failed to fetch auth users', { error });
             setAuthError('Kullanıcılar yüklenemedi. Service Role Key gerekli olabilir.');
         } finally {
             setIsLoadingAuth(false);
@@ -186,7 +187,7 @@ export default function SupabaseSettingsPage() {
                 toast.error(`Silme hatası: ${result.error}`);
             }
         } catch (error) {
-            console.error('Failed to delete auth user:', error);
+            logger.error('Failed to delete auth user', { error });
             toast.error('Kullanıcı silinemedi.');
         } finally {
             setIsDeleting(false);
@@ -213,7 +214,7 @@ export default function SupabaseSettingsPage() {
                 toast.error(`Oluşturma hatası: ${result.error}`);
             }
         } catch (error) {
-            console.error('Failed to create bucket:', error);
+            logger.error('Failed to create bucket', { error });
             toast.error('Bucket oluşturulamadı.');
         } finally {
             setIsCreatingBucket(false);
@@ -231,7 +232,7 @@ export default function SupabaseSettingsPage() {
                 toast.error(`Silme hatası: ${result.error}`);
             }
         } catch (error) {
-            console.error('Failed to delete bucket:', error);
+            logger.error('Failed to delete bucket', { error });
             toast.error('Bucket silinemedi.');
         } finally {
             setIsDeleting(false);
@@ -250,7 +251,7 @@ export default function SupabaseSettingsPage() {
                 toast.error(`Dosya listeleme hatası: ${result.error}`);
             }
         } catch (error) {
-            console.error('Failed to fetch files:', error);
+            logger.error('Failed to fetch files', { error });
             toast.error('Dosyalar yüklenemedi.');
         } finally {
             setIsLoadingFiles(false);
@@ -274,7 +275,7 @@ export default function SupabaseSettingsPage() {
                 toast.error(`Yükleme hatası: ${result.error}`);
             }
         } catch (error) {
-            console.error('Failed to upload file:', error);
+            logger.error('Failed to upload file', { error });
             toast.error('Dosya yüklenemedi.');
         } finally {
             setIsUploading(false);
@@ -294,7 +295,7 @@ export default function SupabaseSettingsPage() {
                 toast.error(`Silme hatası: ${result.error}`);
             }
         } catch (error) {
-            console.error('Failed to delete file:', error);
+            logger.error('Failed to delete file', { error });
             toast.error('Dosya silinemedi.');
         } finally {
             setIsDeleting(false);

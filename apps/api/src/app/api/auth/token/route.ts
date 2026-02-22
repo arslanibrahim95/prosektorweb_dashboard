@@ -12,6 +12,7 @@ import { createError } from '@/server/errors';
 import { asErrorBody, asHeaders, asStatus, jsonError, jsonOk } from '@/server/api/http';
 import { enforceRateLimit, getClientIp, hashIp, rateLimitAuthKey } from '@/server/rate-limit';
 import { assertAllowedWebOrigin, getAllowedCorsOrigin } from '@/server/security/origin';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 // Request schema
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest) {
     // AUDIT LOG: Log token exchange for security monitoring
     // SECURITY: No raw PII (email, IP) in logs — use hashed values for KVKK/GDPR
     if (process.env.NODE_ENV === 'production') {
-      console.info('[AUDIT] Token exchange', {
+      logger.info('[AUDIT] Token exchange', {
         userId: userData.user.id,
         rememberMe,
         ipHash: ipHash, // Already hashed above, never log raw IP
@@ -162,7 +163,7 @@ export async function POST(req: NextRequest) {
     if (process.env.NODE_ENV === 'production') {
       const error = err as Error;
       const failedIpHash = hashIp(getClientIp(req));
-      console.warn('[SECURITY] Token exchange failed', {
+      logger.warn('[SECURITY] Token exchange failed', {
         error: error.message,
         ipHash: failedIpHash,
         timestamp: new Date().toISOString(),

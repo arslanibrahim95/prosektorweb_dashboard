@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 import { createBulkReadHandler } from "@/server/inbox/bulk-read-handler";
 import { hasPermission } from "@/server/auth/permissions";
 import { enforceRateLimit } from "@/server/rate-limit";
@@ -30,7 +30,7 @@ const baseAuthContext: AuthContext = {
             status: "active",
         },
     ],
-    role: "member",
+    role: "viewer" as const,
     permissions: [],
 };
 
@@ -69,10 +69,10 @@ vi.mock("@/server/inbox/query-utils", () => ({
 
 describe("createBulkReadHandler", () => {
     it("returns 403 when inbox:read permission missing", async () => {
-        (hasPermission as unknown as vi.Mock).mockReturnValue(false);
+        (hasPermission as unknown as Mock).mockReturnValue(false);
         const handler = createBulkReadHandler("contact_messages");
 
-        (requireAuthContext as vi.Mock).mockResolvedValue(createAuthContext({ permissions: [] }));
+        (requireAuthContext as Mock).mockResolvedValue(createAuthContext({ permissions: [] }));
 
         const res = await handler(new Request("https://example.com", { method: "POST", body: JSON.stringify({ ids: ["1"] }) }));
 
@@ -80,11 +80,11 @@ describe("createBulkReadHandler", () => {
     });
 
     it("enforces rate limit and returns updated count", async () => {
-        (hasPermission as unknown as vi.Mock).mockReturnValue(true);
-        (enforceRateLimit as unknown as vi.Mock).mockResolvedValue({ allowed: true, remaining: 9, resetAt: new Date().toISOString(), limit: 10 });
+        (hasPermission as unknown as Mock).mockReturnValue(true);
+        (enforceRateLimit as unknown as Mock).mockResolvedValue({ allowed: true, remaining: 9, resetAt: new Date().toISOString(), limit: 10 });
 
         const handler = createBulkReadHandler("contact_messages");
-        (requireAuthContext as vi.Mock).mockResolvedValue(createAuthContext({ permissions: ["inbox:read"] }));
+        (requireAuthContext as Mock).mockResolvedValue(createAuthContext({ permissions: ["inbox:read"] }));
         const res = await handler(
             new Request("https://example.com", {
                 method: "POST",

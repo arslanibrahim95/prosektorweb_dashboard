@@ -31,6 +31,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
 
 // IP address validation regex (IPv4)
 const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
@@ -117,7 +118,7 @@ export function IpBlockDialog({
             form.reset();
             onOpenChange(false);
         } catch (error) {
-            console.error('Form submission error:', error);
+            logger.error('Form submission error', { error });
         } finally {
             setIsSubmitting(false);
         }

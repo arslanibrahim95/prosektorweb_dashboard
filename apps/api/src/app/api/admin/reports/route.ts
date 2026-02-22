@@ -21,6 +21,7 @@ import { requireAuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
 import { enforceAdminRateLimit } from "@/server/admin/route-utils";
 import { rateLimitHeaders } from "@/server/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -166,7 +167,10 @@ async function POST(req: Request) {
             .single();
 
         if (updateError) {
-            console.error('Error updating report:', updateError);
+            logger.error('[admin/reports] report update failed', {
+                error: updateError,
+                reportId: report.id,
+            });
         }
 
         const response = createAdminReportResponseSchema.parse({

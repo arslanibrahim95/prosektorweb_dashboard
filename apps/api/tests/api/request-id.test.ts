@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { SpyInstance } from "vitest";
 import { generateRequestId, getRequestId, withRequestId } from "@/server/api/request-id";
 import { logRequest } from "@/server/api/request-logger";
 
@@ -218,11 +219,9 @@ describe("Request ID utilities", () => {
 });
 
 describe("Request Logger", () => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    let consoleInfoSpy: any;
-    let consoleWarnSpy: any;
-    let consoleErrorSpy: any;
-    /* eslint-enable @typescript-eslint/no-explicit-any */
+    let consoleInfoSpy: SpyInstance;
+    let consoleWarnSpy: SpyInstance;
+    let consoleErrorSpy: SpyInstance;
 
     beforeEach(() => {
         consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => { });
@@ -245,7 +244,7 @@ describe("Request Logger", () => {
             expect(consoleWarnSpy).not.toHaveBeenCalled();
             expect(consoleErrorSpy).not.toHaveBeenCalled();
 
-            const logMessage = consoleInfoSpy.mock.calls[0][0];
+            const logMessage = consoleInfoSpy.mock.calls[0]?.[0] ?? "";
             expect(logMessage).toContain("[req-123]");
             expect(logMessage).toContain("GET");
             expect(logMessage).toContain("/api/test");
@@ -270,7 +269,7 @@ describe("Request Logger", () => {
             expect(consoleInfoSpy).not.toHaveBeenCalled();
             expect(consoleErrorSpy).not.toHaveBeenCalled();
 
-            const logMessage = consoleWarnSpy.mock.calls[0][0];
+            const logMessage = consoleWarnSpy.mock.calls[0]?.[0] ?? "";
             expect(logMessage).toContain("[req-789]");
             expect(logMessage).toContain("POST");
             expect(logMessage).toContain("/api/test");
@@ -294,7 +293,7 @@ describe("Request Logger", () => {
             expect(consoleInfoSpy).not.toHaveBeenCalled();
             expect(consoleWarnSpy).not.toHaveBeenCalled();
 
-            const logMessage = consoleErrorSpy.mock.calls[0][0];
+            const logMessage = consoleErrorSpy.mock.calls[0]?.[0] ?? "";
             expect(logMessage).toContain("[req-500]");
             expect(logMessage).toContain("GET");
             expect(logMessage).toContain("/api/error");
@@ -312,7 +311,7 @@ describe("Request Logger", () => {
             const startTime = Date.now() - 150; // 150ms ago
             logRequest("GET", "/api/test", "req-time", startTime, 200);
 
-            const logMessage = consoleInfoSpy.mock.calls[0][0];
+            const logMessage = consoleInfoSpy.mock.calls[0]?.[0] ?? "";
             // Duration should be around 150ms (with some tolerance)
             expect(logMessage).toMatch(/1[0-9]{2}ms$/);
         });
@@ -321,7 +320,7 @@ describe("Request Logger", () => {
             const startTime = Date.now();
             logRequest("PUT", "/api/users/123", "req-full", startTime, 200);
 
-            const logMessage = consoleInfoSpy.mock.calls[0][0];
+            const logMessage = consoleInfoSpy.mock.calls[0]?.[0] ?? "";
             expect(logMessage).toContain("[req-full]");
             expect(logMessage).toContain("PUT");
             expect(logMessage).toContain("/api/users/123");
@@ -347,7 +346,7 @@ describe("Request Logger", () => {
 
             logRequest("GET", longPath, "req-long", startTime, 200);
 
-            const logMessage = consoleInfoSpy.mock.calls[0][0];
+            const logMessage = consoleInfoSpy.mock.calls[0]?.[0] ?? "";
             expect(logMessage).toContain(longPath);
         });
 
@@ -357,7 +356,7 @@ describe("Request Logger", () => {
 
             logRequest("GET", pathWithQuery, "req-query", startTime, 200);
 
-            const logMessage = consoleInfoSpy.mock.calls[0][0];
+            const logMessage = consoleInfoSpy.mock.calls[0]?.[0] ?? "";
             expect(logMessage).toContain(pathWithQuery);
         });
 
@@ -365,7 +364,7 @@ describe("Request Logger", () => {
             const startTime = Date.now();
             logRequest("GET", "/api/fast", "req-fast", startTime, 200);
 
-            const logMessage = consoleInfoSpy.mock.calls[0][0];
+            const logMessage = consoleInfoSpy.mock.calls[0]?.[0] ?? "";
             expect(logMessage).toMatch(/\d+ms$/);
         });
     });

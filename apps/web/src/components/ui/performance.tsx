@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 /**
  * Performance Monitoring & Core Web Vitals Components - Production Ready
@@ -88,7 +89,7 @@ class PerformanceErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.warn("Performance monitoring error:", error, errorInfo);
+    logger.warn("Performance monitoring error", { error, errorInfo });
   }
 
   render() {
@@ -217,7 +218,7 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
         lcpObserver.observe({ type: "largest-contentful-paint", buffered: true });
         observersRef.current.push(lcpObserver);
       } catch {
-        console.warn("LCP observation not supported");
+        logger.warn("LCP observation not supported");
       }
 
       // Observe CLS
@@ -225,7 +226,7 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
         clsObserver.observe({ type: "layout-shift", buffered: true });
         observersRef.current.push(clsObserver);
       } catch {
-        console.warn("CLS observation not supported");
+        logger.warn("CLS observation not supported");
       }
 
       // Navigation timing
@@ -237,7 +238,7 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
     } catch (e) {
       const error = e instanceof Error ? e : new Error("Failed to initialize performance monitoring");
       setError(error);
-      console.warn("Performance monitoring initialization failed:", error);
+      logger.warn("Performance monitoring initialization failed", { error });
     }
 
     return () => {
@@ -247,7 +248,7 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
           observer.takeRecords();
           observer.disconnect();
         } catch (e) {
-          console.warn("Error disconnecting observer:", e);
+          logger.warn("Error disconnecting observer", { error: e });
         }
       });
       observersRef.current = [];
@@ -376,6 +377,7 @@ export const LazyLoad: React.FC<LazyLoadProps> = ({
 
     observerRef.current = new IntersectionObserver(
       ([entry]) => {
+        if (!entry) return;
         if (entry.isIntersecting) {
           setIsVisible(true);
           onVisible?.();
@@ -450,7 +452,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       setIsLoaded(true);
     };
     img.onerror = () => {
-      console.warn(`Failed to load image: ${src}`);
+      logger.warn("Failed to load image", { src });
     };
 
     return () => {
@@ -485,7 +487,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         loading={priority ? "eager" : "lazy"}
         decoding={priority ? "sync" : "async"}
         onLoad={() => setIsLoaded(true)}
-        onError={() => console.warn(`Image failed to load: ${currentSrc}`)}
+        onError={() => logger.warn("Image failed to load", { src: currentSrc })}
         className={cn(
           "w-full h-full transition-opacity duration-300",
           isLoaded ? "opacity-100" : "opacity-0"
@@ -695,7 +697,7 @@ export const ResourceHint: React.FC<ResourceHintProps> = ({
     try {
       document.head.appendChild(link);
     } catch (e) {
-      console.warn("Failed to add resource hint:", e);
+      logger.warn("Failed to add resource hint", { href, as, type, error: e });
     }
 
     return () => {
@@ -785,7 +787,7 @@ export const useINPTracker = () => {
 
       observerRef.current.observe({ type: "event", buffered: true });
     } catch {
-      console.warn("INP tracking not supported");
+      logger.warn("INP tracking not supported");
     }
 
     return () => {
@@ -840,7 +842,7 @@ export const PerformanceReport: React.FC<PerformanceReportProps> = ({ className 
           totalSize: resources.reduce((acc, r) => acc + (r.encodedBodySize || 0), 0),
         });
       } catch (e) {
-        console.warn("Failed to generate performance report:", e);
+        logger.warn("Failed to generate performance report", { error: e });
       }
     };
 

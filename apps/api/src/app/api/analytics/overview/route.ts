@@ -22,6 +22,19 @@ export const dynamic = "force-dynamic";
 
 const PERIOD_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
 
+interface TableResult {
+    current: number;
+    previous: number;
+    read: number;
+    unread: number;
+}
+
+interface TableResults {
+    offers: TableResult;
+    contacts: TableResult;
+    applications: TableResult;
+}
+
 function changePct(current: number, previous: number): number {
     if (previous === 0) return current > 0 ? 100 : 0;
     return Math.round(((current - previous) / previous) * 100);
@@ -65,7 +78,11 @@ export async function GET(req: Request) {
                 { name: "job_applications" as const, key: "applications" as const },
             ];
 
-            const results: Record<string, { current: number; previous: number; read: number; unread: number }> = {};
+            const results: TableResults = {
+                offers: { current: 0, previous: 0, read: 0, unread: 0 },
+                contacts: { current: 0, previous: 0, read: 0, unread: 0 },
+                applications: { current: 0, previous: 0, read: 0, unread: 0 },
+            };
 
             for (const t of tables) {
                 const [curRes, prevRes, readRes, unreadRes] = await Promise.all([
@@ -108,7 +125,7 @@ export async function GET(req: Request) {
                     previous: prevRes.count ?? 0,
                     read: readRes.count ?? 0,
                     unread: unreadRes.count ?? 0,
-                };
+                } as TableResult;
             }
 
             const totalCurrent = Object.values(results).reduce((s, r) => s + r.current, 0);

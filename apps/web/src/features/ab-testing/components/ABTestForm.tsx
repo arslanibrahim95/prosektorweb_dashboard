@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { CreateABTestForm, ABVariant, ABGoal, GoalType, ABTestStatus } from '../types'
 import { useCreateABTest, useUpdateABTest } from '../hooks/useABTests'
+import { logger } from '@/lib/logger'
 
 interface ABTestFormProps {
     initialData?: Partial<CreateABTestForm>
@@ -55,7 +56,7 @@ export function ABTestForm({
             }
             onSuccess?.()
         } catch (error) {
-            console.error('Error saving test:', error)
+            logger.error('Error saving test', { error })
         }
     }
 
@@ -113,7 +114,8 @@ export function ABTestForm({
     const updateTrafficSplit = (index: number, value: number) => {
         const newSplit = [...formData.traffic_split]
         newSplit[index] = value
-        newSplit[1] = 100 - newSplit[0]
+        const firstValue = newSplit[0] ?? 50
+        newSplit[1] = 100 - firstValue
         setFormData({ ...formData, traffic_split: newSplit })
     }
 

@@ -58,7 +58,8 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
           return storedSiteId;
         }
         if (prev && response.items.some((site) => site.id === prev)) return prev;
-        return response.items[0].id;
+        const firstSite = response.items[0];
+        return firstSite?.id ?? null;
       });
     } finally {
       setIsLoading(false);

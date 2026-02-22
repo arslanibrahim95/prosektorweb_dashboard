@@ -136,7 +136,21 @@ export function parseApiError(error: unknown): ParsedError {
     try {
       const parsed = JSON.parse(error.message);
       if (parsed.code && errorMessages[parsed.code]) {
-        return { ...errorMessages[parsed.code], code: parsed.code };
+        const errorMsg = errorMessages[parsed.code];
+        if (!errorMsg) {
+          return {
+            code: parsed.code,
+            title: 'Bir hata oluştu',
+            message: error.message,
+            icon: AlertTriangle,
+          };
+        }
+        return {
+          code: parsed.code,
+          title: errorMsg.title ?? 'Bir hata oluştu',
+          message: errorMsg.message ?? error.message,
+          icon: errorMsg.icon ?? AlertTriangle,
+        };
       }
     } catch {
       // Not JSON, use raw message

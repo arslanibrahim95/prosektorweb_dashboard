@@ -13,6 +13,7 @@ import {
 } from "@/server/api/http";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import { createAdminClient, getBearerToken } from "@/server/supabase";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -211,7 +212,7 @@ export async function POST(req: Request) {
   } catch (error) {
     const status = asStatus(error);
     if (status >= 500) {
-      console.error("[onboarding/tenant] request failed", {
+      logger.error("[onboarding/tenant] request failed", {
         userId,
         status,
         errorMessage: error instanceof Error ? error.message : String(error),

@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 /**
  * Safe LocalStorage Utilities
  * 
@@ -15,7 +17,7 @@ export function safeLocalStorageGetItem(key: string): string | null {
     return window.localStorage.getItem(key);
   } catch (err) {
     // Handle Safari private mode, quota exceeded, and other errors
-    console.warn(`[LocalStorage] Failed to get item "${key}":`, err);
+    logger.warn(`[LocalStorage] Failed to get item`, { key, error: err });
     return null;
   }
 }
@@ -31,7 +33,7 @@ export function safeLocalStorageSetItem(key: string, value: string): boolean {
     return true;
   } catch (err) {
     // Handle quota exceeded, private mode, and other errors
-    console.warn(`[LocalStorage] Failed to set item "${key}":`, err);
+    logger.warn(`[LocalStorage] Failed to set item`, { key, error: err });
     return false;
   }
 }
@@ -46,7 +48,7 @@ export function safeLocalStorageRemoveItem(key: string): boolean {
     window.localStorage.removeItem(key);
     return true;
   } catch (err) {
-    console.warn(`[LocalStorage] Failed to remove item "${key}":`, err);
+    logger.warn(`[LocalStorage] Failed to remove item`, { key, error: err });
     return false;
   }
 }

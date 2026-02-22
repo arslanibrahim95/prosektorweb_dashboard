@@ -5,6 +5,7 @@ import path from 'path';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { assertSuperAdminAction } from './auth-guard';
+import { logger } from '@/lib/logger';
 
 const ENV_FILE_PATH = path.join(process.cwd(), '.env.local');
 
@@ -60,7 +61,7 @@ export async function testSupabaseConnection(settings: SupabaseSettingsInput) {
         const { data, error } = await client.storage.listBuckets();
 
         if (error) {
-            console.error("Supabase connection test error:", error);
+            logger.error("Supabase connection test error", { error });
             // If authorization error, it means variables are likely correct but permissions are tight, which is technically a "connection".
             // But usually invalid key returns 401.
             return { success: false, message: `Bağlantı başarısız: ${error.message}` };
@@ -118,7 +119,7 @@ export async function updateSupabaseSettings(settings: SupabaseSettingsInput) {
 
         return { success: true, message: 'Ayarlar başarıyla güncellendi. Değişikliklerin etkili olması için sunucunun yeniden başlatılması gerekebilir.' };
     } catch (error) {
-        console.error('Error updating .env.local:', error);
+        logger.error('Error updating .env.local', { error });
         return { success: false, message: 'Ayarlar güncellenirken bir hata oluştu.' };
     }
 }

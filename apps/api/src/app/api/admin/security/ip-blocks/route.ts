@@ -40,7 +40,10 @@ function isIpv4Cidr(value: string): boolean {
     if (parts.length !== 2) return false;
 
     const ip = parts[0];
-    const prefix = parseInt(parts[1], 10);
+    const prefixStr = parts[1];
+    if (!ip || !prefixStr) return false;
+
+    const prefix = parseInt(prefixStr, 10);
 
     // Validate prefix
     if (isNaN(prefix) || prefix < 0 || prefix > 32) return false;

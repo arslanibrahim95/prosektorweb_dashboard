@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
 export default function DashboardError({
     error,
@@ -16,7 +17,7 @@ export default function DashboardError({
     useEffect(() => {
         // Log error to console in development
         if (process.env.NODE_ENV === 'development') {
-            console.error('Dashboard error:', error);
+            logger.error('Dashboard error', { error });
         }
     }, [error]);
 

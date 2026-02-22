@@ -186,7 +186,7 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                     ) : site.sites.length === 1 ? (
                         <Badge variant="secondary" className="hidden md:flex text-xs">
                             <Globe className="h-3 w-3 mr-1" />
-                            {site.sites[0].name}
+                            {site.sites[0]?.name ?? 'Site'}
                         </Badge>
                     ) : null}
 

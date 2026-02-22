@@ -11,6 +11,7 @@ import { produce } from 'immer';
 import deepmerge from 'deepmerge';
 import { api } from '@/server/api';
 import { useMemo } from 'react';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // Types
@@ -464,6 +465,7 @@ export const useBuilderStore = create<BuilderState>()(
 
                     const newIndex = state.historyIndex - 1;
                     const entry = state.history[newIndex];
+                    if (!entry) return;
 
                     set({
                         historyIndex: newIndex,
@@ -478,6 +480,7 @@ export const useBuilderStore = create<BuilderState>()(
 
                     const newIndex = state.historyIndex + 1;
                     const entry = state.history[newIndex];
+                    if (!entry) return;
 
                     set({
                         historyIndex: newIndex,
@@ -515,7 +518,7 @@ export const useBuilderStore = create<BuilderState>()(
 
                         set({ isDirty: false, isSaving: false });
                     } catch (error) {
-                        console.error('Failed to save layout:', error);
+                        logger.error('Failed to save layout', { error });
                         set({ isSaving: false });
                         throw error;
                     }
@@ -548,7 +551,7 @@ export const useBuilderStore = create<BuilderState>()(
                             });
                         }
                     } catch (error) {
-                        console.error('Failed to load layout:', error);
+                        logger.error('Failed to load layout', { error });
                         throw error;
                     } finally {
                         set({ isLoading: false });

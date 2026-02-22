@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
 import { ProgressIndicator } from '@/components/onboarding/progress-indicator';
+import { logger } from '@/lib/logger';
 
 const nextSteps = [
     {
@@ -41,7 +42,7 @@ export default function CompletePage() {
             try {
                 await auth.refreshMe();
             } catch (error) {
-                console.error('Failed to refresh auth:', error);
+                logger.error('Failed to refresh auth', { error });
             } finally {
                 setIsRefreshing(false);
             }

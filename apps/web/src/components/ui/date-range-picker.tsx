@@ -23,7 +23,7 @@ interface DatePreset {
 }
 
 function startOfDay(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split('T')[0] ?? date.toISOString().slice(0, 10);
 }
 
 const presets: DatePreset[] = [

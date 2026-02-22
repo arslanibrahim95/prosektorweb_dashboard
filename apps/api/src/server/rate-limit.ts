@@ -4,6 +4,7 @@ import { isIP } from "net";
 import { z } from "zod";
 import { getServerEnv } from "./env";
 import { HttpError, mapPostgrestError } from "./api/http";
+import { logger } from "@/lib/logger";
 
 // Validation constants
 const MIN_RATE_LIMIT = 1;
@@ -131,11 +132,13 @@ function extractTrustedForwardedIp(
 
   // Get the IP right after our trusted proxies
   const candidate = chain[candidateIndex];
-  const validIp = normalizeValidIp(candidate);
+  const validIp = candidate ? normalizeValidIp(candidate) : null;
 
   // SECURITY: Reject private IPs from forwarded headers (unless in development)
   if (validIp && isPrivateIp(validIp) && process.env.NODE_ENV === 'production') {
-    console.warn('[RateLimit] Private IP detected in X-Forwarded-For:', validIp);
+    logger.warn('[RateLimit] Private IP detected in X-Forwarded-For', {
+      ip: validIp,
+    });
     return null;
   }
 

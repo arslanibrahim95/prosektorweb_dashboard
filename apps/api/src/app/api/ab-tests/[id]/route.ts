@@ -83,11 +83,23 @@ export async function GET(
             throw mapPostgrestError(error);
         }
 
-        // Parse JSON fields
+        // Parse JSON fields safely
+        function safeParseJson<T>(value: string | T, field: string): T {
+            if (typeof value !== "string") return value;
+            try {
+                return JSON.parse(value);
+            } catch {
+                throw new HttpError(500, {
+                    code: "INTERNAL_ERROR",
+                    message: `Invalid JSON in field '${field}'`,
+                });
+            }
+        }
+
         const parsedData = {
             ...data,
-            variants: typeof data.variants === "string" ? JSON.parse(data.variants) : data.variants,
-            goals: typeof data.goals === "string" ? JSON.parse(data.goals) : data.goals,
+            variants: safeParseJson(data.variants, "variants"),
+            goals: safeParseJson(data.goals, "goals"),
         };
 
         return jsonOk({ data: parsedData }, 200, rateLimitHeaders(rateLimit));

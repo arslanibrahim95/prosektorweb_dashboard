@@ -7,20 +7,30 @@
  * 
  * SECURITY WARNING: This uses service role key which has full database access.
  * Only use in isolated test environments, never in production!
+ * 
+ * SECURITY: All test credentials must be provided via environment variables.
+ * No fallbacks are provided to prevent accidental use of weak credentials.
  */
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Page } from '@playwright/test';
 
-const SUPABASE_URL =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://mjzdchwiizifgxbfiagz.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+function requireEnv(name: string): string {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}. Please set it in your .env.test or CI environment.`);
+    }
+    return value;
+}
 
-// Default values only for local development - CI should always set env vars
-const TEST_EMAIL = process.env.E2E_TEST_ADMIN_EMAIL ?? 'owner@prosektorweb.com';
-const TEST_PASSWORD = process.env.E2E_TEST_ADMIN_PASSWORD ?? 'test-password';
+const SUPABASE_URL = requireEnv('NEXT_PUBLIC_SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
 
-export const NEW_USER_EMAIL = process.env.E2E_TEST_USER_EMAIL ?? 'newuser@prosektorweb.com';
-export const NEW_USER_PASSWORD = process.env.E2E_TEST_USER_PASSWORD ?? 'test-password';
+// Test credentials - must be provided via environment variables
+const TEST_EMAIL = requireEnv('E2E_TEST_ADMIN_EMAIL');
+const TEST_PASSWORD = requireEnv('E2E_TEST_ADMIN_PASSWORD');
+
+export const NEW_USER_EMAIL = requireEnv('E2E_TEST_USER_EMAIL');
+export const NEW_USER_PASSWORD = requireEnv('E2E_TEST_USER_PASSWORD');
 
 /**
  * Get admin client for test operations

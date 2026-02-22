@@ -17,10 +17,10 @@ export function getBearerToken(req: Request): string | null {
   const match = /^Bearer\s+(\S+)$/.exec(header.trim());
   if (!match) return null;
 
-  const token = match[1].trim();
-  if (token.length === 0 || token.length > MAX_BEARER_TOKEN_LENGTH) return null;
+  const token = match[1];
+  if (!token || token.length === 0 || token.length > MAX_BEARER_TOKEN_LENGTH) return null;
 
-  return token;
+  return token.trim();
 }
 
 /**

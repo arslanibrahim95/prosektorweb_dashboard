@@ -104,7 +104,10 @@ describe("POST /api/publish", () => {
     );
 
     expect(sendPublishWebhook).toHaveBeenCalledTimes(1);
-    const webhookPayload = vi.mocked(sendPublishWebhook).mock.calls[0][0];
+    const firstCall = vi.mocked(sendPublishWebhook).mock.calls[0];
+    const webhookPayload = firstCall?.[0];
+    expect(webhookPayload).toBeDefined();
+    if (!webhookPayload) throw new Error("webhookPayload is undefined");
     expect(webhookPayload.traceId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );

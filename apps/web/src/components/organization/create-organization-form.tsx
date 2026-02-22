@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { trackOnboardingEvent } from '@/lib/onboarding-analytics';
+import { logger } from '@/lib/logger';
 
 const MIN_NAME_LENGTH = 2;
 const MAX_NAME_LENGTH = 100;
@@ -81,7 +82,7 @@ export function CreateOrganizationForm({ onSuccess, onCancel, showCancel = false
             }
 
         } catch (error: unknown) {
-            console.error('Onboarding error:', error);
+            logger.error('Onboarding error', { error });
 
             // Track failure
             trackOnboardingEvent('onboarding_organization_failed', {

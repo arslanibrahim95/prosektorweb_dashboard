@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { logger } from '@/lib/logger';
 import type { AdminUser } from '@/types/admin';
 import type { UserRole } from '@prosektor/contracts';
 
@@ -90,7 +91,7 @@ export function RoleChangeDialog({
             setSelectedRole(null);
             onOpenChange(false);
         } catch (error) {
-            console.error('Role change error:', error);
+            logger.error('Role change error', { error });
         } finally {
             setIsSubmitting(false);
         }

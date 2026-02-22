@@ -91,6 +91,10 @@ export function WelcomeModal() {
   };
 
   const step = steps[currentStep];
+  if (!step) {
+    handleClose();
+    return null;
+  }
   const StepIcon = step.icon;
   const isLast = currentStep === steps.length - 1;
 

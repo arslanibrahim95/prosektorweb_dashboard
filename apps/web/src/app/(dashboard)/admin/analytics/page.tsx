@@ -256,9 +256,9 @@ export default function AnalyticsPage() {
                                         })}
                                     </div>
                                     <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground px-0.5">
-                                        <span>{format(new Date(days[0].date), 'dd MMM', { locale: tr })}</span>
-                                        <span>{format(new Date(days[Math.floor(days.length / 2)].date), 'dd MMM', { locale: tr })}</span>
-                                        <span>{format(new Date(days[days.length - 1].date), 'dd MMM', { locale: tr })}</span>
+                                        <span>{format(new Date(days[0]?.date ?? new Date()), 'dd MMM', { locale: tr })}</span>
+                                        <span>{format(new Date(days[Math.floor(days.length / 2)]?.date ?? new Date()), 'dd MMM', { locale: tr })}</span>
+                                        <span>{format(new Date(days[days.length - 1]?.date ?? new Date()), 'dd MMM', { locale: tr })}</span>
                                     </div>
                                     <div className="mt-4 flex items-center gap-4 text-sm">
                                         <div className="flex items-center gap-2">

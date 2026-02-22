@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
 export default function GlobalError({
     error,
@@ -15,7 +16,7 @@ export default function GlobalError({
     useEffect(() => {
         // Log error to console in development
         if (process.env.NODE_ENV === 'development') {
-            console.error('Global error:', error);
+            logger.error('Global error', { error });
         }
     }, [error]);
 

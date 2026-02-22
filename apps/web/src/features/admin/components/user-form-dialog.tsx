@@ -29,6 +29,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
 import type { AdminUser } from '@/types/admin';
 import type { UserRole } from '@prosektor/contracts';
 
@@ -87,7 +88,7 @@ export function UserFormDialog({
             form.reset();
             onOpenChange(false);
         } catch (error) {
-            console.error('Form submission error:', error);
+            logger.error('Form submission error', { error });
         } finally {
             setIsSubmitting(false);
         }

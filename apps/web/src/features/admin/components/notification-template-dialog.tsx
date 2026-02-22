@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
 
 const notificationTemplateSchema = z.object({
     name: z.string().min(2, 'Şablon adı en az 2 karakter olmalıdır'),
@@ -128,7 +129,7 @@ export function NotificationTemplateDialog({
             form.reset();
             onOpenChange(false);
         } catch (error) {
-            console.error('Form submission error:', error);
+            logger.error('Form submission error', { error });
         } finally {
             setIsSubmitting(false);
         }

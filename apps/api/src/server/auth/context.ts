@@ -310,6 +310,14 @@ async function resolveSuperAdminTenant(
       availableTenants[0];
   }
 
+  // Safety check for noUncheckedIndexedAccess
+  if (!activeTenant) {
+    throw createError({
+      code: "NO_TENANT",
+      message: "Aktif tenant bulunamadı.",
+    });
+  }
+
   // SECURITY: Audit log all super admin tenant access
   console.info("[super-admin-tenant-access]", {
     userId,

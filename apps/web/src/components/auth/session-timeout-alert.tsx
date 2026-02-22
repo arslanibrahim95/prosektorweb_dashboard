@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/auth-provider';
 import { formatTimeRemaining } from '@/lib/auth/token-refresh';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 /**
  * Session Timeout Alert Component
@@ -62,7 +63,7 @@ export function SessionTimeoutAlert({ className }: SessionTimeoutAlertProps) {
       await extendSession();
       setIsOpen(false);
     } catch (err) {
-      console.error('Failed to extend session:', err);
+      logger.error('Failed to extend session', { error: err });
     } finally {
       setIsExtending(false);
     }

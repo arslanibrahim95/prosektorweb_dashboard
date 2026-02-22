@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 import { createMarkReadHandler } from "@/server/inbox/mark-read-handler";
 import { hasPermission } from "@/server/auth/permissions";
 import { enforceRateLimit } from "@/server/rate-limit";
@@ -30,7 +30,7 @@ const baseAuthContext: AuthContext = {
             status: "active",
         },
     ],
-    role: "member",
+    role: "viewer" as const,
     permissions: [],
 };
 
@@ -68,10 +68,10 @@ vi.mock("@/server/inbox/query-utils", () => ({
 
 describe("createMarkReadHandler", () => {
     it("returns 403 when inbox:read permission missing", async () => {
-        (hasPermission as unknown as vi.Mock).mockReturnValue(false);
+        (hasPermission as unknown as Mock).mockReturnValue(false);
         const handler = createMarkReadHandler("contact_messages");
 
-        (requireAuthContext as vi.Mock).mockResolvedValue(createAuthContext({ permissions: [] }));
+        (requireAuthContext as Mock).mockResolvedValue(createAuthContext({ permissions: [] }));
 
         const res = await handler(new Request("https://example.com", { method: "POST" }), { params: Promise.resolve({ id: "550e8400-e29b-41d4-a716-446655440000" }) });
 
@@ -79,11 +79,11 @@ describe("createMarkReadHandler", () => {
     });
 
     it("enforces rate limit before updating", async () => {
-        (hasPermission as unknown as vi.Mock).mockReturnValue(true);
-        (enforceRateLimit as unknown as vi.Mock).mockResolvedValue({ allowed: true, remaining: 9, resetAt: new Date().toISOString(), limit: 10 });
+        (hasPermission as unknown as Mock).mockReturnValue(true);
+        (enforceRateLimit as unknown as Mock).mockResolvedValue({ allowed: true, remaining: 9, resetAt: new Date().toISOString(), limit: 10 });
 
         const handler = createMarkReadHandler("contact_messages");
-        (requireAuthContext as vi.Mock).mockResolvedValue(createAuthContext({ permissions: ["inbox:read"] }));
+        (requireAuthContext as Mock).mockResolvedValue(createAuthContext({ permissions: ["inbox:read"] }));
         const res = await handler(new Request("https://example.com", { method: "POST" }), { params: Promise.resolve({ id: "1" }) });
 
         expect(enforceRateLimit).toHaveBeenCalled();

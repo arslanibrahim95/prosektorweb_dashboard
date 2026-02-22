@@ -14,6 +14,7 @@ import {
 import { requireAuthContext } from "@/server/auth/context";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 import { sendPublishWebhook } from "@/server/webhooks/publish";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,10 +112,13 @@ export async function POST(req: Request) {
         },
         pages: rpcResult.page_ids ?? [],
       }).catch((error) => {
-        console.error("[Publish] Webhook dispatch failed", {
+        logger.error("[Publish] Webhook dispatch failed", {
           traceId,
           siteId: rpcResult.site_id,
-          error,
+          error: error instanceof Error ? {
+            name: error.name,
+            message: error.message,
+          } : error,
         });
       });
     }

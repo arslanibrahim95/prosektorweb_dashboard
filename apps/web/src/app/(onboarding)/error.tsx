@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, RefreshCw } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 export default function Error({
     error,
@@ -14,7 +15,7 @@ export default function Error({
 }) {
     useEffect(() => {
         // Log the error to an error reporting service
-        console.error('Onboarding error:', error);
+        logger.error('Onboarding error', { error });
     }, [error]);
 
     return (

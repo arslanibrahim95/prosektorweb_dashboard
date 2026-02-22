@@ -23,6 +23,9 @@ export interface ServerEnv {
   publicHrApplyRlWindowSec: number;
   /** Dedicated salt for IP hashing in rate limiting (falls back to siteTokenSecret if not set) */
   rateLimitSalt: string;
+  // Webhook configuration (optional - only required for publish functionality)
+  webhookSecret?: string;
+  builderApiUrl?: string;
 }
 
 let cachedEnv: ServerEnv | null = null;
@@ -107,6 +110,9 @@ export function getServerEnv(): ServerEnv {
     publicHrApplyRlWindowSec: pickPositiveInt("PUBLIC_HR_APPLY_RL_WINDOW_SEC", 300),
     // SECURITY: Dedicated salt for IP hashing to avoid dual-use of siteTokenSecret
     rateLimitSalt: pickEnv("RATE_LIMIT_SALT") ?? siteTokenSecret + ":ratelimit",
+    // Webhook configuration (optional - validated at startup if present)
+    webhookSecret: pickEnv("WEBHOOK_SECRET"),
+    builderApiUrl: pickEnv("BUILDER_API_URL"),
   });
 
   return cachedEnv;

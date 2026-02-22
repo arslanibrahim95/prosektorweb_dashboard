@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "crypto";
 import { getAvScanConfig, scanBufferWithClamAv } from "./av-scan";
+import { logger } from "@/lib/logger";
 
 /**
  * File Validation Security Utilities
@@ -281,7 +282,9 @@ function validatePDFStructure(buffer: ArrayBuffer, strict: boolean = false): boo
                 }
             }
             if (found) {
-                console.warn('[FileValidation] Suspicious pattern detected in PDF:', pattern.toString());
+                logger.warn('[FileValidation] Suspicious pattern detected in PDF', {
+                    pattern: pattern.toString(),
+                });
                 return false;
             }
         }
@@ -605,7 +608,10 @@ export async function validateCVFile(
     const sanitizedFilename = sanitizeFilename(file.name);
     if (sanitizedFilename !== file.name) {
         // Filename was modified - this is a warning but not necessarily a failure
-        console.warn('[FileValidation] Filename sanitized:', file.name, '->', sanitizedFilename);
+        logger.warn('[FileValidation] Filename sanitized', {
+            original: file.name,
+            sanitized: sanitizedFilename,
+        });
     }
 
     // Defense-in-depth basic malware signature check.
@@ -628,7 +634,7 @@ export async function validateCVFile(
                 };
             }
 
-            console.warn('[FileValidation] AV scan unavailable, fail-open policy applied', {
+            logger.warn('[FileValidation] AV scan unavailable, fail-open policy applied', {
                 reason: avResult.reason,
             });
         } else if (!avResult.clean) {

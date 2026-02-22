@@ -5,6 +5,7 @@ import {
     publishWebhookBodySchema,
 } from "@prosektor/contracts";
 import { logger } from "@/lib/logger";
+import { getServerEnv } from "@/server/env";
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 3000;
 
@@ -26,20 +27,23 @@ function resolveWebhookTimeoutMs(): number {
 }
 
 export async function sendPublishWebhook(payload: Omit<PublishWebhookBody, "version" | "source">) {
-    const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-    const BUILDER_API_URL = process.env.BUILDER_API_URL;
+    const env = getServerEnv();
+    const WEBHOOK_SECRET = env.webhookSecret;
+    const BUILDER_API_URL = env.builderApiUrl;
 
+    // Early validation - these should be configured at startup
     if (!WEBHOOK_SECRET) {
-        logger.error("[Webhook] WEBHOOK_SECRET is not defined");
+        logger.error("[Webhook] WEBHOOK_SECRET is not configured. Publish webhooks will not be sent.");
         return;
     }
     if (!BUILDER_API_URL) {
-        logger.error("[Webhook] BUILDER_API_URL is not defined");
+        logger.error("[Webhook] BUILDER_API_URL is not configured. Publish webhooks will not be sent.");
         return;
     }
+    
     const normalizedBuilderUrl = normalizeBaseUrl(BUILDER_API_URL);
     if (!normalizedBuilderUrl) {
-        logger.error("[Webhook] BUILDER_API_URL is invalid");
+        logger.error("[Webhook] BUILDER_API_URL is invalid", { url: BUILDER_API_URL });
         return;
     }
 
@@ -98,14 +102,16 @@ export async function sendPublishWebhook(payload: Omit<PublishWebhookBody, "vers
                 traceId: fullPayload.traceId,
             });
         }
-    } catch (err) {
+    } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") {
             logger.error("[Webhook] Timeout sending webhook", {
                 traceId: fullPayload.traceId,
             });
             return;
         }
-        logger.error("[Webhook] Network error sending webhook", { err });
+        logger.error("[Webhook] Network error sending webhook", { 
+            error: err instanceof Error ? err.message : String(err) 
+        });
     } finally {
         clearTimeout(timeoutId);
     }
