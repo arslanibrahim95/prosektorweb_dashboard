@@ -75,6 +75,11 @@ export async function uploadFile(bucketName: string, path: string, formData: For
             throw new Error('No file provided');
         }
 
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+        if (file.size > MAX_FILE_SIZE) {
+            throw new Error(`Dosya boyutu çok büyük. Maksimum: 50MB`);
+        }
+
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 

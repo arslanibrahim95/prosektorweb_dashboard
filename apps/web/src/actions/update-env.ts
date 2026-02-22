@@ -9,6 +9,54 @@ import { logger } from '@/lib/logger';
 
 const ENV_FILE_PATH = path.join(process.cwd(), '.env.local');
 
+const ALLOWED_SUPABASE_HOSTS = new Set<string>();
+
+function getAllowedHosts(): Set<string> {
+    if (ALLOWED_SUPABASE_HOSTS.size === 0) {
+        const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (configuredUrl) {
+            try {
+                const parsed = new URL(configuredUrl);
+                ALLOWED_SUPABASE_HOSTS.add(parsed.host);
+            } catch {
+                // Invalid URL in env, ignore
+            }
+        }
+    }
+    return ALLOWED_SUPABASE_HOSTS;
+}
+
+function validateSupabaseUrl(urlString: string): URL {
+    let parsed: URL;
+    try {
+        parsed = new URL(urlString);
+    } catch {
+        throw new Error('Geçersiz URL formatı');
+    }
+    
+    if (parsed.protocol !== 'https:') {
+        throw new Error('Sadece HTTPS desteklenmektedir');
+    }
+    
+    const allowed = getAllowedHosts();
+    if (allowed.size > 0 && !allowed.has(parsed.host)) {
+        throw new Error(`Bilinen Supabase host'ları dışında: ${parsed.host}. Önce .env dosyasında NEXT_PUBLIC_SUPABASE_URL ayarlayın.`);
+    }
+    
+    return parsed;
+}
+
+const PROTECTED_ENV_KEYS = new Set([
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'CUSTOM_JWT_SECRET',
+    'SITE_TOKEN_SECRET',
+    'WEBHOOK_SECRET',
+]);
+
+function isProtectedKey(key: string): boolean {
+    return PROTECTED_ENV_KEYS.has(key);
+}
+
 interface SupabaseSettingsInput {
     url: string;
     anonKey: string;
@@ -45,43 +93,74 @@ export async function getSupabaseAdminSettings(): Promise<SupabaseAdminSettings>
     };
 }
 
+/**
+ * Test Supabase connection with provided credentials
+ * SECURITY: Validates URL against allowlist and adds timeout
+ */
 export async function testSupabaseConnection(settings: SupabaseSettingsInput) {
     try {
         await assertSuperAdminAction();
-        const client = createClient(settings.url, settings.serviceRoleKey || settings.anonKey);
-
-        // Perform a simple health check or query
-        // Since we don't know the table structure, we can try to get the auth settings or just check if the client initializes without error.
-        // A more robust check would be listing buckets or a known table. 
-        // Let's try to list buckets if service role is present, or just trust the client initialization for now (which is weak).
-        // Better: Try to get session or something generic.
-        // Actually, `client.from('...').select('*').limit(1)` is standards but we don't know tables.
-        // `client.storage.listBuckets()` is a good admin check.
-
-        const { data, error } = await client.storage.listBuckets();
-
-        if (error) {
-            logger.error("Supabase connection test error", { error });
-            // If authorization error, it means variables are likely correct but permissions are tight, which is technically a "connection".
-            // But usually invalid key returns 401.
-            return { success: false, message: `Bağlantı başarısız: ${error.message}` };
-        }
-
-        return {
-            success: true,
-            message: `Bağlantı başarılı! ${data?.length ?? 0} adet depolama birimi bulundu.`,
-            details: {
-                buckets: data?.length
+        
+        const validatedUrl = validateSupabaseUrl(settings.url);
+        
+        const client = createClient(validatedUrl.origin, settings.serviceRoleKey || settings.anonKey, {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false,
             }
-        };
+        });
+
+        const timeoutMs = 5000;
+        const timeoutPromise = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+        );
+
+        try {
+            const { data, error } = await Promise.race([
+                client.storage.listBuckets(),
+                timeoutPromise
+            ]) as Awaited<ReturnType<typeof client.storage.listBuckets>>;
+
+            if (error) {
+                logger.error("Supabase connection test error", { error });
+                return { success: false, message: `Bağlantı başarısız: ${error.message}` };
+            }
+
+            return {
+                success: true,
+                message: `Bağlantı başarılı! ${data?.length ?? 0} adet depolama birimi bulundu.`,
+                details: {
+                    buckets: data?.length
+                }
+            };
+        } catch (fetchError) {
+            if (fetchError instanceof Error && fetchError.message === 'Timeout') {
+                return { success: false, message: 'Bağlantı zaman aşımı (5 saniye)' };
+            }
+            throw fetchError;
+        }
     } catch (error: unknown) {
         return { success: false, message: `Bağlantı hatası: ${getErrorMessage(error)}` };
     }
 }
 
+/**
+ * Update Supabase settings in .env.local
+ * @deprecated Bu fonksiyon güvenlik nedeniyle kaldırılmalıdır.
+ * Deployment sürecinde environment variable'lar kullanılmalıdır.
+ */
 export async function updateSupabaseSettings(settings: SupabaseSettingsInput) {
     try {
         await assertSuperAdminAction();
+        
+        // SECURITY: Prevent modification of protected keys
+        if (settings.serviceRoleKey && isProtectedKey('SUPABASE_SERVICE_ROLE_KEY')) {
+            return { 
+                success: false, 
+                message: 'Güvenlik anahtarları UI üzerinden değiştirilemez. Lütfen deployment sürecini kullanın.' 
+            };
+        }
+
         let envContent = '';
 
         if (fs.existsSync(ENV_FILE_PATH)) {

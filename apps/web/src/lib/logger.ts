@@ -1,5 +1,7 @@
 const SENSITIVE_KEY_PATTERN = /(authorization|token|secret|password|pass|cookie|connection|credential|session|url|key)/i;
 
+const SENSITIVE_VALUE_PATTERN = /(eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|sk_live_[A-Za-z0-9]{20,}|service[_-]role|Bearer\s+[A-Za-z0-9_-]{10,}|Bearer\s+$)/i;
+
 type LogLevel = "info" | "warn" | "error";
 
 function isSensitiveKey(key: string | number | undefined): boolean {
@@ -9,17 +11,29 @@ function isSensitiveKey(key: string | number | undefined): boolean {
   return SENSITIVE_KEY_PATTERN.test(String(key));
 }
 
+function containsSensitiveValue(value: string): boolean {
+  return SENSITIVE_VALUE_PATTERN.test(value);
+}
+
 function sanitizeValue(
   key: string | number | undefined,
   value: unknown,
-  seen: WeakSet<object>
+  seen: WeakSet<object>,
+  depth: number = 0
 ): unknown {
+  if (depth > 10) {
+    return "[Max Depth Exceeded]";
+  }
+
   if (value === null || value === undefined) {
     return value;
   }
 
   if (typeof value === "string") {
-    return isSensitiveKey(key) ? "[REDACTED]" : value;
+    if (isSensitiveKey(key) || containsSensitiveValue(value)) {
+      return "[REDACTED]";
+    }
+    return value;
   }
 
   if (typeof value === "number" || typeof value === "boolean") {
@@ -37,24 +51,24 @@ function sanitizeValue(
     seen.add(value as object);
 
     if (Array.isArray(value)) {
-      return value.map((item, index) => sanitizeValue(index, item, seen));
+      return value.map((item, index) => sanitizeValue(index, item, seen, depth + 1));
     }
 
     if (value instanceof Map) {
       const obj: Record<string, unknown> = {};
       for (const [mapKey, mapValue] of value.entries()) {
-        obj[String(mapKey)] = sanitizeValue(mapKey, mapValue, seen);
+        obj[String(mapKey)] = sanitizeValue(mapKey, mapValue, seen, depth + 1);
       }
       return obj;
     }
 
     if (value instanceof Set) {
-      return Array.from(value).map((item) => sanitizeValue(undefined, item, seen));
+      return Array.from(value).map((item) => sanitizeValue(undefined, item, seen, depth + 1));
     }
 
     const sanitized: Record<string, unknown> = {};
     for (const [childKey, childValue] of Object.entries(value)) {
-      sanitized[childKey] = sanitizeValue(childKey, childValue, seen);
+      sanitized[childKey] = sanitizeValue(childKey, childValue, seen, depth + 1);
     }
     return sanitized;
   }
@@ -66,7 +80,7 @@ function sanitizeMeta(meta: unknown): unknown {
   if (meta === undefined) {
     return undefined;
   }
-  return sanitizeValue(undefined, meta, new WeakSet<object>());
+  return sanitizeValue(undefined, meta, new WeakSet<object>(), 0);
 }
 
 function log(level: LogLevel, message: string, meta?: unknown) {

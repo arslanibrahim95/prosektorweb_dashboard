@@ -159,15 +159,22 @@ export class SupabaseTenantRepository implements TenantRepository {
       });
     }
 
-    // Type assertion for joined data
+    // Handle potential null from join if tenant was deleted
     const tenantsHelper = data.tenants;
-    const tenantData = (Array.isArray(tenantsHelper) ? tenantsHelper[0] : tenantsHelper) as { name: string; slug: string; plan: 'demo' | 'starter' | 'pro' };
+    const tenantRecord = Array.isArray(tenantsHelper) ? tenantsHelper[0] : tenantsHelper;
+    
+    if (!tenantRecord) {
+      throw createError({
+        code: 'NO_TENANT',
+        message: 'Workspace bulunamadı veya silinmiş.',
+      });
+    }
 
     return {
       tenant_id: data.tenant_id,
-      tenant_name: tenantData.name,
-      tenant_slug: tenantData.slug,
-      tenant_plan: tenantData.plan,
+      tenant_name: tenantRecord.name,
+      tenant_slug: tenantRecord.slug,
+      tenant_plan: tenantRecord.plan,
       role: data.role,
     };
   }
