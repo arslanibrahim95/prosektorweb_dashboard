@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useId } from 'react';
+import { useState, useId, useMemo, useCallback } from 'react';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
     Table,
@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useAuth } from '@/components/auth/auth-provider';
 
 interface User {
     id: string;
@@ -69,6 +70,9 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default function AdminUsersPage() {
+    const auth = useAuth();
+    const currentUserId = auth.me?.user.id;
+
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [page, setPage] = useState(1);
@@ -91,8 +95,16 @@ export default function AdminUsersPage() {
         setSelectedIds(new Set());
     };
 
+    const isCurrentUser = useCallback(
+        (user: Pick<User, 'user_id'>) => user.user_id === currentUserId,
+        [currentUserId],
+    );
+
     const toggleSelect = (id: string) => {
         setSelectedIds((prev) => {
+            const user = usersData?.items?.find((u) => u.id === id);
+            if (user && isCurrentUser(user)) return prev;
+
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
@@ -102,11 +114,22 @@ export default function AdminUsersPage() {
 
     const toggleSelectAll = () => {
         if (!usersData?.items) return;
-        if (selectedIds.size === usersData.items.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(usersData.items.map((u) => u.id)));
-        }
+
+        const selectableIds = usersData.items.filter((u) => !isCurrentUser(u)).map((u) => u.id);
+        if (selectableIds.length === 0) return;
+
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            const allSelected = selectableIds.every((id) => next.has(id));
+
+            if (allSelected) {
+                selectableIds.forEach((id) => next.delete(id));
+            } else {
+                selectableIds.forEach((id) => next.add(id));
+            }
+
+            return next;
+        });
     };
 
     const handleBulkExport = () => {
@@ -142,6 +165,19 @@ export default function AdminUsersPage() {
     const deleteMutation = useDeleteUser();
 
     const usersData = data as UsersResponse | undefined;
+
+    const selectableIds = useMemo(() => {
+        if (!usersData?.items) return [] as string[];
+        return usersData.items.filter((u) => !isCurrentUser(u)).map((u) => u.id);
+    }, [usersData?.items, isCurrentUser]);
+
+    const headerCheckboxState = useMemo<boolean | 'indeterminate'>(() => {
+        if (selectableIds.length === 0) return false;
+        const selectedCount = selectableIds.filter((id) => selectedIds.has(id)).length;
+        if (selectedCount === 0) return false;
+        if (selectedCount === selectableIds.length) return true;
+        return 'indeterminate';
+    }, [selectableIds, selectedIds]);
 
     const handleInvite = async () => {
         if (!inviteEmail) {
@@ -316,7 +352,7 @@ export default function AdminUsersPage() {
                         <TableRow>
                             <TableHead className="w-10">
                                 <Checkbox
-                                    checked={usersData?.items && usersData.items.length > 0 && selectedIds.size === usersData.items.length}
+                                    checked={headerCheckboxState}
                                     onCheckedChange={toggleSelectAll}
                                     aria-label="Tümünü seç"
                                 />
@@ -379,10 +415,11 @@ export default function AdminUsersPage() {
                             </TableRow>
                         ) : (
                             usersData.items.map((user) => (
-                                <TableRow key={user.id} data-state={selectedIds.has(user.id) ? 'selected' : undefined}>
+                                    <TableRow key={user.id} data-state={selectedIds.has(user.id) ? 'selected' : undefined}>
                                     <TableCell>
                                         <Checkbox
                                             checked={selectedIds.has(user.id)}
+                                            disabled={isCurrentUser(user)}
                                             onCheckedChange={() => toggleSelect(user.id)}
                                             aria-label={`${user.name ?? user.email} seç`}
                                         />
@@ -451,6 +488,7 @@ export default function AdminUsersPage() {
                                                 <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
                                                 {user.role !== 'admin' && (
                                                     <DropdownMenuItem
+                                                        disabled={isCurrentUser(user)}
                                                         onClick={() => handleRoleChangeRequest(user, 'admin')}
                                                     >
                                                         Admin Yap
@@ -458,6 +496,7 @@ export default function AdminUsersPage() {
                                                 )}
                                                 {user.role !== 'editor' && (
                                                     <DropdownMenuItem
+                                                        disabled={isCurrentUser(user)}
                                                         onClick={() => handleRoleChangeRequest(user, 'editor')}
                                                     >
                                                         Editor Yap
@@ -465,6 +504,7 @@ export default function AdminUsersPage() {
                                                 )}
                                                 {user.role !== 'viewer' && (
                                                     <DropdownMenuItem
+                                                        disabled={isCurrentUser(user)}
                                                         onClick={() => handleRoleChangeRequest(user, 'viewer')}
                                                     >
                                                         Viewer Yap
@@ -473,6 +513,7 @@ export default function AdminUsersPage() {
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
                                                     className="text-red-600"
+                                                    disabled={isCurrentUser(user)}
                                                     onClick={() => setDeleteTarget(user.id)}
                                                 >
                                                     Kullanıcıyı Sil

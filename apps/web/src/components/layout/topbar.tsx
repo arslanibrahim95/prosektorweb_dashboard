@@ -79,7 +79,7 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
     }, [auth.isSwitchingTenant, currentTenant?.name]);
 
     return (
-        <header className={`fixed top-0 right-0 left-0 z-30 h-[var(--topbar-height)] border-b border-border/50 bg-background/80 backdrop-blur-xl transition-[left] duration-300 ease-[var(--ease-smooth)] ${sidebarCollapsed
+        <header className={`fixed top-0 right-0 left-0 z-30 h-[var(--topbar-height)] glass transition-[left] duration-300 ease-[var(--ease-smooth)] ${sidebarCollapsed
             ? 'lg:left-[var(--sidebar-width-collapsed)]'
             : 'lg:left-[var(--sidebar-width)]'
             }`}>

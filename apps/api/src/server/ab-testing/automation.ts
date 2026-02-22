@@ -133,13 +133,19 @@ export function generateTestScenarios(
 
     // Trafik hacmine göre önerilen süreleri ayarla
     const dailyTraffic = trafficVolume / 30
-    return scenarios.map(s => ({
-        ...s,
-        recommended_duration_days: Math.max(
-            s.recommended_duration_days,
-            Math.ceil(calculateSampleSize(currentConversionRate, s.expected_improvement / 100) / dailyTraffic)
-        )
-    }))
+    return scenarios.map((s) => {
+        const sampleSize = calculateSampleSize(currentConversionRate, s.expected_improvement / 100)
+        const additionalDays =
+            dailyTraffic > 0 ? Math.ceil(sampleSize / dailyTraffic) : 0
+
+        return {
+            ...s,
+            recommended_duration_days: Math.max(
+                s.recommended_duration_days,
+                additionalDays,
+            ),
+        }
+    })
 }
 
 /**
@@ -274,7 +280,10 @@ export function calculateTestROI(
     const monthly_revenue_increase = baselineRevenue * (improvement / 100) * (monthlyTraffic / 100)
     const annual_revenue_increase = monthly_revenue_increase * 12
     const roi_percentage = ((annual_revenue_increase - testCost) / testCost) * 100
-    const payback_period_days = testCost > 0 ? Math.ceil((testCost / monthly_revenue_increase) * 30) : 0
+    const payback_period_days =
+        testCost > 0 && monthly_revenue_increase > 0
+            ? Math.ceil((testCost / monthly_revenue_increase) * 30)
+            : Infinity
 
     return {
         monthly_revenue_increase,

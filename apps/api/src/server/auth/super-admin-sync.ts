@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 
 let startupSyncPromise: Promise<void> | null = null;
 
@@ -34,7 +35,7 @@ async function runStartupSync(admin: SupabaseClient, emails: string[]): Promise<
   while (true) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
     if (error) {
-      console.error("[super-admin-sync] listUsers failed:", error.message);
+      logger.error("[super-admin-sync] listUsers failed", { message: error.message });
       return;
     }
 
@@ -56,12 +57,14 @@ async function runStartupSync(admin: SupabaseClient, emails: string[]): Promise<
       });
 
       if (updateError) {
-        console.error(
-          `[super-admin-sync] Failed to set super_admin for ${email}:`,
-          updateError.message,
-        );
+        logger.error("[super-admin-sync] Failed to set super_admin for user", {
+          email,
+          message: updateError.message,
+        });
       } else {
-        console.info(`[super-admin-sync] Applied super_admin metadata for ${email}`);
+        logger.info("[super-admin-sync] Applied super_admin metadata for user", {
+          email,
+        });
       }
     }
 
@@ -71,10 +74,9 @@ async function runStartupSync(admin: SupabaseClient, emails: string[]): Promise<
 
   const notFoundEmails = emails.filter((email) => !syncedEmails.has(email.toLowerCase()));
   if (notFoundEmails.length > 0) {
-    console.warn(
-      "[super-admin-sync] Emails not found in auth.users:",
-      notFoundEmails.join(", "),
-    );
+    logger.warn("[super-admin-sync] Emails not found in auth.users", {
+      emails: notFoundEmails.join(", "),
+    });
   }
 }
 
@@ -86,7 +88,7 @@ export async function ensureSuperAdminStartupSync(admin: SupabaseClient): Promis
 
   const emails = parseSuperAdminEmails();
   startupSyncPromise = runStartupSync(admin, emails).catch((error) => {
-    console.error("[super-admin-sync] Unexpected startup sync error:", error);
+    logger.error("[super-admin-sync] Unexpected startup sync error", { error });
   });
 
   await startupSyncPromise;
@@ -113,10 +115,10 @@ export async function ensureSuperAdminBootstrapForUser(
   });
 
   if (error) {
-    console.error(
-      `[super-admin-sync] Failed per-user bootstrap for ${email}:`,
-      error.message,
-    );
+    logger.error("[super-admin-sync] Failed per-user bootstrap for user", {
+      email,
+      message: error.message,
+    });
     return user;
   }
 
@@ -125,4 +127,3 @@ export async function ensureSuperAdminBootstrapForUser(
     app_metadata: nextAppMeta,
   };
 }
-

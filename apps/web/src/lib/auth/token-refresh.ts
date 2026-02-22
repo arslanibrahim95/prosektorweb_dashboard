@@ -257,10 +257,8 @@ export class TokenRefreshService {
     }, refreshDelay);
 
     // Her dakika session durumunu kontrol et (for warning display)
-    // Use a ref to avoid stale closure
-    const currentSession = session;
     this.checkTimer = setInterval(() => {
-      const warning = this.getSessionWarning(currentSession);
+      const warning = this.getSessionWarning(this.lastSession);
       if (warning.show) {
         this.config.onSessionExpiring?.(warning.timeUntilExpiry);
       }

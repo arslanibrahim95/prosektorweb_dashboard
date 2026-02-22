@@ -2,16 +2,45 @@ import { describe, it, expect, vi } from "vitest";
 import { createMarkReadHandler } from "@/server/inbox/mark-read-handler";
 import { hasPermission } from "@/server/auth/permissions";
 import { enforceRateLimit } from "@/server/rate-limit";
+import { requireAuthContext } from "@/server/auth/context";
+import type { AuthContext } from "@/server/auth/context";
+
+const baseAuthContext: AuthContext = {
+    admin: {} as AuthContext["admin"],
+    supabase: {} as AuthContext["supabase"],
+    tenant: {
+        id: "tenant-1",
+        name: "Tenant",
+        slug: "tenant",
+        plan: "pro",
+        status: "active",
+    },
+    user: {
+        id: "user-1",
+        email: "user@test.dev",
+        name: "Test User",
+    },
+    activeTenantId: "tenant-1",
+    availableTenants: [
+        {
+            id: "tenant-1",
+            name: "Tenant",
+            slug: "tenant",
+            plan: "pro",
+            status: "active",
+        },
+    ],
+    role: "member",
+    permissions: [],
+};
+
+const createAuthContext = (overrides: Partial<AuthContext> = {}): AuthContext => ({
+    ...baseAuthContext,
+    ...overrides,
+});
 
 vi.mock("@/server/auth/context", () => ({
-    requireAuthContext: vi.fn().mockResolvedValue({
-        admin: {} as any,
-        supabase: { from: vi.fn() } as any,
-        tenant: { id: "tenant-1" },
-        user: { id: "user-1" },
-        permissions: [],
-        role: "member",
-    }),
+    requireAuthContext: vi.fn(),
 }));
 
 vi.mock("@/server/auth/permissions", () => ({
@@ -42,6 +71,8 @@ describe("createMarkReadHandler", () => {
         (hasPermission as unknown as vi.Mock).mockReturnValue(false);
         const handler = createMarkReadHandler("contact_messages");
 
+        (requireAuthContext as vi.Mock).mockResolvedValue(createAuthContext({ permissions: [] }));
+
         const res = await handler(new Request("https://example.com", { method: "POST" }), { params: Promise.resolve({ id: "550e8400-e29b-41d4-a716-446655440000" }) });
 
         expect(res.status).toBe(403);
@@ -52,6 +83,7 @@ describe("createMarkReadHandler", () => {
         (enforceRateLimit as unknown as vi.Mock).mockResolvedValue({ allowed: true, remaining: 9, resetAt: new Date().toISOString(), limit: 10 });
 
         const handler = createMarkReadHandler("contact_messages");
+        (requireAuthContext as vi.Mock).mockResolvedValue(createAuthContext({ permissions: ["inbox:read"] }));
         const res = await handler(new Request("https://example.com", { method: "POST" }), { params: Promise.resolve({ id: "1" }) });
 
         expect(enforceRateLimit).toHaveBeenCalled();

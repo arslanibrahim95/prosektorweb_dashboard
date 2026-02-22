@@ -236,35 +236,39 @@
    * Premium blur effects
    * ======================================== */
 
-  /* Standard glass - Subtle transparency */
+  /* Standard glass - Premium Frosted */
   .glass {
-    background: oklch(1 0 0 / 0.06);
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    border: 1px solid oklch(1 0 0 / 0.08);
+    background: oklch(1 0 0 / 0.70);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid oklch(0 0 0 / 0.05);
+    box-shadow: 0 4px 20px -2px oklch(0 0 0 / 0.05);
   }
 
   .dark .glass {
     background: oklch(0 0 0 / 0.3);
     border: 1px solid oklch(1 0 0 / 0.1);
+    box-shadow: 0 4px 20px -2px oklch(0 0 0 / 0.2);
   }
 
-  /* Strong glass - More prominent */
+  /* Strong glass - Maximum Frosted */
   .glass-strong {
-    background: oklch(1 0 0 / 0.12);
-    backdrop-filter: blur(20px) saturate(200%);
-    -webkit-backdrop-filter: blur(20px) saturate(200%);
-    border: 1px solid oklch(1 0 0 / 0.15);
+    background: oklch(1 0 0 / 0.85);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border: 1px solid oklch(0 0 0 / 0.08);
+    box-shadow: 0 8px 32px -4px oklch(0 0 0 / 0.08);
   }
 
   .dark .glass-strong {
     background: oklch(0 0 0 / 0.5);
     border: 1px solid oklch(1 0 0 / 0.15);
+    box-shadow: 0 8px 32px -4px oklch(0 0 0 / 0.3);
   }
 
   /* Dark glass - For dark backgrounds */
   .glass-dark {
-    background: oklch(0 0 0 / 0.2);
+    background: oklch(0 0 0 / 0.6);
     backdrop-filter: blur(16px) saturate(180%);
     -webkit-backdrop-filter: blur(16px) saturate(180%);
     border: 1px solid oklch(1 0 0 / 0.05);
@@ -275,12 +279,12 @@
     border: 1px solid oklch(1 0 0 / 0.08);
   }
 
-  /* 2026: Frosted glass - Maximum blur */
+  /* 2026: Frosted glass - Soft Blur */
   .glass-frosted {
-    background: oklch(1 0 0 / 0.03);
-    backdrop-filter: blur(32px) saturate(250%);
-    -webkit-backdrop-filter: blur(32px) saturate(250%);
-    border: 1px solid oklch(1 0 0 / 0.12);
+    background: oklch(1 0 0 / 0.50);
+    backdrop-filter: blur(16px) saturate(250%);
+    -webkit-backdrop-filter: blur(16px) saturate(250%);
+    border: 1px solid oklch(0 0 0 / 0.04);
   }
 
   .dark .glass-frosted {

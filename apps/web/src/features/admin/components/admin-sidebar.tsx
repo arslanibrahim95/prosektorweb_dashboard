@@ -26,6 +26,7 @@ import {
     Building2,
     BarChart2,
     SlidersHorizontal,
+    Globe,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 
@@ -44,6 +45,11 @@ export const adminNavItems: AdminNavItem[] = [
         label: 'Genel Bakış',
         href: '/admin',
         icon: <LayoutDashboard className={NAV_ICON_SIZE} />,
+    },
+    {
+        label: 'Site Yönetimi',
+        href: '/admin/sites',
+        icon: <Globe className={NAV_ICON_SIZE} />,
     },
     {
         label: 'İçerik & Kullanıcı',

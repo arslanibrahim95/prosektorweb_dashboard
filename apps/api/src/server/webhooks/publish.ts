@@ -4,6 +4,7 @@ import {
     PublishWebhookBody,
     publishWebhookBodySchema,
 } from "@prosektor/contracts";
+import { logger } from "@/lib/logger";
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 3000;
 
@@ -29,16 +30,16 @@ export async function sendPublishWebhook(payload: Omit<PublishWebhookBody, "vers
     const BUILDER_API_URL = process.env.BUILDER_API_URL;
 
     if (!WEBHOOK_SECRET) {
-        console.error("[Webhook] WEBHOOK_SECRET is not defined");
+        logger.error("[Webhook] WEBHOOK_SECRET is not defined");
         return;
     }
     if (!BUILDER_API_URL) {
-        console.error("[Webhook] BUILDER_API_URL is not defined");
+        logger.error("[Webhook] BUILDER_API_URL is not defined");
         return;
     }
     const normalizedBuilderUrl = normalizeBaseUrl(BUILDER_API_URL);
     if (!normalizedBuilderUrl) {
-        console.error("[Webhook] BUILDER_API_URL is invalid");
+        logger.error("[Webhook] BUILDER_API_URL is invalid");
         return;
     }
 
@@ -51,7 +52,7 @@ export async function sendPublishWebhook(payload: Omit<PublishWebhookBody, "vers
     // Validate payload before sending
     const parsed = publishWebhookBodySchema.safeParse(fullPayload);
     if (!parsed.success) {
-        console.error("[Webhook] Invalid payload", parsed.error);
+        logger.error("[Webhook] Invalid payload", { issues: parsed.error.issues });
         return;
     }
 
@@ -83,21 +84,28 @@ export async function sendPublishWebhook(payload: Omit<PublishWebhookBody, "vers
         });
 
         if (!res.ok) {
-            console.error(
-                `[Webhook] Failed to send webhook: ${res.status} ${res.statusText}`,
-                await res.text(),
-            );
+            const body = await res.text();
+            logger.error("[Webhook] Failed to send webhook", {
+                status: res.status,
+                statusText: res.statusText,
+                body,
+                traceId: fullPayload.traceId,
+                siteSlug: fullPayload.site.slug,
+            });
         } else {
-            console.log(`[Webhook] Successfully sent webhook for site ${fullPayload.site.slug} (trace: ${fullPayload.traceId})`);
+            logger.info("[Webhook] Successfully sent webhook", {
+                siteSlug: fullPayload.site.slug,
+                traceId: fullPayload.traceId,
+            });
         }
     } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
-            console.error("[Webhook] Timeout sending webhook", {
+            logger.error("[Webhook] Timeout sending webhook", {
                 traceId: fullPayload.traceId,
             });
             return;
         }
-        console.error("[Webhook] Network error sending webhook", err);
+        logger.error("[Webhook] Network error sending webhook", { err });
     } finally {
         clearTimeout(timeoutId);
     }

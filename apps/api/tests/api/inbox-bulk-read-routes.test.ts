@@ -8,6 +8,21 @@ vi.mock("@/server/auth/context", () => ({
   requireAuthContext: vi.fn(),
 }));
 
+vi.mock("@/server/rate-limit", () => ({
+  enforceRateLimit: vi.fn().mockResolvedValue({
+    allowed: true,
+    remaining: 9,
+    resetAt: new Date().toISOString(),
+    limit: 10,
+  }),
+  rateLimitAuthKey: vi.fn(() => "rl-key"),
+  rateLimitHeaders: vi.fn(() => ({ "x-ratelimit-limit": "10" })),
+}));
+
+vi.mock("@/server/env", () => ({
+  getServerEnv: () => ({ dashboardReadRateLimit: 10, dashboardReadRateWindowSec: 60 }),
+}));
+
 const TENANT_ID = "aaaaaaaa-0000-4000-8001-000000000001";
 const IDS = [
   "aaaaaaaa-0000-4000-8001-000000000010",
@@ -87,7 +102,7 @@ describe.each(cases)("POST /api/inbox/%s/bulk-read", ({ table, handler }) => {
         status: "active",
       },
       role: "admin",
-      permissions: [],
+      permissions: ["inbox:read"],
       activeTenantId: TENANT_ID,
       availableTenants: [],
     });
@@ -123,7 +138,7 @@ describe.each(cases)("POST /api/inbox/%s/bulk-read", ({ table, handler }) => {
         status: "active",
       },
       role: "admin",
-      permissions: [],
+      permissions: ["inbox:read"],
       activeTenantId: TENANT_ID,
       availableTenants: [],
     });

@@ -6,6 +6,7 @@ import {
 } from "@/server/api/http";
 import { buildSafeIlikeOr, safeSearchParamSchema } from "@/server/api/postgrest-search";
 import { requireAuthContext } from "@/server/auth/context";
+import type { AuthContext } from "@/server/auth/context";
 import { assertAdminRole } from "@/server/admin/access";
 import { enforceAdminRateLimit, withAdminErrorHandling } from "@/server/admin/route-utils";
 import { rateLimitHeaders } from "@/server/rate-limit";
@@ -35,6 +36,47 @@ function isMissingColumnError(error: MissingColumnError): boolean {
     return error.code === "42703" || error.code === "PGRST204";
 }
 
+interface AdminContentPage {
+    id: string;
+    title: string;
+    slug: string;
+    status: "published" | "draft";
+    origin?: string | null;
+    updated_at: string;
+    created_at: string;
+}
+
+function buildPagesQuery(
+    ctx: AuthContext,
+    columns: string,
+    offset: number,
+    limit: number,
+    search?: string,
+    status?: "published" | "draft",
+    includeDeletedFilter: boolean = true,
+) {
+    let query = ctx.admin
+        .from("pages")
+        .select(columns, { count: "exact" })
+        .eq("tenant_id", ctx.tenant.id);
+
+    if (includeDeletedFilter) {
+        query = query.is("deleted_at", null);
+    }
+
+    if (search) {
+        query = query.or(buildSafeIlikeOr(["title", "slug"], search));
+    }
+
+    if (status === "published") {
+        query = query.eq("status", "published");
+    } else if (status === "draft") {
+        query = query.eq("status", "draft");
+    }
+
+    return query.order("updated_at", { ascending: false }).range(offset, offset + limit - 1);
+}
+
 export const GET = withAdminErrorHandling(async (req: Request) => {
         const ctx = await requireAuthContext(req);
 
@@ -60,44 +102,34 @@ export const GET = withAdminErrorHandling(async (req: Request) => {
         const { search, status, page, limit } = parsedQuery.data;
         const offset = (page - 1) * limit;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const applyCommonFilters = (query: any): any => {
-            if (search) {
-                query = query.or(buildSafeIlikeOr(["title", "slug"], search));
-            }
-
-            if (status === "published") {
-                query = query.eq("status", "published");
-            } else if (status === "draft") {
-                query = query.eq("status", "draft");
-            }
-
-            return query.order("updated_at", { ascending: false }).range(offset, offset + limit - 1);
-        };
-
-        const primary = await applyCommonFilters(
-            ctx.admin
-                .from("pages")
-                .select("id, title, slug, status, origin, updated_at, created_at", { count: "exact" })
-                .eq("tenant_id", ctx.tenant.id)
-                .is("deleted_at", null),
+        const primary = await buildPagesQuery(
+            ctx,
+            "id, title, slug, status, origin, updated_at, created_at",
+            offset,
+            limit,
+            search,
+            status,
+            true,
         );
 
-        let data = (primary.data as Array<Record<string, unknown>> | null) ?? [];
+        let data = (primary.data ?? []) as unknown as AdminContentPage[];
         let error = primary.error;
         let count = primary.count;
 
         if (error && isMissingColumnError(error)) {
-            const fallback = await applyCommonFilters(
-                ctx.admin
-                    .from("pages")
-                    .select("id, title, slug, status, updated_at, created_at", { count: "exact" })
-                    .eq("tenant_id", ctx.tenant.id),
+            const fallback = await buildPagesQuery(
+                ctx,
+                "id, title, slug, status, updated_at, created_at",
+                offset,
+                limit,
+                search,
+                status,
+                false,
             );
 
-            data = ((fallback.data as Array<Record<string, unknown>> | null) ?? []).map((item) => ({
+            data = ((fallback.data ?? []) as unknown as AdminContentPage[]).map((item) => ({
                 ...item,
-                origin: "unknown",
+                origin: item.origin ?? "unknown",
             }));
             error = fallback.error;
             count = fallback.count;

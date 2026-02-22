@@ -156,11 +156,16 @@ export class ApiClient {
             signal: options?.signal,
         });
 
-        let data: unknown;
-        try {
-            data = await response.json();
-        } catch {
-            data = null;
+        const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+        const shouldParseJson = Boolean(options?.schema) || contentType.includes("json");
+
+        let data: unknown = null;
+        if (shouldParseJson) {
+            try {
+                data = await response.json();
+            } catch {
+                data = null;
+            }
         }
 
         if (!response.ok) {

@@ -14,11 +14,53 @@ import {
     optimizeTrafficSplit,
     calculateBayesianAB,
 } from "@/server/ab-testing";
+import type { TestMetrics, TestRecommendation } from "@/server/ab-testing";
 import { getServerEnv } from "@/server/env";
 import { enforceRateLimit, rateLimitAuthKey, rateLimitHeaders } from "@/server/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+interface VariantResultPayload {
+    variant_id: string;
+    variant_name: string;
+    visitors: number;
+    conversions: number;
+    conversion_rate: number;
+    statistical_analysis: {
+        relative_improvement: number;
+        absolute_improvement: number;
+        p_value: number;
+        z_score: number;
+        is_significant: boolean;
+        confidence_interval: {
+            lower: number;
+            upper: number;
+        };
+        current_power: number;
+        sample_size_required: number;
+    };
+    bayesian_analysis: {
+        probability_to_beat_control: number;
+        expected_loss: number;
+        risk_of_choosing_wrong: number;
+    };
+    recommendation: TestRecommendation;
+}
+
+interface TestResultsPayload {
+    test_info: {
+        id: string;
+        name: string;
+        status: string;
+        confidence_level: number;
+        start_date: string | null;
+        end_date: string | null;
+    };
+    variants: VariantResultPayload[];
+    test_metrics?: TestMetrics;
+    traffic_optimization?: ReturnType<typeof optimizeTrafficSplit>;
+}
 
 // GET - Test sonuçlarını ve istatistiksel analizi getir
 export async function GET(
@@ -83,7 +125,7 @@ export async function GET(
         // Control (A) ve Variant (B) için istatistikleri hesapla
         const controlStats = variantStats.get("control") || { visitors: 0, conversions: 0 };
 
-        const results: Record<string, unknown> = {
+        const results: TestResultsPayload = {
             test_info: {
                 id: test.id,
                 name: test.name,
@@ -121,7 +163,7 @@ export async function GET(
             );
 
             // Varyant sonucu
-            const variantResult = {
+            const variantResult: VariantResultPayload = {
                 variant_id: variant.id,
                 variant_name: variant.name,
                 visitors: variantStatsData.visitors,
@@ -147,7 +189,6 @@ export async function GET(
                 recommendation: analysis.recommendation
             };
 
-            // @ts-expect-error - dynamic key assignment
             results.variants.push(variantResult);
         }
 
@@ -156,7 +197,7 @@ export async function GET(
             ? Math.ceil(latestMetrics.reduce((sum, m) => sum + (m.visitors || 0), 0) / 7) // 7 günlük ort
             : 0;
 
-        results.test_metrics = calculateTestMetrics(
+        const testMetrics = calculateTestMetrics(
             controlStats.visitors,
             Array.from(variantStats.values()).reduce((sum, v) => sum + v.visitors, 0),
             controlStats.conversions,
@@ -164,11 +205,19 @@ export async function GET(
             test.start_date || new Date().toISOString(),
             dailyTraffic
         );
+        results.test_metrics = testMetrics;
 
         // Traffic optimization önerisi
-        const testMetrics = results.test_metrics as { overall_conversion_rate: number } | undefined
-        if (controlStats.visitors > 0 && testMetrics && testMetrics.overall_conversion_rate > 0) {
-            results.traffic_optimization = optimizeTrafficSplit(testMetrics.overall_conversion_rate, 0.05, dailyTraffic);
+        if (
+            controlStats.visitors > 0 &&
+            testMetrics.overall_conversion_rate > 0 &&
+            dailyTraffic > 0
+        ) {
+            results.traffic_optimization = optimizeTrafficSplit(
+                testMetrics.overall_conversion_rate,
+                0.05,
+                dailyTraffic,
+            );
         }
 
         return jsonOk({ data: results }, 200, rateLimitHeaders(rateLimit));

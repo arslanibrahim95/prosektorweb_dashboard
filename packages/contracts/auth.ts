@@ -143,7 +143,10 @@ export type AuthErrorCode = z.infer<typeof authErrorCodes>;
 export const authErrorResponseSchema = z.object({
   code: authErrorCodes,
   message: z.string(),
-  details: z.any().optional(),
+  details: z.record(
+    z.string(),
+    z.union([z.string(), z.array(z.string())]),
+  ).optional(),
 });
 
 export type AuthErrorResponse = z.infer<typeof authErrorResponseSchema>;

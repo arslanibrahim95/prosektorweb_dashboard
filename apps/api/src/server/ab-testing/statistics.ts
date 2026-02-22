@@ -81,6 +81,10 @@ export function calculateZScore(
     variantVisitors: number,
     variantConversions: number
 ): number {
+    if (controlVisitors <= 0 || variantVisitors <= 0) {
+        return 0
+    }
+
     const p1 = controlConversions / controlVisitors
     const p2 = variantConversions / variantVisitors
     const pPooled = (controlConversions + variantConversions) / (controlVisitors + variantVisitors)
@@ -109,6 +113,10 @@ export function calculateConfidenceInterval(
     variantConversions: number,
     confidenceLevel: number = 0.95
 ): { lower: number; upper: number } {
+    if (controlVisitors <= 0 || variantVisitors <= 0) {
+        return { lower: 0, upper: 0 }
+    }
+
     const p1 = controlConversions / controlVisitors
     const p2 = variantConversions / variantVisitors
 
@@ -204,6 +212,10 @@ export function calculatePower(
     variantConversions: number,
     alpha: number = 0.05
 ): number {
+    if (controlVisitors <= 0 || variantVisitors <= 0) {
+        return 0
+    }
+
     const zScore = calculateZScore(controlVisitors, controlConversions, variantVisitors, variantConversions)
     const zAlpha = alpha === 0.05 ? 1.96 : alpha === 0.01 ? 2.576 : 1.645
 

@@ -23,6 +23,7 @@ import {
     AlertTriangle,
     XCircle,
     Loader2,
+    Globe,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
@@ -250,8 +251,9 @@ export default function AdminOverviewPage() {
             </div>
 
             {/* Quick Access */}
-            <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
                 {[
+                    { label: 'Siteler', href: '/admin/sites', icon: Globe, color: 'text-indigo-500' },
                     { label: 'Kullanıcılar', href: '/admin/users', icon: Users, color: 'text-blue-500' },
                     { label: 'Güvenlik', href: '/admin/security', icon: Shield, color: 'text-red-500' },
                     { label: 'Loglar', href: '/admin/logs', icon: ScrollText, color: 'text-amber-500' },
