@@ -30,7 +30,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         return { hasError: true, error };
     }
 
-    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
         // Log error to console in development
         if (process.env.NODE_ENV === 'development') {
             logger.error('Error boundary caught an error', { error, errorInfo });
@@ -44,7 +44,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         this.setState({ hasError: false, error: null });
     };
 
-    render() {
+    render(): React.ReactNode {
         if (this.state.hasError && this.state.error) {
             // Use custom fallback if provided
             if (this.props.fallback) {

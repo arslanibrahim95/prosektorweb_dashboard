@@ -88,11 +88,11 @@ class PerformanceErrorBoundary extends React.Component<
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     logger.warn("Performance monitoring error", { error, errorInfo });
   }
 
-  render() {
+  render(): React.ReactNode {
     if (this.state.hasError) {
       return this.props.fallback || null;
     }

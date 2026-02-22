@@ -91,7 +91,10 @@ export interface ApiClientDependencies {
     baseUrl: string;
     accessTokenProvider?: () => Promise<string | null> | string | null;
     contextHeadersProvider?: () => Promise<Record<string, string> | null> | Record<string, string> | null;
+    timeoutMs?: number;
 }
+
+const DEFAULT_TIMEOUT_MS = 15000;
 
 // === API Client ===
 export class ApiClient {
@@ -121,9 +124,11 @@ export class ApiClient {
             params?: QueryParams;
             schema?: z.ZodType<T>;
             signal?: AbortSignal;
+            timeoutMs?: number;
         }
     ): Promise<T> {
         const url = `${this.deps.baseUrl}${path}${options?.params ? buildQueryString(options.params) : ''}`;
+        const timeoutMs = options?.timeoutMs ?? this.deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
         const headers: Record<string, string> = {};
 
@@ -148,45 +153,69 @@ export class ApiClient {
             });
         }
 
-        const response = await fetch(url, {
-            method,
-            headers,
-            body: options?.body ? JSON.stringify(options.body) : undefined,
-            credentials: 'omit',
-            signal: options?.signal,
-        });
+        let controller: AbortController | null = null;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+        
+        if (!options?.signal) {
+            controller = new AbortController();
+            timeoutId = setTimeout(() => controller?.abort(), timeoutMs);
+        }
 
-        const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
-        const shouldParseJson = Boolean(options?.schema) || contentType.includes("json");
+        try {
+            const response = await fetch(url, {
+                method,
+                headers,
+                body: options?.body ? JSON.stringify(options.body) : undefined,
+                credentials: 'omit',
+                signal: options?.signal ?? controller?.signal,
+            });
 
-        let data: unknown = null;
-        if (shouldParseJson) {
-            try {
-                data = await response.json();
-            } catch {
-                data = null;
+            const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+            const shouldParseJson = Boolean(options?.schema) || contentType.includes("json");
+
+            let data: unknown = null;
+            if (shouldParseJson) {
+                try {
+                    data = await response.json();
+                } catch {
+                    data = null;
+                }
             }
-        }
 
-        if (!response.ok) {
-            const error = toApiError(data, response.status);
-            throw new ApiError(error.code, error.message, response.status, error.details);
-        }
-
-        if (options?.schema) {
-            const result = options.schema.safeParse(data);
-            if (!result.success) {
-                console.error('API Response validation failed:', result.error);
-                throw new ApiError(
-                    'VALIDATION_ERROR',
-                    'Invalid response format from server',
-                    500
-                );
+            if (!response.ok) {
+                const error = toApiError(data, response.status);
+                throw new ApiError(error.code, error.message, response.status, error.details);
             }
-            return result.data;
-        }
 
-        return data as T;
+            if (options?.schema) {
+                const result = options.schema.safeParse(data);
+                if (!result.success) {
+                    console.error('API Response validation failed:', result.error);
+                    throw new ApiError(
+                        'VALIDATION_ERROR',
+                        'Invalid response format from server',
+                        500
+                    );
+                }
+                return result.data;
+            }
+
+            return data as T;
+        } catch (err) {
+            if (err instanceof ApiError) {
+                throw err;
+            }
+            if (err instanceof Error) {
+                if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+                    throw new ApiError('TIMEOUT', 'Request timed out', 408);
+                }
+                throw new ApiError('NETWORK_ERROR', err.message, 0);
+            }
+            throw new ApiError('NETWORK_ERROR', 'Unknown error', 0);
+        } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+            if (controller) controller.abort();
+        }
     }
 
     async get<T>(

@@ -139,10 +139,11 @@ export default function PlatformSettingsPage() {
 
   const updatePlanLimit = (plan: string, field: 'sites' | 'users', value: number) => {
     const current = localPlanLimits ?? { ...serverPlanLimits };
+    const planData: PlanLimits = current[plan] ?? { sites: 0, users: 0 };
     setLocalPlanLimits({
       ...current,
-      [plan]: { ...current[plan], [field]: value },
-    });
+      [plan]: { ...planData, [field]: value },
+    } as Record<string, PlanLimits>);
   };
 
   const savePlanLimits = () => {
@@ -294,7 +295,7 @@ export default function PlatformSettingsPage() {
         <TabsContent value="plans">
           <div className="grid gap-4 md:grid-cols-3">
             {Object.entries(PLAN_META).map(([planKey, meta]) => {
-              const limits = planLimits[planKey] ?? DEFAULT_PLAN_LIMITS[planKey];
+              const limits = planLimits[planKey] ?? DEFAULT_PLAN_LIMITS[planKey] ?? { sites: 0, users: 0 };
               return (
                 <Card key={planKey} className="relative overflow-hidden">
                   <div className={`absolute top-0 left-0 right-0 h-1 ${meta.color}`} />
