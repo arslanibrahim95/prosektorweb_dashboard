@@ -1,7 +1,13 @@
 {
   "name": "@prosektorweb/shared",
   "version": "0.1.0",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arslanibrahim95/prosektorweb_dashboard.git"
+  },
   "main": "./index.ts",
   "types": "./index.ts",
   "dependencies": {

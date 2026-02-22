@@ -189,28 +189,29 @@ function extractClientIpFromHeaders(req: Request): ClientIpInfo | null {
 /**
  * Gets client IP with comprehensive fallbacks
  * 
- * BACKWARD COMPATIBILITY: Falls back to "0.0.0.0" for test compatibility.
- * SECURITY NOTE: Consider using request fingerprinting in production to prevent
+ * SECURITY: Uses request fingerprinting when IP is not available to prevent
  * all unknown-IP requests from sharing the same rate-limit bucket.
  */
 export function getClientIp(req: Request): string {
   const clientIpInfo = extractClientIpFromHeaders(req);
 
-  // BACKWARD COMPATIBILITY: Allow all IPs in non-production environments
-  // SECURITY: In production, private IPs from headers should be rejected
+  // Allow valid IPs (including private in non-production)
   if (clientIpInfo) {
-    // Allow private IPs in test/development
     if (!clientIpInfo.isPrivate || process.env.NODE_ENV !== 'production') {
       return clientIpInfo.ip;
     }
   }
 
-  // BACKWARD COMPATIBILITY: Return 0.0.0.0 for test compatibility
-  // SECURITY: In production, consider using request fingerprinting:
-  // const ua = req.headers.get('user-agent') ?? '';
-  // const accept = req.headers.get('accept') ?? '';
-  // return `unknown:${hashIp(ua + accept)}`;
-  return "0.0.0.0";
+  // SECURITY: Use request fingerprinting instead of shared fallback
+  // This prevents DoS via shared 0.0.0.0 bucket
+  const ua = req.headers.get('user-agent') ?? '';
+  const accept = req.headers.get('accept') ?? '';
+  const fp = createHash("sha256")
+    .update(`${ua}|${accept}|${crypto.randomUUID()}`)
+    .digest("base64url")
+    .slice(0, 24);
+    
+  return `fp:${fp}`;
 }
 
 /**

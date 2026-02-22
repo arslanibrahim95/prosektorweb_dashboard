@@ -60,6 +60,8 @@ export async function batchFetchUsers(
             const avatar_url = userMeta.avatar_url?.toString() || undefined;
             const name = safeUserName(email, userMeta);
 
+            const extendedUser = user as { invited_at?: string | null; last_sign_in_at?: string | null };
+
             const userId = batch[j];
             if (!userId) continue;
             usersById.set(userId, {
@@ -67,8 +69,8 @@ export async function batchFetchUsers(
                 email,
                 name,
                 avatar_url,
-                invited_at: (user as unknown as { invited_at?: string | null }).invited_at ?? null,
-                last_sign_in_at: (user as unknown as { last_sign_in_at?: string | null }).last_sign_in_at ?? null,
+                invited_at: extendedUser.invited_at ?? null,
+                last_sign_in_at: extendedUser.last_sign_in_at ?? null,
                 created_at: user.created_at,
             });
         }

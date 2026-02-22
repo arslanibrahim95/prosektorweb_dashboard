@@ -159,15 +159,22 @@ export class SupabaseTenantRepository implements TenantRepository {
       });
     }
 
-    // Type assertion for joined data
+    // Handle potential null from join if tenant was deleted
     const tenantsHelper = data.tenants;
-    const tenantData = (Array.isArray(tenantsHelper) ? tenantsHelper[0] : tenantsHelper) as { name: string; slug: string; plan: 'demo' | 'starter' | 'pro' };
+    const tenantRecord = Array.isArray(tenantsHelper) ? tenantsHelper[0] : tenantsHelper;
+
+    if (!tenantRecord) {
+      throw createError({
+        code: 'NO_TENANT',
+        message: 'Workspace bulunamadı veya silinmiş.',
+      });
+    }
 
     return {
       tenant_id: data.tenant_id,
-      tenant_name: tenantData.name,
-      tenant_slug: tenantData.slug,
-      tenant_plan: tenantData.plan,
+      tenant_name: tenantRecord.name,
+      tenant_slug: tenantRecord.slug,
+      tenant_plan: tenantRecord.plan,
       role: data.role,
     };
   }
@@ -350,16 +357,25 @@ export class SupabaseAuthProvider implements AuthProvider {
       const role = tenantWithMembership.role as UserRole;
       const permissions = permissionsForRole(role);
 
+      const userObj: DualAuthResult["user"] = {
+        id: user.id,
+        email,
+        name,
+      };
+
+      const avatarUrl = user.user_metadata && typeof (user.user_metadata as Record<string, unknown>)['avatar_url'] === 'string'
+        ? (user.user_metadata as Record<string, unknown>)['avatar_url'] as string
+        : undefined;
+
+      if (avatarUrl) {
+        userObj.avatar_url = avatarUrl;
+      }
+
       return {
         type: 'supabase',
         supabase,
         admin: this.adminClient,
-        user: {
-          id: user.id,
-          email,
-          name,
-          avatar_url: user.user_metadata?.avatar_url as string | undefined,
-        },
+        user: userObj,
         tenant: {
           id: tenantWithMembership.tenant_id,
           name: tenantWithMembership.tenant_name,
@@ -469,7 +485,6 @@ export async function requireDualAuth(req: Request): Promise<DualAuthResult> {
   const token = extractBearerToken(req);
 
   if (!token) {
-    await addJitter();
     throw createError({
       code: 'UNAUTHORIZED',
       message: 'Oturum bilgisi bulunamadı. Lütfen giriş yapın.',
@@ -511,7 +526,6 @@ export async function getDualAuth(req: Request): Promise<DualAuthResult | null> 
   const token = extractBearerToken(req);
 
   if (!token) {
-    await addJitter();
     return null;
   }
 
