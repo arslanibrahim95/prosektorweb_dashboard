@@ -28,7 +28,7 @@ import {
     MessageSquare,
     LayoutDashboard,
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSidebar } from './app-shell';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -301,7 +301,7 @@ function NavItemComponent({
 
 // ── Section Label ─────────────────────────────────────────────────────────────
 
-function SectionLabel({ label }: { label: string }) {
+const SectionLabel = memo(function SectionLabel({ label }: { label: string }) {
     return (
         <div className="px-3 pt-4 pb-1.5">
             <span className="text-[9px] font-bold tracking-[0.12em] text-white/25 uppercase select-none">
@@ -309,11 +309,19 @@ function SectionLabel({ label }: { label: string }) {
             </span>
         </div>
     );
-}
+});
 
 // ── User Card (bottom) ────────────────────────────────────────────────────────
 
-function UserCard({ collapsed }: { collapsed: boolean }) {
+const ROLE_LABELS: Record<string, string> = {
+    super_admin: 'Süper Admin',
+    owner: 'Hesap Sahibi',
+    admin: 'Yönetici',
+    editor: 'Editör',
+    viewer: 'İzleyici',
+};
+
+const UserCard = memo(function UserCard({ collapsed }: { collapsed: boolean }) {
     const auth = useAuth();
     const user = auth.me;
 
@@ -321,14 +329,6 @@ function UserCard({ collapsed }: { collapsed: boolean }) {
     const initials = userName
         ? userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
         : 'U';
-
-    const roleLabel: Record<string, string> = {
-        super_admin: 'Süper Admin',
-        owner: 'Hesap Sahibi',
-        admin: 'Yönetici',
-        editor: 'Editör',
-        viewer: 'İzleyici',
-    };
 
     if (collapsed) {
         return (
@@ -357,7 +357,7 @@ function UserCard({ collapsed }: { collapsed: boolean }) {
                     {userName ?? 'Kullanıcı'}
                 </p>
                 <p className="text-[11px] text-white/35 truncate leading-tight mt-0.5">
-                    {user?.role ? (roleLabel[user.role] ?? user.role) : '—'}
+                    {user?.role ? (ROLE_LABELS[user.role] ?? user.role) : '—'}
                 </p>
             </div>
             <div className="shrink-0">
@@ -367,22 +367,23 @@ function UserCard({ collapsed }: { collapsed: boolean }) {
             </div>
         </div>
     );
-}
+});
 
 // ── Site Status Badge ─────────────────────────────────────────────────────────
 
-function SiteStatusBadge({ collapsed }: { collapsed: boolean }) {
+const STATUS_CONFIG = {
+    published: { dot: 'bg-emerald-400', text: 'Canlı' },
+    staging: { dot: 'bg-amber-400', text: 'Staging' },
+    draft: { dot: 'bg-white/30', text: 'Taslak' },
+} as const;
+
+const SiteStatusBadge = memo(function SiteStatusBadge({ collapsed }: { collapsed: boolean }) {
     const site = useSite();
     const currentSite = site.sites.find(s => s.id === site.currentSiteId);
 
     if (!currentSite || collapsed) return null;
 
-    const statusConfig = {
-        published: { dot: 'bg-emerald-400', text: 'Canlı' },
-        staging: { dot: 'bg-amber-400', text: 'Staging' },
-        draft: { dot: 'bg-white/30', text: 'Taslak' },
-    };
-    const status = statusConfig[currentSite.status as keyof typeof statusConfig] ?? statusConfig.draft;
+    const status = STATUS_CONFIG[currentSite.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.draft;
 
     return (
         <div className="mx-3 mb-3 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
@@ -396,7 +397,7 @@ function SiteStatusBadge({ collapsed }: { collapsed: boolean }) {
             </span>
         </div>
     );
-}
+});
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
