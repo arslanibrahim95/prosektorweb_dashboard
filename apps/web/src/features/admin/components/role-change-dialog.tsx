@@ -191,8 +191,8 @@ export function RoleChangeDialog({
 
                     {/* Warning */}
                     {selectedRole && selectedRole !== user.role && (
-                        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-900/50 dark:bg-yellow-900/20">
-                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        <div className="rounded-md border border-warning/30 bg-warning/10 p-3">
+                            <p className="text-sm text-warning-foreground">
                                 <strong>Uyarı:</strong> Rol değişikliği kullanıcının
                                 yetkilerini değiştirecektir. Bu işlem geri alınamaz.
                             </p>

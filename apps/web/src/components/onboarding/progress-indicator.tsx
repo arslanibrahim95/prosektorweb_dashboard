@@ -20,7 +20,7 @@ export function ProgressIndicator({
         <div className={cn('w-full max-w-md mx-auto mb-8', className)}>
             <div className="flex items-center justify-between relative">
                 {/* Progress Line Background */}
-                <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 -z-10" />
+                <div className="absolute top-5 left-0 right-0 h-0.5 bg-border -z-10" />
 
                 {/* Progress Line Active */}
                 <div
@@ -45,7 +45,7 @@ export function ProgressIndicator({
                                     'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300',
                                     isCompleted && 'bg-primary text-white',
                                     isCurrent && 'bg-primary text-white ring-4 ring-primary/20',
-                                    isPending && 'bg-gray-100 text-gray-400 border-2 border-gray-200'
+                                    isPending && 'bg-muted text-muted-foreground border-2 border-border'
                                 )}
                             >
                                 {isCompleted ? (
@@ -61,7 +61,7 @@ export function ProgressIndicator({
                                     'mt-2 text-xs font-medium transition-colors duration-300',
                                     isCompleted && 'text-primary',
                                     isCurrent && 'text-primary',
-                                    isPending && 'text-gray-400'
+                                    isPending && 'text-muted-foreground'
                                 )}
                             >
                                 {labels[index]}
@@ -72,7 +72,7 @@ export function ProgressIndicator({
             </div>
 
             {/* Step Counter Text */}
-            <p className="text-center mt-4 text-sm text-gray-500">
+            <p className="text-center mt-4 text-sm text-muted-foreground">
                 Adım {currentStep} / {totalSteps}
             </p>
         </div>

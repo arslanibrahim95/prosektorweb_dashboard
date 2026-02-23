@@ -97,14 +97,14 @@ export function ApiKeyDialog({ open, onOpenChange, apiKey }: ApiKeyDialogProps) 
 
                 {generatedKey ? (
                     <div className="space-y-4">
-                        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
+                        <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
                             <div className="flex gap-2">
-                                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+                                <AlertTriangle className="h-5 w-5 text-warning" />
                                 <div className="flex-1">
-                                    <h4 className="font-medium text-yellow-900 dark:text-yellow-100">
+                                    <h4 className="font-medium text-warning-foreground">
                                         Önemli Uyarı
                                     </h4>
-                                    <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+                                    <p className="mt-1 text-sm text-warning-foreground/80">
                                         Bu API anahtarı yalnızca bir kez gösterilecektir. Lütfen güvenli bir yerde saklayın.
                                     </p>
                                 </div>

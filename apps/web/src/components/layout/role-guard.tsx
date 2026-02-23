@@ -37,9 +37,9 @@ export function RoleGuard({
 export function UnauthorizedScreen() {
     return (
         <div className="flex min-h-[400px] flex-col items-center justify-center text-center px-4">
-            <div className="rounded-full bg-red-100 p-6 mb-6">
+            <div className="rounded-full bg-destructive/15 p-6 mb-6">
                 <svg
-                    className="w-12 h-12 text-red-600"
+                    className="w-12 h-12 text-destructive"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -52,10 +52,10 @@ export function UnauthorizedScreen() {
                     />
                 </svg>
             </div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+            <h2 className="text-2xl font-semibold text-foreground mb-2">
                 Erişim Engellendi
             </h2>
-            <p className="text-gray-600 max-w-md">
+            <p className="text-muted-foreground max-w-md">
                 Bu sayfayı görüntüleme yetkiniz bulunmamaktadır.
                 Yetkili bir kullanıcıyla iletişime geçin.
             </p>

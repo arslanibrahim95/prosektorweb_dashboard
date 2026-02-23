@@ -37,8 +37,8 @@ export function AdminStatCard({
     const isNumericValue = typeof value === 'number';
 
     const changeColor = {
-        increase: 'text-green-600 dark:text-green-400',
-        decrease: 'text-red-600 dark:text-red-400',
+        increase: 'text-success',
+        decrease: 'text-destructive',
         neutral: 'text-muted-foreground',
     }[changeType];
 

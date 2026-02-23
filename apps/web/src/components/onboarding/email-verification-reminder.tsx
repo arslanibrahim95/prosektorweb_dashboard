@@ -83,18 +83,18 @@ export function EmailVerificationReminder({ className }: EmailVerificationRemind
     };
 
     return (
-        <Card className={`bg-amber-50 border-amber-200 ${className}`}>
+        <Card className={`bg-warning/10 border-warning/30 ${className}`}>
             <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                        <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-warning" />
                     </div>
 
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-amber-800">E-posta Adresinizi Doğrulayın</h4>
+                            <h4 className="font-semibold text-warning-foreground">E-posta Adresinizi Doğrulayın</h4>
                         </div>
-                        <p className="text-sm text-amber-700 mb-3">
+                        <p className="text-sm text-warning-foreground mb-3">
                             <span className="font-medium">{user.email}</span> e-posta adresinize bir doğrulama bağlantısı gönderdik.
                             Lütfen e-posta adresinizi doğrulayın.
                         </p>
@@ -103,7 +103,7 @@ export function EmailVerificationReminder({ className }: EmailVerificationRemind
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="bg-white border-amber-300 text-amber-800 hover:bg-amber-100"
+                                className="bg-card border-warning/40 text-warning-foreground hover:bg-warning/20"
                                 onClick={handleResendEmail}
                                 disabled={isResending}
                             >
@@ -123,7 +123,7 @@ export function EmailVerificationReminder({ className }: EmailVerificationRemind
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="text-amber-700 hover:bg-amber-100"
+                                className="text-warning-foreground hover:bg-warning/20"
                                 onClick={handleDismiss}
                             >
                                 <X className="h-4 w-4 mr-1" />
@@ -150,9 +150,9 @@ export function EmailVerificationBanner() {
     }
 
     return (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
+        <div className="bg-warning/10 border-b border-warning/30 px-4 py-3">
             <div className="flex items-center justify-between max-w-7xl mx-auto">
-                <div className="flex items-center gap-2 text-sm text-amber-800">
+                <div className="flex items-center gap-2 text-sm text-warning-foreground">
                     <Mail className="h-4 w-4" />
                     <span>
                         <span className="font-medium">E-posta doğrulaması gerekli:</span> Doğrulama linki için e-posta kutunuzu kontrol edin.
@@ -162,14 +162,14 @@ export function EmailVerificationBanner() {
                     <Button
                         size="sm"
                         variant="outline"
-                        className="bg-white border-amber-300 text-amber-800 hover:bg-amber-100 h-8 text-xs"
+                        className="bg-card border-warning/40 text-warning-foreground hover:bg-warning/20 h-8 text-xs"
                         onClick={() => toast.info('Doğrulama e-postası gönderildi')}
                     >
                         Tekrar Gönder
                     </Button>
                     <button
                         onClick={() => setIsVisible(false)}
-                        className="text-amber-600 hover:text-amber-800"
+                        className="text-warning hover:text-warning-foreground"
                     >
                         <X className="h-4 w-4" />
                     </button>
@@ -190,7 +190,7 @@ export function EmailVerifiedBadge() {
     }
 
     return (
-        <div className="flex items-center gap-1 text-sm text-green-600">
+        <div className="flex items-center gap-1 text-sm text-success">
             <CheckCircle2 className="h-4 w-4" />
             <span>Doğrulandı</span>
         </div>
