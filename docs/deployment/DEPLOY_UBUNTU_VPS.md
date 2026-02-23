@@ -1,5 +1,7 @@
 # Ubuntu VPS Deployment Guide
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 ## 1. Server Preparation
 
 ### Update & Install Dependencies

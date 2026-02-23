@@ -1,5 +1,7 @@
 # Production Deployment Checklist
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 ## Overview
 
 This checklist ensures all security fixes are properly deployed to production with comprehensive validation and monitoring. Follow each step carefully and mark items as completed.

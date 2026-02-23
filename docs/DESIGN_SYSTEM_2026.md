@@ -1,4 +1,7 @@
 # 2026 Web Tasarım Trendleri ve UI/UX Rehberi
+
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 ## ProsektorWeb Dashboard - Modern Dijital Deneyim Standartları
 
 ---

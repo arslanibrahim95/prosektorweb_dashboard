@@ -40,12 +40,12 @@ describe('Button Component Snapshots', () => {
 
     it('renders button with different variants', async () => {
         const Button = await getButton();
-        
+
         const variants = ['default', 'destructive', 'outline', 'secondary', 'ghost', 'link'];
-        
+
         for (const variant of variants) {
             const { container } = render(
-                <Button variant={variant as any}>Button {variant}</Button>
+                <Button variant={variant as "default"}>Button {variant}</Button>
             );
             expect(container.firstChild).toBeInTheDocument();
         }
@@ -53,12 +53,12 @@ describe('Button Component Snapshots', () => {
 
     it('renders button with different sizes', async () => {
         const Button = await getButton();
-        
+
         const sizes = ['default', 'sm', 'lg', 'icon'];
-        
+
         for (const size of sizes) {
             const { container } = render(
-                <Button size={size as any}>Button {size}</Button>
+                <Button size={size as "default"}>Button {size}</Button>
             );
             expect(container.firstChild).toBeInTheDocument();
         }
@@ -73,9 +73,9 @@ describe('Button Component Snapshots', () => {
     it('handles click events', async () => {
         const Button = await getButton();
         const handleClick = vi.fn();
-        
+
         render(<Button onClick={handleClick}>Click me</Button>);
-        
+
         await userEvent.click(screen.getByRole('button'));
         expect(handleClick).toHaveBeenCalledTimes(1);
     });
@@ -99,12 +99,12 @@ describe('Badge Component Snapshots', () => {
 
     it('renders badge with different variants', async () => {
         const Badge = await getBadge();
-        
+
         const variants = ['default', 'secondary', 'destructive', 'outline'];
-        
+
         for (const variant of variants) {
             const { container } = render(
-                <Badge variant={variant as any}>{variant}</Badge>
+                <Badge variant={variant as "default"}>{variant}</Badge>
             );
             expect(container.firstChild).toBeInTheDocument();
         }
@@ -117,14 +117,14 @@ describe('Badge Component Snapshots', () => {
 
 describe('Card Component Snapshots', () => {
     async function getCard() {
-        const { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } = 
+        const { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } =
             await import('@/components/ui/card');
         return { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter };
     }
 
     it('renders complete card structure', async () => {
         const { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } = await getCard();
-        
+
         const { container } = render(
             <Card>
                 <CardHeader>
@@ -135,7 +135,7 @@ describe('Card Component Snapshots', () => {
                 <CardFooter>Footer</CardFooter>
             </Card>
         );
-        
+
         expect(container.firstChild).toBeInTheDocument();
         expect(screen.getByText('Title')).toBeInTheDocument();
         expect(screen.getByText('Description')).toBeInTheDocument();
@@ -187,9 +187,9 @@ describe('Input Component Snapshots', () => {
     it('handles input changes', async () => {
         const Input = await getInput();
         const handleChange = vi.fn();
-        
+
         render(<Input onChange={handleChange} />);
-        
+
         const input = screen.getByRole('textbox');
         await userEvent.type(input, 'Hello');
         expect(handleChange).toHaveBeenCalled();
@@ -208,26 +208,26 @@ describe('Avatar Component Snapshots', () => {
 
     it('renders avatar with image', async () => {
         const { Avatar, AvatarImage, AvatarFallback } = await getAvatar();
-        
+
         const { container } = render(
             <Avatar>
                 <AvatarImage src="https://example.com/avatar.png" alt="Avatar" />
                 <AvatarFallback>AB</AvatarFallback>
             </Avatar>
         );
-        
+
         expect(container.firstChild).toBeInTheDocument();
     });
 
     it('renders avatar with fallback', async () => {
         const { Avatar, AvatarFallback } = await getAvatar();
-        
+
         render(
             <Avatar>
                 <AvatarFallback>JD</AvatarFallback>
             </Avatar>
         );
-        
+
         expect(screen.getByText('JD')).toBeInTheDocument();
     });
 });
@@ -267,36 +267,36 @@ describe('EmptyState Component Snapshots', () => {
 
     it('renders empty state with title', async () => {
         const EmptyState = await getEmptyState();
-        
+
         render(<EmptyState title="No results" />);
-        
+
         expect(screen.getByText('No results')).toBeInTheDocument();
     });
 
     it('renders empty state with description', async () => {
         const EmptyState = await getEmptyState();
-        
+
         render(
-            <EmptyState 
-                title="No results" 
-                description="Try adjusting your search" 
+            <EmptyState
+                title="No results"
+                description="Try adjusting your search"
             />
         );
-        
+
         expect(screen.getByText('Try adjusting your search')).toBeInTheDocument();
     });
 
     it('renders empty state with action', async () => {
         const EmptyState = await getEmptyState();
         const handleAction = vi.fn();
-        
+
         render(
-            <EmptyState 
+            <EmptyState
                 title="No results"
                 action={{ label: 'Add new', onClick: handleAction }}
             />
         );
-        
+
         // Action renders as a button element
         const buttons = document.querySelectorAll('button');
         expect(buttons.length).toBeGreaterThan(0);

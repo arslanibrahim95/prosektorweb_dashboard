@@ -1,5 +1,7 @@
 # P2 (Orta Öncelikli) Bulgular
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu belge, yakın zamanda düzeltilmesi gereken orta öncelikli bulguları içerir.
 
 ---

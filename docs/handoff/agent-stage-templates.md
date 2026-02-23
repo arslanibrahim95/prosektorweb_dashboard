@@ -1,5 +1,7 @@
 # Agent Stage Handover Templates
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu dosya, stage-to-stage devri standartlastirmak icin zorunlu handover sablonlarini tanimlar.
 
 ## 1. Genel Handover Template

@@ -1,5 +1,7 @@
 # ProsektorWeb Design System
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Design token reference and usage guide for the dashboard.
 
 ---

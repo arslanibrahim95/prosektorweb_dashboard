@@ -1,5 +1,7 @@
 # Information Architecture (IA)
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 ProsektorWeb Dashboard bilgi mimarisi ve navigasyon yapısı.
 
 ---

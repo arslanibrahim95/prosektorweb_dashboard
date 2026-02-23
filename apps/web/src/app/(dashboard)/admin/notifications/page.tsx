@@ -299,7 +299,7 @@ export default function NotificationsPage() {
             <div className="space-y-6">
                 <AdminPageHeader
                     title="Bildirim Yönetimi"
-                    description="Bildirim şablonlarını yönetin ve e-posta ayarlarını yapılandırın"
+                    description="Kullanıcılara gönderilecek e-posta ve sistem içi bildirim şablonlarını özelleştirin."
                 />
                 <div className="space-y-4">
                     <Skeleton className="h-10 w-full" />
@@ -322,7 +322,7 @@ export default function NotificationsPage() {
 
             <AdminPageHeader
                 title="Bildirim Yönetimi"
-                description="Bildirim şablonlarını yönetin ve e-posta ayarlarını yapılandırın"
+                description="Kullanıcılara gönderilecek e-posta ve sistem içi bildirim şablonlarını özelleştirin."
             />
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>

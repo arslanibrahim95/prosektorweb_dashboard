@@ -1,5 +1,7 @@
 # Agents Team Runbook
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu runbook, dashboard repo icinde agent zincirinin standart ve tekrarlanabilir bicimde calismasi icin operasyonel kilavuzdur.
 
 ## 1. Pipeline Ozeti

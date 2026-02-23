@@ -1,5 +1,7 @@
 # Backend Hardening Inventory
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Generated: 2026-02-20T19:56:41.797Z
 
 ## Coverage Summary

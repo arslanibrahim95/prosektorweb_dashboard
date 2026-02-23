@@ -105,6 +105,12 @@ export function AppShell({ children, user, tenant, defaultSidebarCollapsed = fal
         <SidebarContext.Provider value={contextValue}>
             <ErrorBoundary fallback={() => <div className="p-6 text-destructive">Layout bileşenleri yüklenirken kritik bir hata oluştu.</div>}>
                 <div className="min-h-screen bg-background flex flex-col relative w-full overflow-hidden">
+                    <a
+                        href="#main-content"
+                        className="fixed top-4 left-4 z-[100] -translate-y-[150%] focus:translate-y-0 bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium transition-transform shadow-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    >
+                        Ana içeriğe atla
+                    </a>
 
                     {isMobileViewport && isMobileOpen && (
                         <div
@@ -134,8 +140,10 @@ export function AppShell({ children, user, tenant, defaultSidebarCollapsed = fal
                     />
 
                     <main
+                        id="main-content"
+                        tabIndex={-1}
                         style={mainStyle}
-                        className={`pt-[var(--topbar-height)] pb-[var(--mobile-nav-height)] lg:pb-0 min-h-screen transition-[margin-left] duration-500 ease-[var(--ease-spring)] ${isDesktopCollapsed
+                        className={`pt-[var(--topbar-height)] pb-[var(--mobile-nav-height)] lg:pb-0 min-h-screen transition-[margin-left] duration-500 ease-[var(--ease-spring)] focus:outline-none ${isDesktopCollapsed
                             ? 'lg:ml-[calc(var(--sidebar-width-collapsed)+var(--app-shell-gap))]'
                             : 'lg:ml-[calc(var(--sidebar-width)+var(--app-shell-gap))]'
                             }`}

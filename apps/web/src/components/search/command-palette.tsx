@@ -10,7 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Search, ArrowRight, HelpCircle, Keyboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { navItems, type NavItem } from '@/components/layout/sidebar';
+import { navItems, type NavItem } from '@/components/layout/sidebar-nav-data';
 import { replayWelcomeTour } from '@/components/onboarding/welcome-modal';
 
 interface FlatItem {

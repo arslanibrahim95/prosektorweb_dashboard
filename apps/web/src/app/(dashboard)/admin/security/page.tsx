@@ -15,7 +15,7 @@ export default function SecurityPage() {
         <div className="dashboard-page page-enter">
             <AdminPageHeader
                 title="Güvenlik"
-                description="Oturum yönetimi, iki faktörlü doğrulama ve IP engelleme ayarları"
+                description="Aktif oturumları inceleyin, şüpheli erişimleri sonlandırın ve güvenlik kurallarını yönetin."
             />
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>

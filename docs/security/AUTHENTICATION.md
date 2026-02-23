@@ -1,5 +1,7 @@
 # Authentication Security Guide
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 ## Overview
 
 This document describes the security measures implemented in the authentication system, including critical fixes applied to address vulnerabilities in the dual authentication (Supabase + Custom JWT) implementation.

@@ -1,5 +1,7 @@
 # Vercel Deployment Guide
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 This guide documents the required setup for Preview and Production deployments via GitHub Actions.
 
 ## Required GitHub Secrets

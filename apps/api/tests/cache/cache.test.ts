@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
     initializeCache,
     getCachedValue,
@@ -45,7 +45,7 @@ describe("cache module", () => {
         it("should delete values", () => {
             setCachedValue("delete-key", "value", 60);
             expect(getCachedValue("delete-key")).toBe("value");
-            
+
             const deleted = deleteCachedValue("delete-key");
             expect(deleted).toBe(true);
             expect(getCachedValue("delete-key")).toBeUndefined();
@@ -59,9 +59,9 @@ describe("cache module", () => {
         it("should clear all cache entries", () => {
             setCachedValue("key1", "value1", 60);
             setCachedValue("key2", "value2", 60);
-            
+
             expect(getCachedValue("key1")).toBe("value1");
-            
+
             const cleared = clearCacheStore();
             expect(cleared).toBe(2);
             expect(getCachedValue("key1")).toBeUndefined();
@@ -72,7 +72,7 @@ describe("cache module", () => {
             setCachedValue("key1", "value1", 60);
             getCachedValue("key1"); // hit
             getCachedValue("non-existent"); // miss
-            
+
             const stats = getCacheStats();
             expect(stats.size).toBe(1);
             expect(stats.hitRate).toBeGreaterThan(0);
@@ -83,11 +83,11 @@ describe("cache module", () => {
     describe("getOrSetCachedValue", () => {
         it("should return cached value if exists", async () => {
             setCachedValue("cached", "cached-value", 60);
-            
+
             const result = await getOrSetCachedValue("cached", 60, async () => {
                 return "should-not-be-called";
             });
-            
+
             expect(result).toBe("cached-value");
         });
 
@@ -95,7 +95,7 @@ describe("cache module", () => {
             const result = await getOrSetCachedValue("not-cached", 60, async () => {
                 return "loaded-value";
             });
-            
+
             expect(result).toBe("loaded-value");
             expect(getCachedValue("not-cached")).toBe("loaded-value");
         });
@@ -105,7 +105,7 @@ describe("cache module", () => {
         it("should list all cache keys", () => {
             setCachedValue("admin-key1", "value1", 60);
             setCachedValue("admin-key2", "value2", 60);
-            
+
             const keys = Array.from(cacheStore.keys());
             expect(keys).toContain("admin-key1");
             expect(keys).toContain("admin-key2");
@@ -113,17 +113,17 @@ describe("cache module", () => {
 
         it("should get cache entries with metadata", () => {
             setCachedValue("entry-key", "entry-value", 60);
-            
+
             const entries = cacheStore.getEntries();
             expect(entries.length).toBe(1);
-            expect(entries[0].key).toBe("entry-key");
-            expect(entries[0].sizeBytes).toBeGreaterThan(0);
-            expect(entries[0].expiresAt).toBeGreaterThan(Date.now());
+            expect(entries[0]?.key).toBe("entry-key");
+            expect(entries[0]?.sizeBytes).toBeGreaterThan(0);
+            expect(entries[0]?.expiresAt).toBeGreaterThan(Date.now());
         });
 
         it("should delete via store interface", () => {
             setCachedValue("store-delete-key", "value", 60);
-            
+
             const result = cacheStore.delete("store-delete-key");
             expect(result).toBe(true);
             expect(getCachedValue("store-delete-key")).toBeUndefined();

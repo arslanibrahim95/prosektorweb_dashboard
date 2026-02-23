@@ -1,5 +1,6 @@
 # API Contracts (MVP)
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
 > **Stack:** Next.js (App Router) + Supabase (Postgres + Auth + Storage)
 > **Error format standard:** `{code,message,details}`
 > **Full Reference:** See [Dashboard API Contract](./dashboard-api-contract.md) for complete documentation

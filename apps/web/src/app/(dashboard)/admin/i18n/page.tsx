@@ -368,7 +368,7 @@ export default function LocalizationPage() {
             <div className="space-y-6">
                 <AdminPageHeader
                     title="Yerelleştirme (i18n)"
-                    description="Dil ayarlarını ve çevirileri yönetin"
+                    description="Sistem arayüzündeki metinleri düzenleyin ve dil seçeneklerini yapılandırın."
                 />
                 <div className="space-y-4">
                     <Skeleton className="h-10 w-full" />
@@ -391,7 +391,7 @@ export default function LocalizationPage() {
 
             <AdminPageHeader
                 title="Yerelleştirme (i18n)"
-                description="Dil ayarlarını ve çevirileri yönetin"
+                description="Sistem arayüzündeki metinleri düzenleyin ve dil seçeneklerini yapılandırın."
                 actions={
                     <Button onClick={handleSaveI18nSettings} disabled={updateSettings.isPending}>
                         {updateSettings.isPending ? "Kaydediliyor..." : "Dil Ayarlarını Kaydet"}

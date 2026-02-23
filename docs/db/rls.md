@@ -1,5 +1,7 @@
 # RLS (Row Level Security)
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Multi-tenant izolasyon bu projede "kirmizi cizgi"dir. Tum tenant-scoped tablolarda `tenant_id` zorunludur ve RLS zorunludur.
 
 ## Roller ve Supabase Rolleri

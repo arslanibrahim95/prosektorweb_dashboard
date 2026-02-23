@@ -1,5 +1,7 @@
 # Migration Governance
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 ## Amaç
 `packages/db/migrations` ile `supabase/migrations` arasında drift oluşmasını engellemek ve migration süreçlerini tekrar edilebilir hale getirmek.
 

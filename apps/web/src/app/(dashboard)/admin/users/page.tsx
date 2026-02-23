@@ -282,7 +282,7 @@ export default function AdminUsersPage() {
         <div className="dashboard-page page-enter">
             <AdminPageHeader
                 title="Kullanıcı Yönetimi"
-                description="Sistemdeki kullanıcıları görüntüleyin ve yönetin."
+                description="Kullanıcı hesaplarını inceleyin, rol atamalarını güncelleyin ve takımınıza yeni üyeler davet edin."
                 actions={
                     <div className="flex items-center gap-2">
                         <Button variant="outline" onClick={handleExportAll}>
@@ -431,7 +431,7 @@ export default function AdminUsersPage() {
                             </TableRow>
                         ) : (
                             usersData.items.map((user) => (
-                                    <TableRow key={user.id} data-state={selectedIds.has(user.id) ? 'selected' : undefined}>
+                                <TableRow key={user.id} data-state={selectedIds.has(user.id) ? 'selected' : undefined}>
                                     <TableCell>
                                         <Checkbox
                                             checked={selectedIds.has(user.id)}
@@ -470,8 +470,8 @@ export default function AdminUsersPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge 
-                                            variant="outline" 
+                                        <Badge
+                                            variant="outline"
                                             className={cn('capitalize gap-1 font-medium', roleColors[user.role] || roleColors.viewer)}
                                         >
                                             {roleIcons[user.role]}

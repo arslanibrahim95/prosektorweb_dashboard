@@ -1,5 +1,7 @@
 # Supabase Validation Checklist (Production / Staging)
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu dokuman, kod tarafinda tamamlanan backend hardening degisikliklerinden sonra Supabase tarafinda manuel dogrulanacak adimlari listeler.
 
 Tek parca SQL runbook dosyasi:

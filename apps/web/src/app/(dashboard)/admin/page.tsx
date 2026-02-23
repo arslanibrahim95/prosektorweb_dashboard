@@ -139,7 +139,7 @@ export default function AdminOverviewPage() {
             <div className="space-y-6">
                 <AdminPageHeader
                     title="Admin Paneli"
-                    description="Sistem genel bakış ve yönetim paneli."
+                    description="Sistem metriklerini izleyin, son aktiviteleri takip edin ve genel durumu kontrol edin."
                 />
                 <Card className="glass">
                     <CardContent className="pt-6">
@@ -154,7 +154,7 @@ export default function AdminOverviewPage() {
         <div className="space-y-6">
             <AdminPageHeader
                 title="Admin Paneli"
-                description="Sistem genel bakış ve yönetim paneli."
+                description="Sistem metriklerini izleyin, son aktiviteleri takip edin ve genel durumu kontrol edin."
                 actions={searchInput}
             />
 

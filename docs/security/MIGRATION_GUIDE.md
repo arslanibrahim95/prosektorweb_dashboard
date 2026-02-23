@@ -1,5 +1,7 @@
 # Security Fixes Migration Guide
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 ## Overview
 
 This guide helps you migrate from the previous authentication implementation to the new secure version with critical security fixes.

@@ -2,9 +2,6 @@
 
 import {
     Bell,
-    Search,
-    LogOut,
-    Settings,
     Menu,
     Sun,
     Moon,
@@ -30,10 +27,8 @@ import { useSidebar } from './app-shell';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useRouter, usePathname } from 'next/navigation';
-import Image from 'next/image';
 import { useSite } from '@/components/site/site-provider';
 import { useUnreadCount } from '@/hooks/use-unread-count';
-import { replayWelcomeTour } from '@/components/onboarding/welcome-modal';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
@@ -51,39 +46,16 @@ interface TopbarProps {
 
 const HEADER_ICON_SIZE_CLASS = 'h-[var(--font-size-lg)] w-[var(--font-size-lg)]';
 
-const ROUTE_LABELS: Record<string, string> = {
-  home: 'Ana Sayfa',
-  site: 'Site',
-  generate: 'Vibe Üretim',
-  pages: 'Sayfalar',
-  builder: 'Sayfa Editörü',
-  domains: 'Domainler',
-  seo: 'SEO',
-  publish: 'Yayınla',
-  modules: 'Modüller',
-  offer: 'Teklif Alma',
-  contact: 'İletişim',
-  hr: 'İK',
-  'job-posts': 'İş İlanları',
-  applications: 'Başvurular',
-  legal: 'Yasal Metinler',
-  inbox: 'Gelen Kutusu',
-  offers: 'Teklifler',
-  analytics: 'Analitik',
-  settings: 'Ayarlar',
-  users: 'Kullanıcılar',
-  billing: 'Fatura & Plan',
-  notifications: 'Bildirimler',
-  supabase: 'Supabase',
-  admin: 'Yönetici',
-  sites: 'Site Yönetimi',
-};
+import { ROUTE_LABELS } from '@/constants/routes';
 
 function useBreadcrumb() {
-  const pathname = usePathname();
-  const segments = pathname.split('/').filter(Boolean);
-  return segments.map((seg) => ROUTE_LABELS[seg] ?? seg);
+    const pathname = usePathname();
+    const segments = pathname.split('/').filter(Boolean);
+    return segments.map((seg) => ROUTE_LABELS[seg] ?? seg);
 }
+
+import { UserDropdown } from '@/features/auth/components/user-dropdown';
+import { SearchPaletteTrigger } from '@/features/search/components/search-palette-trigger';
 
 export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) {
     const { toggleMobile } = useSidebar();
@@ -99,10 +71,6 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
     const currentTenant =
         availableTenants.find((item) => item.id === currentTenantId) ??
         availableTenants.find((item) => item.id === auth.me?.tenant.id);
-
-    const initials = user?.name
-        ? user.name.split(' ').map(n => n[0]).join('').toUpperCase()
-        : 'U';
 
     // Tenant switch: show toast on completion
     const prevSwitching = useRef(false);
@@ -135,39 +103,27 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
 
                     {/* Desktop Breadcrumb */}
                     <nav className="hidden lg:flex items-center gap-1.5" aria-label="Breadcrumb">
-                      {breadcrumbs.map((crumb, i) => (
-                        <span key={i} className="flex items-center gap-1.5">
-                          {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />}
-                          <span className={
-                            i === breadcrumbs.length - 1
-                              ? 'text-sm text-foreground font-medium'
-                              : 'text-sm text-muted-foreground'
-                          }>
-                            {crumb}
-                          </span>
-                        </span>
-                      ))}
+                        {breadcrumbs.map((crumb, i) => (
+                            <span key={i} className="flex items-center gap-1.5">
+                                {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />}
+                                <span className={
+                                    i === breadcrumbs.length - 1
+                                        ? 'text-sm text-foreground font-medium'
+                                        : 'text-sm text-muted-foreground'
+                                }>
+                                    {crumb}
+                                </span>
+                            </span>
+                        ))}
                     </nav>
 
                     {/* Mobile: show only last segment */}
                     <span className="lg:hidden text-sm font-medium text-foreground truncate max-w-[140px]">
-                      {breadcrumbs[breadcrumbs.length - 1] ?? ''}
+                        {breadcrumbs[breadcrumbs.length - 1] ?? ''}
                     </span>
 
                     {/* Command Palette Trigger */}
-                    <Button
-                        variant="outline"
-                        className="relative max-w-md w-full hidden sm:flex items-center justify-between bg-muted/50 border-transparent hover:border-border hover:bg-muted/80 transition-all duration-200 h-9 text-muted-foreground font-normal"
-                        onClick={() => document.dispatchEvent(new CustomEvent('open-command-palette'))}
-                    >
-                        <div className="flex items-center gap-2">
-                            <Search className="h-4 w-4" />
-                            <span>Ara...</span>
-                        </div>
-                        <kbd className="pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                            <span className="text-xs">⌘</span>K
-                        </kbd>
-                    </Button>
+                    <SearchPaletteTrigger />
                 </div>
 
                 {/* Right section */}
@@ -331,68 +287,11 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                     <div className="hidden sm:block h-6 w-px bg-border/50" />
 
                     {/* User menu */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                className="flex items-center gap-2.5 h-9 px-2 hover:bg-muted/50"
-                                aria-label="Kullanıcı menüsünü aç"
-                            >
-                                <div className="h-8 w-8 rounded-full gradient-primary flex items-center justify-center ring-2 ring-primary/20 transition-all duration-200 hover:ring-primary/40">
-                                    {user?.avatar_url ? (
-                                        <Image
-                                            src={user.avatar_url}
-                                            alt={user?.name ? `${user.name} avatarı` : 'Kullanıcı avatarı'}
-                                            width={32}
-                                            height={32}
-                                            sizes="32px"
-                                            className="h-8 w-8 rounded-full object-cover"
-                                        />
-                                    ) : (
-                                        <span className="text-[var(--font-size-xs)] font-bold text-white">{initials}</span>
-                                    )}
-                                </div>
-                                <div className="hidden sm:block text-left">
-                                    <span className="block text-sm font-medium leading-tight">
-                                        {user?.name || 'Kullanıcı'}
-                                    </span>
-                                    <span className="block text-[var(--font-size-xs)] text-muted-foreground leading-tight">
-                                        {currentTenant?.name ?? tenant?.name ?? ''}
-                                    </span>
-                                </div>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel>
-                                <div className="flex flex-col">
-                                    <span className="font-medium">{user?.name || 'Kullanıcı'}</span>
-                                    <span className="text-xs font-normal text-muted-foreground">
-                                        {user?.email || 'email@example.com'}
-                                    </span>
-                                </div>
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => router.push('/settings/users')}>
-                                <Settings className="mr-2 h-4 w-4" />
-                                Ayarlar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => replayWelcomeTour()}>
-                                <HelpCircle className="mr-2 h-4 w-4" />
-                                Rehberi Tekrar Oynat
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={async () => {
-                                    await auth.signOut();
-                                    router.replace('/login');
-                                }}
-                            >
-                                <LogOut className="mr-2 h-4 w-4" />
-                                Çıkış Yap
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <UserDropdown
+                        user={user}
+                        tenantName={currentTenant?.name ?? tenant?.name}
+                        onSignOut={async () => await auth.signOut()}
+                    />
                 </div>
             </div>
             {/* Gradient border for visual depth */}
@@ -408,3 +307,4 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
         </header>
     );
 }
+

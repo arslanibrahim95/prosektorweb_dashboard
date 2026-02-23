@@ -1,5 +1,7 @@
 # 🤖 Agent Roles, Boundaries, and Checklists
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu döküman, ProsektorWeb Dashboard projesindeki 5 ana üretici (Generative) ajanın sorumluluk sınırlarını, girdi/çıktı beklentilerini ve "Definition of Done (DoD)" metriklerini düzenler. Ajanların birbirinin ayağına basmaması (çakışmaması) için yazma izinleri çelik gibi çizilmiştir.
 
 ## 1. UX Ajanı (User Experience)

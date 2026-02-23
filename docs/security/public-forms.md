@@ -1,5 +1,7 @@
 # Public Forms Security (MVP)
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu dokuman, auth olmayan public endpoint'lerin (offer/contact/hr apply) spam'e dayanimi ve tenant izolasyonu icin zorunlu kurallari tanimlar.
 
 ## Site Resolve (Secilen Yontem)

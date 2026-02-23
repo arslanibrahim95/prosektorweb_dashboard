@@ -1,5 +1,7 @@
 # Severity and Blocking Policy
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Agent pipeline icinde tum bulgular asagidaki seviyelerle raporlanir.
 
 ## Severity Seviyeleri

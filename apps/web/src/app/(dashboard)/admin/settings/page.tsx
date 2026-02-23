@@ -161,7 +161,7 @@ export default function SettingsPage() {
             <div className="dashboard-page page-enter">
                 <AdminPageHeader
                     title="Sistem Ayarları"
-                    description="Genel sistem ayarlarını yapılandırın"
+                    description="Sitenizin dilini, saat dilimini ve bakım modu gibi temel yapılandırma seçeneklerini düzenleyin."
                 />
                 <Card className="glass border-border/50">
                     <CardHeader>
@@ -182,7 +182,7 @@ export default function SettingsPage() {
         <div className="dashboard-page page-enter">
             <AdminPageHeader
                 title="Sistem Ayarları"
-                description="Genel sistem ayarlarını yapılandırın"
+                description="Sitenizin dilini, saat dilimini ve bakım modu gibi temel yapılandırma seçeneklerini düzenleyin."
             />
 
             <Card className="glass border-border/50 shadow-sm">
@@ -212,7 +212,7 @@ export default function SettingsPage() {
                                     <FormItem>
                                         <FormLabel>Site Adı</FormLabel>
                                         <FormControl>
-                                            <Input {...field} className="glass border-border/50" />
+                                            <Input {...field} autoComplete="organization" className="glass border-border/50" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -240,7 +240,7 @@ export default function SettingsPage() {
                                     <FormItem>
                                         <FormLabel>Site URL</FormLabel>
                                         <FormControl>
-                                            <Input {...field} placeholder="https://example.com" className="glass border-border/50" />
+                                            <Input {...field} autoComplete="url" placeholder="https://example.com" className="glass border-border/50" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -255,7 +255,7 @@ export default function SettingsPage() {
                                         <FormItem>
                                             <FormLabel>Logo URL</FormLabel>
                                             <FormControl>
-                                                <Input {...field} placeholder="https://example.com/logo.png" className="glass border-border/50" />
+                                                <Input {...field} autoComplete="photo" placeholder="https://example.com/logo.png" className="glass border-border/50" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -269,7 +269,7 @@ export default function SettingsPage() {
                                         <FormItem>
                                             <FormLabel>Favicon URL</FormLabel>
                                             <FormControl>
-                                                <Input {...field} placeholder="https://example.com/favicon.ico" className="glass border-border/50" />
+                                                <Input {...field} autoComplete="photo" placeholder="https://example.com/favicon.ico" className="glass border-border/50" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

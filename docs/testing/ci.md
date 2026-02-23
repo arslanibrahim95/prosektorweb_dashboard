@@ -1,5 +1,7 @@
 # CI Testing Pipeline
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 ProsektorWeb CI/CD süreçleri için test otomasyon stratejisi.
 
 ---

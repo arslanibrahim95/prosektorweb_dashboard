@@ -5,18 +5,18 @@
  * and memory usage patterns.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, renderToString } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { render } from '@testing-library/react';
 import { performance } from 'perf_hooks';
 
 // Import utilities directly
 import { cn } from '@/lib/utils';
 import { formatRelativeTime, formatDate } from '@/lib/format';
-import { 
-    generateWebSiteSchema, 
-    schemaToJsonLd, 
+import {
+    generateWebSiteSchema,
+    schemaToJsonLd,
     generateBreadcrumbSchema,
-    generateOrganizationSchema 
+    generateOrganizationSchema
 } from '@/lib/structured-data';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -32,24 +32,24 @@ describe('Utility Function Performance', () => {
         it('merges classes efficiently', () => {
             const iterations = 10000;
             const start = performance.now();
-            
+
             for (let i = 0; i < iterations; i++) {
                 cn('class1 class2', 'class3', { class4: true, class5: false });
             }
-            
+
             const duration = performance.now() - start;
-            
+
             // Should complete 10k operations in under 100ms
             expect(duration).toBeLessThan(100);
         });
 
         it('handles large number of classes', () => {
             const manyClasses = Array.from({ length: 50 }, (_, i) => `class${i}`).join(' ');
-            
+
             const start = performance.now();
             const result = cn(manyClasses);
             const duration = performance.now() - start;
-            
+
             expect(duration).toBeLessThan(10);
             expect(result).toContain('class0');
             expect(result).toContain('class49');
@@ -60,13 +60,13 @@ describe('Utility Function Performance', () => {
         it('formats dates efficiently', () => {
             const iterations = 1000;
             const date = new Date().toISOString();
-            
+
             const start = performance.now();
             for (let i = 0; i < iterations; i++) {
                 formatRelativeTime(date);
             }
             const duration = performance.now() - start;
-            
+
             expect(duration).toBeLessThan(50);
         });
     });
@@ -74,7 +74,7 @@ describe('Utility Function Performance', () => {
     describe('Schema generation performance', () => {
         it('generates structured data efficiently', () => {
             const iterations = 1000;
-            
+
             const start = performance.now();
             for (let i = 0; i < iterations; i++) {
                 const schema = generateWebSiteSchema({
@@ -85,7 +85,7 @@ describe('Utility Function Performance', () => {
                 schemaToJsonLd(schema);
             }
             const duration = performance.now() - start;
-            
+
             expect(duration).toBeLessThan(100);
         });
     });
@@ -99,11 +99,11 @@ describe('Memory Usage', () => {
     it('handles large arrays without memory issues', () => {
         // Create large array of classes
         const largeArray = Array.from({ length: 1000 }, (_, i) => `class-${i}`);
-        
+
         const start = performance.now();
         cn(...largeArray);
         const duration = performance.now() - start;
-        
+
         expect(duration).toBeLessThan(50);
     });
 });
@@ -116,13 +116,13 @@ describe('Component Render Performance', () => {
     it('renders simple button quickly', () => {
         const iterations = 100;
         const start = performance.now();
-        
+
         for (let i = 0; i < iterations; i++) {
             render(<Button>Test</Button>);
         }
-        
+
         const duration = performance.now() - start;
-        
+
         // Should render 100 buttons in under 2 seconds
         expect(duration).toBeLessThan(2000);
     });
@@ -130,7 +130,7 @@ describe('Component Render Performance', () => {
     it('renders card component quickly', () => {
         const iterations = 50;
         const start = performance.now();
-        
+
         for (let i = 0; i < iterations; i++) {
             render(
                 <Card>
@@ -141,22 +141,22 @@ describe('Component Render Performance', () => {
                 </Card>
             );
         }
-        
+
         const duration = performance.now() - start;
-        
+
         expect(duration).toBeLessThan(1500);
     });
 
     it('handles multiple input renders efficiently', () => {
         const iterations = 100;
         const start = performance.now();
-        
+
         for (let i = 0; i < iterations; i++) {
             render(<Input placeholder={`Input ${i}`} />);
         }
-        
+
         const duration = performance.now() - start;
-        
+
         expect(duration).toBeLessThan(2000);
     });
 });
@@ -198,7 +198,7 @@ describe('Animation & Transition Performance', () => {
                 Animated
             </Button>
         );
-        
+
         const button = container.querySelector('button');
         expect(button).toHaveClass('transition-all');
         expect(button).toHaveClass('duration-200');
@@ -206,14 +206,14 @@ describe('Animation & Transition Performance', () => {
 
     it('skeleton components render without animation blocking', () => {
         const start = performance.now();
-        
+
         // Render multiple skeletons
         for (let i = 0; i < 10; i++) {
             render(<Skeleton className="h-4 w-full" />);
         }
-        
+
         const duration = performance.now() - start;
-        
+
         // Should render quickly without blocking
         expect(duration).toBeLessThan(500);
     });
@@ -230,11 +230,11 @@ describe('Large Data Handling', () => {
             name: `Item ${i}`,
             url: `/item-${i}`,
         }));
-        
+
         const start = performance.now();
         const schema = generateBreadcrumbSchema({ items: manyItems });
         const duration = performance.now() - start;
-        
+
         expect(schema.itemListElement).toHaveLength(20);
         expect(duration).toBeLessThan(10);
     });
@@ -255,7 +255,7 @@ describe('Large Data Handling', () => {
                 contactType: 'customer service',
             })),
         });
-        
+
         expect(schema.contactPoint).toHaveLength(10);
         expect(schema.address).toBeDefined();
     });

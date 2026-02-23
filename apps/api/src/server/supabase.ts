@@ -10,17 +10,45 @@ const MAX_BEARER_TOKEN_LENGTH = 8 * 1024;
  * @returns Bearer token veya null
  */
 export function getBearerToken(req: Request): string | null {
+  // Önce Authorization header'ı kontrol et
   const header = req.headers.get("authorization") ?? req.headers.get("Authorization");
-  if (!header) return null;
-  if (header.length > MAX_BEARER_TOKEN_LENGTH + 20) return null;
+  if (header) {
+    if (header.length > MAX_BEARER_TOKEN_LENGTH + 20) return null;
+    const match = /^Bearer\s+(\S+)$/.exec(header.trim());
+    if (match) {
+      const token = match[1];
+      if (token && token.length > 0 && token.length <= MAX_BEARER_TOKEN_LENGTH) {
+        return token.trim();
+      }
+    }
+  }
 
-  const match = /^Bearer\s+(\S+)$/.exec(header.trim());
-  if (!match) return null;
+  // Cookie'dan Supabase token'ı dene (httpOnly olmayan cookie - JS erişimi için)
+  const cookieHeader = req.headers.get("cookie") ?? req.headers.get("Cookie");
+  if (cookieHeader) {
+    // supabase-auth-token cookie'sını kontrol et
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    for (const cookie of cookies) {
+      if (cookie.startsWith('sb-') && cookie.includes('-auth-token=')) {
+        const tokenMatch = cookie.match(/sb-[\w]+-auth-token=([^;]+)/);
+        if (tokenMatch && tokenMatch[1]) {
+          try {
+            // Cookie değeri URL-encoded olabilir
+            const decoded = decodeURIComponent(tokenMatch[1]);
+            // JSON.parse ile access_token'ı çıkar
+            const tokenData = JSON.parse(decoded);
+            if (tokenData.access_token && tokenData.access_token.length <= MAX_BEARER_TOKEN_LENGTH) {
+              return tokenData.access_token;
+            }
+          } catch {
+            // JSON parse hatası - cookie formatı farklı
+          }
+        }
+      }
+    }
+  }
 
-  const token = match[1];
-  if (!token || token.length === 0 || token.length > MAX_BEARER_TOKEN_LENGTH) return null;
-
-  return token.trim();
+  return null;
 }
 
 /**

@@ -68,7 +68,7 @@ export default function AnalyticsPage() {
         <div className="space-y-6">
             <AdminPageHeader
                 title="Analitik & İstatistikler"
-                description="Sistem metrikleri ve kullanıcı aktiviteleri"
+                description="Kullanıcı etkileşimlerini, başvuru trendlerini ve sistem aktivitesini detaylı grafiklerle analiz edin."
                 actions={
                     <div className="flex items-center gap-2">
                         <div className="flex gap-1 border rounded-md p-1">

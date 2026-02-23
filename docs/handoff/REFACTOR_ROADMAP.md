@@ -1,5 +1,7 @@
 # 🛠️ ProsektorWeb Refaktör ve Geliştirme Yol Haritası (Roadmap)
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu doküman, projedeki büyük çaplı refaktör işlemlerini, biriken teknik borçları ve planlanan mimari değişiklikleri takip eder.
 
 ---

@@ -127,6 +127,7 @@ export function InboxTable<T extends { id: string; is_read: boolean }>({
                         return (
                             <TableRow
                                 key={rowId}
+                                aria-selected={selectedIds.has(rowId)}
                                 className={cn(
                                     'cursor-pointer hover:bg-muted/50 hover:shadow-sm transition-shadow',
                                     !item.is_read && 'bg-primary/10',

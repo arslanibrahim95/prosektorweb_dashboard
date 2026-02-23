@@ -1,10 +1,12 @@
 # AGENTS.md
 
-Bu dosya, ajanlar icin hizli operasyon referansidir. Kapsamli teknik dokuman `docs/agents.md` icindedir.
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
+Bu dosya, ajanlar icin hizli operasyon referansidir. Kapsamli teknik dokuman `docs/agent-ops/agents-index.md` icindedir.
 
 ## Canonical Spec
 
-- Ana dokuman: `docs/agents.md`
+- Ana dokuman: `docs/agent-ops/agents-index.md`
 - Runbook: `docs/agent-ops/runbook.md`
 - Severity politikasi: `docs/agent-ops/severity-policy.md`
 - Kontrol rapor ornegi: `docs/review/control-report.md`

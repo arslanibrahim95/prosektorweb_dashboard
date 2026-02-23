@@ -1,5 +1,7 @@
 # Layout Patterns
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Dashboard layout standartları ve responsive davranışları.
 
 ---

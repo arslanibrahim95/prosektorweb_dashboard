@@ -1,5 +1,7 @@
 # Frontend to Test Handoff
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 E2E test rehberi ve selector dokümanı.
 
 ---

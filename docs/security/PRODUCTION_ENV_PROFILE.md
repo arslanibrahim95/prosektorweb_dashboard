@@ -1,5 +1,7 @@
 # Production Security Env Profile
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 ## Scope
 
 This document defines recommended production values for:

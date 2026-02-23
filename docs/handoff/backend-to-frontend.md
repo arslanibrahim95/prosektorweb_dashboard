@@ -1,5 +1,7 @@
 # Backend to Frontend Handoff (MVP)
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu dokuman frontend implementasyonu icin backend varsayimlarini ve kontrat kullanimini netlestirir.
 
 ## Kontrat Kaynagi (Tek Kaynak)

@@ -50,6 +50,7 @@
     },
     "nav": {
         "home": "Ana Sayfa",
+        "site": "Site",
         "inbox": "Gelen Kutusu",
         "applications": "Başvurular",
         "contacts": "İletişim",
@@ -70,7 +71,13 @@
         "theme": "Tema",
         "i18n": "Dil Ayarları",
         "legalTexts": "Yasal Metinler",
-        "seo": "SEO"
+        "seo": "SEO",
+        "generate": "Vibe Üretim",
+        "builder": "Sayfa Editörü",
+        "publish": "Yayınla",
+        "billing": "Fatura & Plan",
+        "notifications": "Bildirimler",
+        "supabase": "Supabase"
     },
     "dashboard": {
         "title": "Gösterge Paneli",

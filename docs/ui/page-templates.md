@@ -1,5 +1,7 @@
 # Page Templates
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Her sayfa için layout ve component listesi.
 
 ---

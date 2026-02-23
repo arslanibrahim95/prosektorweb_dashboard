@@ -1,5 +1,7 @@
 # Screen Specifications
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Her ekran için: amaç, birincil CTA, 6 state, izinler.
 
 ---

@@ -53,7 +53,10 @@ export function RLSPolicyGenerator() {
     }, []);
 
     useEffect(() => {
-        fetchTables();
+        const timeoutId = setTimeout(() => {
+            void fetchTables();
+        }, 0);
+        return () => clearTimeout(timeoutId);
     }, [fetchTables]);
 
     const selectedTableName = tableName || tables[0]?.name || '';

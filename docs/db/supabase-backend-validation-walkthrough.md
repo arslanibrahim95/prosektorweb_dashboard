@@ -1,5 +1,7 @@
 # Supabase Backend Dogrulama Walkthrough
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu dokuman, manuel ve tarayici tabanli backend arastirmasinin ve uygulanan duzeltmelerin sonuclarini ozetler.
 
 ## Kapsam

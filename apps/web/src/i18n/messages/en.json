@@ -50,6 +50,7 @@
     },
     "nav": {
         "home": "Home",
+        "site": "Site",
         "inbox": "Inbox",
         "applications": "Applications",
         "contacts": "Contacts",
@@ -70,7 +71,13 @@
         "theme": "Theme",
         "i18n": "Language Settings",
         "legalTexts": "Legal Texts",
-        "seo": "SEO"
+        "seo": "SEO",
+        "generate": "Vibe Generation",
+        "builder": "Page Builder",
+        "publish": "Publish",
+        "billing": "Billing & Plan",
+        "notifications": "Notifications",
+        "supabase": "Supabase"
     },
     "dashboard": {
         "title": "Dashboard",

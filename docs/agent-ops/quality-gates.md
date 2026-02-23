@@ -1,5 +1,7 @@
 # Agent Pipeline Quality Gates
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu dokuman, PR merge oncesi minimum kalite kapilarini tanimlar.
 
 ## 1. Zorunlu Gate Seti

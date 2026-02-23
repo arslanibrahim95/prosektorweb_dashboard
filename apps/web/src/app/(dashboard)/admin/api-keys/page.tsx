@@ -167,7 +167,7 @@ export default function ApiKeysPage() {
         <div className="space-y-6">
             <AdminPageHeader
                 title="API Anahtarları"
-                description="Üçüncü taraf entegrasyonları için API anahtarlarınızı yönetin"
+                description="Dış uygulamalarla entegrasyon sağlamak için API erişim anahtarlarını oluşturun ve yetkilerini koruyun."
             />
 
             {/* Quick Actions */}

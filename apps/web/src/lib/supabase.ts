@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { supabaseCookieStorage } from "./supabase-cookie-storage";
 
 let cachedBrowserClient: SupabaseClient | null = null;
 
@@ -13,7 +14,10 @@ export function getSupabaseBrowserClient(): SupabaseClient {
 
   cachedBrowserClient = createClient(url, anonKey, {
     auth: {
+      // PKCE flow for secure cookie-based auth
+      flowType: 'pkce',
       persistSession: true,
+      storage: supabaseCookieStorage,
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },

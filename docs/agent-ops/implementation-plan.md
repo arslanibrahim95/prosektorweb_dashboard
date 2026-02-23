@@ -1,5 +1,7 @@
 # Agents Team Implementation Plan (Production Ready)
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Bu plan, agents team yapisini teoriden operasyonel calismaya gecirmek icin karar-tam (decision complete) yol haritasidir.
 
 ## 1. Hedef

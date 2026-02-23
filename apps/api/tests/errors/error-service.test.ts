@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
     createError,
     createValidationError,
@@ -10,7 +10,6 @@ import {
     getErrorStatus,
     isClientSafeError,
 } from "../../src/server/errors/error-service";
-import { ErrorCodes } from "../../src/server/errors/error-codes";
 
 // Mock logger to prevent console output during tests
 vi.mock("@/lib/logger", () => ({
@@ -252,7 +251,7 @@ describe("error-service", () => {
         });
 
         it("should return 500 for unknown error code", () => {
-            expect(getErrorStatus("UNKNOWN_CODE" as any)).toBe(500);
+            expect(getErrorStatus("UNKNOWN_CODE" as Parameters<typeof getErrorStatus>[0])).toBe(500);
         });
     });
 

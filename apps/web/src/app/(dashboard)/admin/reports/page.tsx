@@ -153,7 +153,7 @@ export default function ReportsPage() {
         <div className="space-y-6">
             <AdminPageHeader
                 title="Raporlar"
-                description="Verilerinizi dışa aktarın ve analiz edin"
+                description="Kullanıcı, içerik ve sistem verilerini özel formatlarda dışa aktararak raporlar oluşturun."
             />
 
             {/* Quick Actions */}
@@ -284,8 +284,8 @@ export default function ReportsPage() {
                                     <div
                                         key={type.value}
                                         className={`border rounded-lg p-3 cursor-pointer transition-colors ${reportType === type.value
-                                                ? 'border-primary bg-primary/5'
-                                                : 'hover:bg-muted'
+                                            ? 'border-primary bg-primary/5'
+                                            : 'hover:bg-muted'
                                             }`}
                                         onClick={() => setReportType(type.value)}
                                     >

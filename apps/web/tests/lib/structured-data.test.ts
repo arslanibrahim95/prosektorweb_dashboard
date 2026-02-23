@@ -142,7 +142,7 @@ describe('structured-data utilities', () => {
             });
 
             expect(schema.itemListElement[0].name).toBe('Current Page');
-            expect((schema.itemListElement[0] as any).item).toBeUndefined();
+            expect((schema.itemListElement[0] as Record<string, unknown>).item).toBeUndefined();
         });
     });
 
@@ -188,7 +188,7 @@ describe('structured-data utilities', () => {
             });
 
             expect(schema.author).toHaveLength(1);
-            expect((schema.author as any)[0].name).toBe('John Doe');
+            expect((schema.author as Record<string, unknown>[])[0].name).toBe('John Doe');
         });
 
         it('should include publisher when provided', () => {
@@ -200,8 +200,8 @@ describe('structured-data utilities', () => {
             });
 
             expect(schema.publisher).toBeDefined();
-            expect((schema.publisher as any).name).toBe('Test Publisher');
-            expect((schema.publisher as any).logo).toBe('https://test.com/logo.png');
+            expect((schema.publisher as Record<string, unknown>).name).toBe('Test Publisher');
+            expect((schema.publisher as Record<string, unknown>).logo).toBe('https://test.com/logo.png');
         });
     });
 

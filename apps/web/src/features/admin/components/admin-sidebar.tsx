@@ -7,83 +7,67 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import {
-    LayoutDashboard,
-    Users,
-    FileText,
-    FileBarChart,
-    BarChart3,
-    ScrollText,
-    Shield,
-    Key,
-    Settings,
-    Database,
-    HardDrive,
     ChevronLeft,
     ChevronRight,
-    Building2,
-    BarChart2,
-    SlidersHorizontal,
-    Globe,
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
+import type { NavIconName } from '@/components/layout/sidebar-nav-icons';
 
 export interface AdminNavItem {
     label: string;
     href: string;
-    icon: React.ReactNode;
+    icon: NavIconName;
     children?: AdminNavItem[];
     badge?: string;
 }
-
-const NAV_ICON_SIZE = 'h-[var(--font-size-lg)] w-[var(--font-size-lg)]';
 
 export const adminNavItems: AdminNavItem[] = [
     {
         label: 'Genel Bakış',
         href: '/admin',
-        icon: <LayoutDashboard className={NAV_ICON_SIZE} />,
+        icon: 'LayoutDashboard',
     },
     {
         label: 'Site Yönetimi',
         href: '/admin/sites',
-        icon: <Globe className={NAV_ICON_SIZE} />,
+        icon: 'Globe',
     },
     {
         label: 'İçerik & Kullanıcı',
         href: '/admin/management',
-        icon: <Users className={NAV_ICON_SIZE} />,
+        icon: 'Users',
         children: [
-            { label: 'Kullanıcı Yönetimi', href: '/admin/users', icon: <Users className="h-4 w-4" /> },
-            { label: 'İçerik Yönetimi', href: '/admin/content', icon: <FileText className="h-4 w-4" /> },
+            { label: 'Kullanıcı Yönetimi', href: '/admin/users', icon: 'Users' },
+            { label: 'İçerik Yönetimi', href: '/admin/content', icon: 'FileText' },
         ]
     },
     {
         label: 'Analiz & İzleme',
         href: '/admin/monitoring',
-        icon: <BarChart3 className={NAV_ICON_SIZE} />,
+        icon: 'BarChart3',
         children: [
-            { label: 'Analitik & İstatistik', href: '/admin/analytics', icon: <BarChart3 className="h-4 w-4" /> },
-            { label: 'Raporlar', href: '/admin/reports', icon: <FileBarChart className="h-4 w-4" /> },
-            { label: 'Aktivite Logları', href: '/admin/logs', icon: <ScrollText className="h-4 w-4" /> },
+            { label: 'Analitik & İstatistik', href: '/admin/analytics', icon: 'BarChart3' },
+            { label: 'Raporlar', href: '/admin/reports', icon: 'FileBarChart' },
+            { label: 'Aktivite Logları', href: '/admin/logs', icon: 'ScrollText' },
         ]
     },
     {
         label: 'Sistem & Güvenlik',
         href: '/admin/system',
-        icon: <Shield className={NAV_ICON_SIZE} />,
+        icon: 'Shield',
         children: [
-            { label: 'Sistem Ayarları', href: '/admin/settings', icon: <Settings className="h-4 w-4" /> },
-            { label: 'Güvenlik', href: '/admin/security', icon: <Shield className="h-4 w-4" /> },
-            { label: 'API Anahtarları', href: '/admin/api-keys', icon: <Key className="h-4 w-4" /> },
+            { label: 'Sistem Ayarları', href: '/admin/settings', icon: 'Settings' },
+            { label: 'Güvenlik', href: '/admin/security', icon: 'Shield' },
+            { label: 'API Anahtarları', href: '/admin/api-keys', icon: 'Key' },
         ]
     },
     {
         label: 'Gelişmiş Ayarlar',
         href: '/admin/advanced',
-        icon: <Database className={NAV_ICON_SIZE} />,
+        icon: 'Database',
         children: [
-            { label: 'Önbellek (Cache)', href: '/admin/cache', icon: <Database className="h-4 w-4" /> },
-            { label: 'Yedekleme', href: '/admin/backup', icon: <HardDrive className="h-4 w-4" /> },
+            { label: 'Önbellek (Cache)', href: '/admin/cache', icon: 'Database' },
+            { label: 'Yedekleme', href: '/admin/backup', icon: 'HardDrive' },
         ]
     }
 ];
@@ -92,11 +76,11 @@ export const superAdminNavItems: AdminNavItem[] = [
     {
         label: 'Platform Yönetimi',
         href: '/admin/platform',
-        icon: <Building2 className={NAV_ICON_SIZE} />,
+        icon: 'Building2',
         children: [
-            { label: 'Platform Tenantlar', href: '/admin/platform/tenants', icon: <Building2 className="h-4 w-4" /> },
-            { label: 'Platform Analitik', href: '/admin/platform/analytics', icon: <BarChart2 className="h-4 w-4" /> },
-            { label: 'Platform Ayarları', href: '/admin/platform/settings', icon: <SlidersHorizontal className="h-4 w-4" /> },
+            { label: 'Platform Tenantlar', href: '/admin/platform/tenants', icon: 'Building2' },
+            { label: 'Platform Analitik', href: '/admin/platform/analytics', icon: 'BarChart2' },
+            { label: 'Platform Ayarları', href: '/admin/platform/settings', icon: 'SlidersHorizontal' },
         ]
     }
 ];
@@ -167,7 +151,10 @@ export function AdminSidebar({ collapsed, setCollapsed }: AdminSidebarProps) {
                                             collapsed && 'justify-center'
                                         )}
                                     >
-                                        {item.icon}
+                                        {/* Fallback for deprecated component to render basic icon layout */}
+                                        <span className={cn(collapsed ? 'h-5 w-5' : 'h-4 w-4')} title={item.icon}>
+                                            <span className="sr-only">{item.label}</span>
+                                        </span>
                                         {!collapsed && <span>{item.label}</span>}
                                     </Link>
                                 );

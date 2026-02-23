@@ -16,6 +16,7 @@ function Input({
   className,
   type,
   variant = "default",
+  maxLength = 255, // Standard security limit for text inputs
   ...props
 }: React.ComponentProps<"input"> & {
   variant?: "default" | "glass" | "neo" | "filled"
@@ -36,6 +37,7 @@ function Input({
       type={type}
       data-slot="input"
       data-variant={variant}
+      maxLength={maxLength}
       className={cn(
         // Base styles
         "file:text-foreground placeholder:text-muted-foreground/70 selection:bg-primary selection:text-primary-foreground",
@@ -45,8 +47,9 @@ function Input({
         "transition-all duration-200 ease-out-expo outline-none",
         // Focus states with glow
         "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:shadow-glow-primary",
-        // Error states
+        // Error states (include both aria and native HTML validation)
         "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+        "[&:not(:placeholder-shown):invalid]:border-destructive [&:not(:placeholder-shown):invalid]:ring-destructive/20 [&:not(:placeholder-shown):invalid]:text-destructive",
         // Variant
         variantClasses[variant],
         className

@@ -90,7 +90,7 @@ export default function AdminContentPage() {
         <div className="dashboard-page page-enter">
             <AdminPageHeader
                 title="İçerik Yönetimi"
-                description="Sitelerdeki içerikleri izleyin ve yönetin."
+                description="Platform üzerindeki sayfaları, ilanları ve medya içeriklerini düzenleyin ve yayın durumlarını kontrol edin."
                 actions={
                     <Button variant="outline" className="glass border-border/50">
                         <Filter className="mr-2 h-4 w-4" />
@@ -196,10 +196,10 @@ export default function AdminContentPage() {
                                                 </code>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge 
+                                                <Badge
                                                     className={cn(
-                                                        item.origin === 'panel' 
-                                                            ? 'bg-primary/10 text-primary border-primary/20' 
+                                                        item.origin === 'panel'
+                                                            ? 'bg-primary/10 text-primary border-primary/20'
                                                             : 'bg-muted text-muted-foreground border-border'
                                                     )}
                                                 >

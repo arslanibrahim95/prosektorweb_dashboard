@@ -1,6 +1,6 @@
 # CLAUDE.md - ProsektorWeb Dashboard Anayasası
 
-> **Versiyon:** 2.0.0 | **Son Güncelleme:** 2026-02-18
+> **Versiyon:** 2.0.1 | **Son Güncelleme:** 2026-02-23
 > **Vizyon:** Vibe Coding + Özel Siteler (Her firma için benzersiz)
 > **Bu dosya, Claude'un bu projeyle çalışırken uyması gereken temel kuralları içerir.**
 
@@ -133,7 +133,7 @@ KONUŞMA UZADIĞINDA → Memory Bank'a bak
 | `SKILLS.md` | Özel yetenekler ve prosedürler |
 | `.claude/memory/activeContext.md` | Şu an ne yapılıyor? |
 | `.claude/memory/progress.md` | Neler bitirildi? |
-| `docs/agents.md` | Detaylı teknik spesifikasyon |
+| `docs/agent-ops/agents-index.md` | Detaylı teknik spesifikasyon |
 | `docs/architecture.md` | Sistem mimarisi |
 
 ---
@@ -217,7 +217,7 @@ pnpm run validate:agents-team && pnpm lint && pnpm test:api && pnpm test:web
 ## 📞 Dokümantasyon Bağlantıları
 
 Detaylı bilgi için:
-- **Teknik Spesifikasyon:** `docs/agents.md`
+- **Teknik Spesifikasyon:** `docs/agent-ops/agents-index.md`
 - **Sistem Mimarisi:** `docs/architecture.md`
 - **API Kontratları:** `docs/api/`
 - **Veritabanı Şeması:** `docs/db/schema.md`

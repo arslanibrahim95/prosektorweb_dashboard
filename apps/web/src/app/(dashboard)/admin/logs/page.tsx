@@ -172,7 +172,7 @@ export default function ActivityLogsPage() {
         <div className="space-y-6">
             <AdminPageHeader
                 title="Aktivite Logları"
-                description="Sistem aktivitelerini ve olaylarını görüntüleyin"
+                description="Kullanıcı işlemlerini, sistem olaylarını ve güvenlik kayıtlarını zaman ve eylem bazlı filtreleyerek analiz edin."
             />
 
             {/* Stats Cards */}

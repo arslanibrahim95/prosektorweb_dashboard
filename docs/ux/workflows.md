@@ -1,5 +1,7 @@
 # Workflows
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
 Kritik kullanıcı akışları ve entry/exit noktaları.
 
 ---

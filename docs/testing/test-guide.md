@@ -1,5 +1,8 @@
-TEST AJANI — PLAN MODU (Yeni Ajan)
-Misyon
+# Test Agent Guide
+
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
+
+## Misyon
 ProsektorWeb MVP’nin “ship edilebilir” olduğunu kanıtlayan otomatik test setini kurmak:
 Multi-tenant izolasyon (RLS) kırılmaz
 Public formlar spam’e dayanır

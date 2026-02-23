@@ -1,5 +1,6 @@
 # Database Schema (MVP)
 
+> **Version:** 1.0.0 | **Son Güncelleme:** 2026-02-23
 > **Backend:** Supabase Postgres + RLS + Storage policies  
 > **Multi-tenant rule:** tenant isolation is mandatory.
 
