@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TableSkeleton } from '@/components/layout';
-import { Mail, Phone, FileText, Briefcase, Download } from 'lucide-react';
+import { Mail, Phone, FileText, Briefcase, Download, CheckCheck, Loader2 } from 'lucide-react';
 import { api } from '@/server/api';
 import { useSite } from '@/components/site/site-provider';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -145,6 +145,22 @@ function ApplicationsInboxContent() {
     }
   }, [jobApplications, selectedIds, bulkMarkAsReadMutation]);
 
+  const handleMarkAllRead = useCallback(async () => {
+    const unreadAll = jobApplications.filter((a) => !a.is_read);
+    if (unreadAll.length === 0) {
+      toast.info('Tüm öğeler zaten okundu');
+      return;
+    }
+    try {
+      const result = await bulkMarkAsReadMutation.mutateAsync({
+        ids: unreadAll.map((a) => a.id),
+      });
+      toast.success(`${result.updated ?? unreadAll.length} öge okundu olarak işaretlendi`);
+    } catch {
+      toast.error('Toplu işlem başarısız');
+    }
+  }, [jobApplications, bulkMarkAsReadMutation]);
+
   const handleBulkExport = useCallback(async () => {
     if (!site.currentSiteId) return;
     try {
@@ -264,6 +280,22 @@ function ApplicationsInboxContent() {
         unreadCount={unreadCount}
         onExport={() => void handleBulkExport()}
       />
+
+      {unreadCount > 0 && (
+        <div className="flex justify-end -mt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleMarkAllRead()}
+            disabled={bulkMarkAsReadMutation.isPending}
+          >
+            {bulkMarkAsReadMutation.isPending
+              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              : <CheckCheck className="h-4 w-4 mr-2" />}
+            Tümünü Okundu İşaretle
+          </Button>
+        </div>
+      )}
 
       <InboxFilterBar
         searchQuery={searchQuery}

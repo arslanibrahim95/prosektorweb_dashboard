@@ -13,12 +13,9 @@ import {
     FileBarChart,
     BarChart3,
     ScrollText,
-    Bell,
     Shield,
     Key,
     Settings,
-    Languages,
-    Palette,
     Database,
     HardDrive,
     ChevronLeft,
@@ -58,8 +55,6 @@ export const adminNavItems: AdminNavItem[] = [
         children: [
             { label: 'Kullanıcı Yönetimi', href: '/admin/users', icon: <Users className="h-4 w-4" /> },
             { label: 'İçerik Yönetimi', href: '/admin/content', icon: <FileText className="h-4 w-4" /> },
-            { label: 'Dil Yönetimi', href: '/admin/i18n', icon: <Languages className="h-4 w-4" /> },
-            { label: 'Bildirimler', href: '/admin/notifications', icon: <Bell className="h-4 w-4" /> },
         ]
     },
     {
@@ -89,7 +84,6 @@ export const adminNavItems: AdminNavItem[] = [
         children: [
             { label: 'Önbellek (Cache)', href: '/admin/cache', icon: <Database className="h-4 w-4" /> },
             { label: 'Yedekleme', href: '/admin/backup', icon: <HardDrive className="h-4 w-4" /> },
-            { label: 'Tema Ayarları', href: '/admin/theme', icon: <Palette className="h-4 w-4" /> },
         ]
     }
 ];

@@ -1,18 +1,19 @@
 import React from 'react';
 import Link from 'next/link';
-import { Wand2, Briefcase, Inbox, Send } from 'lucide-react';
+import { Wand2, Link2, Send, Inbox, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const actions = [
-    { label: 'Vibe Uretim', icon: Wand2, href: '/site/generate', gradient: 'gradient-primary' },
-    { label: 'İlan Oluştur', icon: Briefcase, href: '/modules/hr/job-posts', gradient: 'gradient-success' },
-    { label: 'Mesajları Gör', icon: Inbox, href: '/inbox/contact', gradient: 'gradient-info' },
-    { label: 'Siteyi Yayınla', icon: Send, href: '/site/publish', gradient: 'gradient-accent' },
+    { label: 'Vibe Üretim', icon: Wand2, href: '/site/generate', gradient: 'gradient-primary' },
+    { label: 'Domain Ekle', icon: Link2, href: '/site/domains', gradient: 'gradient-info' },
+    { label: 'Teklif Modülü', icon: Send, href: '/modules/offer', gradient: 'gradient-success' },
+    { label: 'Mesajları Gör', icon: Inbox, href: '/inbox/offers', gradient: 'gradient-accent' },
+    { label: 'İlan Oluştur', icon: Briefcase, href: '/modules/hr/job-posts', gradient: 'gradient-warning' },
 ];
 
 export function QuickActions() {
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 stagger-children">
             {actions.map((action) => (
                 <Link
                     key={action.href}

@@ -28,7 +28,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { MoreHorizontal, Search, UserPlus, FileDown, Users, ChevronDown, X } from 'lucide-react';
+import { MoreHorizontal, Search, UserPlus, FileDown, Users, ChevronDown, X, Shield, Crown, Eye, Edit3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -47,6 +47,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/components/auth/auth-provider';
+import { AdminPageHeader } from '@/features/admin/components/admin-page-header';
+import { cn } from '@/lib/utils';
 
 interface User {
     id: string;
@@ -247,43 +249,57 @@ export default function AdminUsersPage() {
         }
     };
 
+    const handleExportAll = () => {
+        if (!usersData?.items) return;
+        const csv = [
+            'Name,Email,Role,Created At',
+            ...usersData.items.map((u) => `"${u.name ?? ''}","${u.email ?? ''}","${u.role}","${u.created_at}"`),
+        ].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'users-export.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const roleColors: Record<string, string> = {
+        owner: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
+        admin: 'bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/20',
+        editor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20',
+        viewer: 'bg-muted text-muted-foreground border-border',
+    };
+
+    const roleIcons: Record<string, React.ReactNode> = {
+        owner: <Crown className="h-3 w-3" />,
+        admin: <Shield className="h-3 w-3" />,
+        editor: <Edit3 className="h-3 w-3" />,
+        viewer: <Eye className="h-3 w-3" />,
+    };
+
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Kullanıcı Yönetimi</h1>
-                    <p className="text-muted-foreground">
-                        Sistemdeki kullanıcıları görüntüleyin ve yönetin.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => {
-                        if (!usersData?.items) return;
-                        const csv = [
-                            'Name,Email,Role,Created At',
-                            ...usersData.items.map((u) => `"${u.name ?? ''}","${u.email ?? ''}","${u.role}","${u.created_at}"`),
-                        ].join('\n');
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'users-export.csv';
-                        a.click();
-                        URL.revokeObjectURL(url);
-                    }}>
-                        <FileDown className="mr-2 h-4 w-4" />
-                        Dışa Aktar
-                    </Button>
-                    <Button onClick={() => setInviteDialogOpen(true)}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Yeni Kullanıcı
-                    </Button>
-                </div>
-            </div>
+        <div className="dashboard-page page-enter">
+            <AdminPageHeader
+                title="Kullanıcı Yönetimi"
+                description="Sistemdeki kullanıcıları görüntüleyin ve yönetin."
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={handleExportAll}>
+                            <FileDown className="mr-2 h-4 w-4" />
+                            Dışa Aktar
+                        </Button>
+                        <Button onClick={() => setInviteDialogOpen(true)} className="gradient-primary border-0">
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Yeni Kullanıcı
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* Bulk Action Toolbar */}
             {selectedIds.size > 0 && (
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
+                <div className="flex items-center gap-3 rounded-xl glass border border-border/50 px-4 py-3">
                     <span className="text-sm font-medium">{selectedIds.size} kullanıcı seçildi</span>
                     <div className="flex items-center gap-2 ml-2">
                         <DropdownMenu>
@@ -315,19 +331,19 @@ export default function AdminUsersPage() {
                 </div>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
                 <div className="relative flex-1 md:max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
                         placeholder="İsim veya e-posta ara..."
-                        className="pl-9"
+                        className="pl-10 glass border-border/50"
                         value={searchTerm}
                         onChange={(e) => handleSearchChange(e.target.value)}
                     />
                 </div>
                 <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-[160px] glass border-border/50">
                         <SelectValue placeholder="Tüm Roller" />
                     </SelectTrigger>
                     <SelectContent>
@@ -341,12 +357,12 @@ export default function AdminUsersPage() {
             </div>
 
             {error && (
-                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
+                <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 glass">
                     <p className="text-sm text-destructive">Kullanıcılar yüklenirken bir hata oluştu.</p>
                 </div>
             )}
 
-            <div className="rounded-md border">
+            <div className="rounded-xl glass border border-border/50 overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -454,7 +470,11 @@ export default function AdminUsersPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className="capitalize">
+                                        <Badge 
+                                            variant="outline" 
+                                            className={cn('capitalize gap-1 font-medium', roleColors[user.role] || roleColors.viewer)}
+                                        >
+                                            {roleIcons[user.role]}
                                             {user.role}
                                         </Badge>
                                     </TableCell>
@@ -530,9 +550,9 @@ export default function AdminUsersPage() {
 
             {/* Pagination */}
             {usersData && usersData.total > 20 && (
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between rounded-xl glass border border-border/50 px-4 py-3">
                     <p className="text-sm text-muted-foreground">
-                        Toplam {usersData.total} kullanıcı
+                        Toplam <span className="font-medium text-foreground">{usersData.total}</span> kullanıcı
                     </p>
                     <div className="flex items-center gap-2">
                         <Button
@@ -543,7 +563,7 @@ export default function AdminUsersPage() {
                         >
                             Önceki
                         </Button>
-                        <span className="text-sm">Sayfa {page}</span>
+                        <span className="text-sm font-medium px-2">Sayfa {page}</span>
                         <Button
                             variant="outline"
                             size="sm"
@@ -558,9 +578,14 @@ export default function AdminUsersPage() {
 
             {/* Invite Dialog */}
             <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-                <DialogContent>
+                <DialogContent className="glass border-border/50">
                     <DialogHeader>
-                        <DialogTitle>Yeni Kullanıcı Davet Et</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
+                                <UserPlus className="h-4 w-4 text-white" />
+                            </div>
+                            Yeni Kullanıcı Davet Et
+                        </DialogTitle>
                         <DialogDescription id={useId()}>
                             Sisteme yeni bir kullanıcı davet edin. Kullanıcıya e-posta ile davet
                             gönderilecektir.
@@ -576,18 +601,34 @@ export default function AdminUsersPage() {
                                 placeholder="kullanici@example.com"
                                 value={inviteEmail}
                                 onChange={(e) => setInviteEmail(e.target.value)}
+                                className="glass border-border/50"
                             />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="role">Rol</Label>
                             <Select value={inviteRole} onValueChange={setInviteRole}>
-                                <SelectTrigger id="role">
+                                <SelectTrigger id="role" className="glass border-border/50">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="viewer">Viewer</SelectItem>
-                                    <SelectItem value="editor">Editor</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="viewer">
+                                        <div className="flex items-center gap-2">
+                                            <Eye className="h-4 w-4 text-muted-foreground" />
+                                            <span>Viewer</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="editor">
+                                        <div className="flex items-center gap-2">
+                                            <Edit3 className="h-4 w-4 text-blue-500" />
+                                            <span>Editor</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="admin">
+                                        <div className="flex items-center gap-2">
+                                            <Shield className="h-4 w-4 text-violet-500" />
+                                            <span>Admin</span>
+                                        </div>
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -602,6 +643,7 @@ export default function AdminUsersPage() {
                         <Button
                             onClick={handleInvite}
                             disabled={inviteMutation.isPending}
+                            className="gradient-primary border-0"
                         >
                             {inviteMutation.isPending ? 'Gönderiliyor...' : 'Davet Gönder'}
                         </Button>

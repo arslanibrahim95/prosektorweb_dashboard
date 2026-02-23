@@ -327,14 +327,14 @@ export default function SecurityPage() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="dashboard-page page-enter">
             <AdminPageHeader
                 title="Güvenlik"
                 description="Oturum yönetimi, iki faktörlü doğrulama ve IP engelleme ayarları"
             />
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
+                <TabsList className="glass border-border/50">
                     <TabsTrigger value="sessions">
                         <Users className="mr-2 h-4 w-4" />
                         Oturum Yönetimi
@@ -368,7 +368,7 @@ export default function SecurityPage() {
                         </Button>
                     </div>
 
-                    <Card>
+                    <Card className="glass border-border/50 overflow-hidden">
                         <CardContent className="p-0">
                             {sessionsLoading ? (
                                 <div className="p-6 space-y-4">

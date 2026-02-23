@@ -45,19 +45,21 @@ describe("getClientIp", () => {
     expect(getClientIp(req)).toBe("2.2.2.2");
   });
 
-  it("ignores x-real-ip as untrusted source", () => {
+  it("ignores x-real-ip as untrusted source and returns fingerprint", () => {
     const req = new Request("http://localhost", {
       headers: {
         "x-real-ip": "9.9.9.9",
       },
     });
 
-    expect(getClientIp(req)).toBe("0.0.0.0");
+    // SECURITY: Falls back to fingerprint instead of shared 0.0.0.0
+    expect(getClientIp(req)).toMatch(/^fp:/);
   });
 
-  it("falls back to 0.0.0.0 when no headers are provided", () => {
+  it("falls back to fingerprint when no headers are provided", () => {
     const req = new Request("http://localhost");
-    expect(getClientIp(req)).toBe("0.0.0.0");
+    // SECURITY: Uses fingerprint instead of shared 0.0.0.0 to prevent DoS
+    expect(getClientIp(req)).toMatch(/^fp:/);
   });
 
   it("uses trusted-hop extraction in production to reduce x-forwarded-for spoofing", () => {
@@ -73,7 +75,7 @@ describe("getClientIp", () => {
     expect(getClientIp(req)).toBe("2.2.2.2");
   });
 
-  it("rejects private forwarded IPs in production and falls back", () => {
+  it("rejects private forwarded IPs in production and falls back to fingerprint", () => {
     vi.stubEnv('NODE_ENV', 'production');
     process.env.TRUSTED_PROXY_COUNT = "0";
 
@@ -83,6 +85,7 @@ describe("getClientIp", () => {
       },
     });
 
-    expect(getClientIp(req)).toBe("0.0.0.0");
+    // SECURITY: Falls back to fingerprint instead of shared 0.0.0.0
+    expect(getClientIp(req)).toMatch(/^fp:/);
   });
 });

@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Lock, Pencil, Plus } from 'lucide-react';
+import { Lock, Pencil, Plus, FileText, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSite } from '@/components/site/site-provider';
 import { useCreatePage, usePages } from '@/hooks/use-pages';
@@ -21,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 function toSlug(value: string): string {
   return value
@@ -81,21 +82,33 @@ export default function SitePagesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Sayfalar</h1>
-        <p className="text-muted-foreground">Vibe uretimden gelen panel-origin sayfalari burada yonetebilirsiniz.</p>
+    <div className="dashboard-page page-enter">
+      <div className="flex items-start gap-4">
+        <div className="h-12 w-12 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+          <Layers className="h-6 w-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Sayfalar</h1>
+          <p className="text-muted-foreground">Vibe üretimden gelen panel-origin sayfaları burada yönetebilirsiniz.</p>
+        </div>
       </div>
 
-      <Card className="border-border/50">
+      <Card className="glass border-border/50 shadow-sm hover-lift">
         <CardHeader>
-          <CardTitle>Yeni Sayfa</CardTitle>
-          <CardDescription>Olusturulan sayfalar otomatik olarak panel origin olur.</CardDescription>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Plus className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <CardTitle>Yeni Sayfa</CardTitle>
+              <CardDescription>Oluşturulan sayfalar otomatik olarak panel origin olur.</CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <form className="grid gap-3 md:grid-cols-[1fr_1fr_auto]" onSubmit={handleCreatePage}>
             <Input
-              placeholder="Baslik"
+              placeholder="Başlık"
               value={title}
               onChange={(event) => {
                 setTitle(event.target.value);
@@ -103,44 +116,53 @@ export default function SitePagesPage() {
                   setSlug(toSlug(event.target.value));
                 }
               }}
+              className="glass border-border/50"
             />
             <Input
               placeholder="slug"
               value={slug}
               onChange={(event) => setSlug(toSlug(event.target.value))}
+              className="glass border-border/50"
             />
-            <Button type="submit" disabled={createPage.isPending || !currentSiteId}>
+            <Button type="submit" disabled={createPage.isPending || !currentSiteId} className="gradient-primary border-0">
               <Plus className="mr-2 h-4 w-4" />
-              {createPage.isPending ? 'Olusturuluyor...' : 'Sayfa Olustur'}
+              {createPage.isPending ? 'Oluşturuluyor...' : 'Sayfa Oluştur'}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card className="border-border/50">
+      <Card className="glass border-border/50 shadow-sm">
         <CardHeader>
-          <CardTitle>Sayfa Listesi</CardTitle>
-          <CardDescription>
-            Toplam {pages.length} sayfa, bunlardan {panelPages.length} tanesi panelde duzenlenebilir.
-          </CardDescription>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <FileText className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <CardTitle>Sayfa Listesi</CardTitle>
+              <CardDescription>
+                Toplam <span className="font-medium text-foreground">{pages.length}</span> sayfa, bunlardan <span className="font-medium text-foreground">{panelPages.length}</span> tanesi panelde düzenlenebilir.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {error && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-              Sayfalar yuklenemedi.
+            <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive glass mb-4">
+              Sayfalar yüklenemedi.
             </div>
           )}
 
-          <div className="rounded-md border mt-3">
+          <div className="rounded-xl glass border border-border/50 overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Baslik</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead>Kaynak</TableHead>
-                  <TableHead>Durum</TableHead>
-                  <TableHead>Guncelleme</TableHead>
-                  <TableHead className="text-right">Islem</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="font-semibold">Başlık</TableHead>
+                  <TableHead className="font-semibold">Slug</TableHead>
+                  <TableHead className="font-semibold">Kaynak</TableHead>
+                  <TableHead className="font-semibold">Durum</TableHead>
+                  <TableHead className="font-semibold">Güncelleme</TableHead>
+                  <TableHead className="text-right font-semibold">İşlem</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -157,36 +179,59 @@ export default function SitePagesPage() {
                   ))
                 ) : pages.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      Bu site icin sayfa bulunamadi.
+                    <TableCell colSpan={6} className="h-32 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <FileText className="h-10 w-10 text-muted-foreground/40" />
+                        <p className="text-muted-foreground">Bu site için sayfa bulunamadı.</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
                   pages.map((page) => {
                     const canEdit = page.origin === 'panel';
                     return (
-                      <TableRow key={page.id}>
+                      <TableRow key={page.id} className="group">
                         <TableCell className="font-medium">{page.title}</TableCell>
-                        <TableCell><code className="text-xs">/{page.slug}</code></TableCell>
                         <TableCell>
-                          <Badge variant={canEdit ? 'default' : 'outline'}>{originLabel(page.origin)}</Badge>
+                          <code className="text-xs px-2 py-1 rounded-md bg-muted/50 text-muted-foreground">
+                            /{page.slug}
+                          </code>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{page.status}</Badge>
+                          <Badge 
+                            className={cn(
+                              canEdit 
+                                ? 'bg-primary/10 text-primary border-primary/20' 
+                                : 'bg-muted text-muted-foreground border-border'
+                            )}
+                          >
+                            {originLabel(page.origin)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline"
+                            className={cn(
+                              page.status === 'published' && 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+                              page.status === 'draft' && 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                            )}
+                          >
+                            {page.status}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {formatDistanceToNow(new Date(page.updated_at), { addSuffix: true, locale: tr })}
                         </TableCell>
                         <TableCell className="text-right">
                           {canEdit ? (
-                            <Button asChild size="sm" variant="outline">
+                            <Button asChild size="sm" className="gradient-primary border-0">
                               <Link href={`/site/builder?pageId=${page.id}`}>
                                 <Pencil className="mr-2 h-3.5 w-3.5" />
-                                Duzenle
+                                Düzenle
                               </Link>
                             </Button>
                           ) : (
-                            <Button size="sm" variant="outline" disabled>
+                            <Button size="sm" variant="outline" disabled className="glass border-border/50">
                               <Lock className="mr-2 h-3.5 w-3.5" />
                               Read-only
                             </Button>

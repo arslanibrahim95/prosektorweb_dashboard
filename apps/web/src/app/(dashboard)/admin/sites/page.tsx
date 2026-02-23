@@ -136,7 +136,7 @@ export default function AdminSitesPage() {
                         <CardContent>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 <MiniStat icon="📄" label="Sayfalar" value={pageCount} />
-                                <MiniStat icon="🌐" label="Durum" value={activeSite.status === 'active' ? 'Aktif' : 'Taslak'} />
+                                <MiniStat icon="🌐" label="Durum" value={activeSite.status === 'published' ? 'Yayında' : activeSite.status === 'staging' ? 'Staging' : 'Taslak'} />
                                 <MiniStat icon="🔗" label="Domain" value={activeSite.primary_domain ? '✓ Var' : '✗ Yok'} />
                                 <MiniStat
                                     icon="📅"

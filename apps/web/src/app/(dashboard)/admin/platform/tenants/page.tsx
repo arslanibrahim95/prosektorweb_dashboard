@@ -212,7 +212,7 @@ export default function PlatformTenantsPage() {
                           <DropdownMenuSeparator />
                           {tenant.status === 'active' ? (
                             <DropdownMenuItem
-                              className="text-yellow-600"
+                              className="text-warning"
                               onClick={() => {
                                 setDangerTarget(tenant);
                                 setDangerAction('suspend');
@@ -224,7 +224,7 @@ export default function PlatformTenantsPage() {
                             </DropdownMenuItem>
                           ) : (
                             <DropdownMenuItem
-                              className="text-green-600"
+                              className="text-success"
                               onClick={() => {
                                 setDangerTarget(tenant);
                                 setDangerAction('reactivate');

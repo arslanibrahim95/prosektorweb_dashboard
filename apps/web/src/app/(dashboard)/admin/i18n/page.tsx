@@ -461,6 +461,15 @@ export default function LocalizationPage() {
 
     return (
         <div className="space-y-6">
+            {/* ── Phase-2 Banner ── */}
+            <div className="flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-blue-700 dark:text-blue-400">
+                <span className="mt-0.5 text-lg">🔵</span>
+                <div className="text-sm">
+                    <span className="font-semibold">Phase-2 Özelliği</span>
+                    <span className="ml-2 text-blue-600/80 dark:text-blue-500/80">— OSGB müşterileri şu an yalnızca Türkçe kullanmaktadır. Çok dil desteği ilerleyen aşamada eklenecektir.</span>
+                </div>
+            </div>
+
             <AdminPageHeader
                 title="Yerelleştirme (i18n)"
                 description="Dil ayarlarını ve çevirileri yönetin"

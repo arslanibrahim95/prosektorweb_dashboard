@@ -34,6 +34,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAdminContentPages, useAdminContentPosts } from '@/hooks/use-admin';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { AdminPageHeader } from '@/features/admin/components/admin-page-header';
+import { cn } from '@/lib/utils';
 
 interface ContentItem {
     id: string;
@@ -85,43 +87,39 @@ export default function AdminContentPage() {
     const total = activeTab === 'pages' ? pages?.total : posts?.total;
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">İçerik Yönetimi</h1>
-                    <p className="text-muted-foreground">
-                        Sitelerdeki içerikleri izleyin ve yönetin.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline">
+        <div className="dashboard-page page-enter">
+            <AdminPageHeader
+                title="İçerik Yönetimi"
+                description="Sitelerdeki içerikleri izleyin ve yönetin."
+                actions={
+                    <Button variant="outline" className="glass border-border/50">
                         <Filter className="mr-2 h-4 w-4" />
                         Filtrele
                     </Button>
-                </div>
-            </div>
+                }
+            />
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
+                <TabsList className="glass border-border/50">
                     <TabsTrigger value="pages">Sayfalar</TabsTrigger>
                     <TabsTrigger value="posts">İlanlar</TabsTrigger>
                     <TabsTrigger value="media">Medya</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="pages" className="space-y-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <div className="relative flex-1 md:max-w-sm">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 type="search"
                                 placeholder="Sayfa ara..."
-                                className="pl-9"
+                                className="pl-10 glass border-border/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-[160px] glass border-border/50">
                                 <SelectValue placeholder="Tüm Durumlar" />
                             </SelectTrigger>
                             <SelectContent>
@@ -133,21 +131,21 @@ export default function AdminContentPage() {
                     </div>
 
                     {error && (
-                        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
+                        <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 glass">
                             <p className="text-sm text-destructive">Sayfalar yüklenirken bir hata oluştu.</p>
                         </div>
                     )}
 
-                    <div className="rounded-md border">
+                    <div className="rounded-xl glass border border-border/50 overflow-hidden">
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <TableHead>Başlık</TableHead>
-                                    <TableHead>Slug</TableHead>
-                                    <TableHead>Kaynak</TableHead>
-                                    <TableHead>Durum</TableHead>
-                                    <TableHead>Son Güncelleme</TableHead>
-                                    <TableHead className="text-right">İşlemler</TableHead>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="font-semibold">Başlık</TableHead>
+                                    <TableHead className="font-semibold">Slug</TableHead>
+                                    <TableHead className="font-semibold">Kaynak</TableHead>
+                                    <TableHead className="font-semibold">Durum</TableHead>
+                                    <TableHead className="font-semibold">Son Güncelleme</TableHead>
+                                    <TableHead className="text-right font-semibold">İşlemler</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -185,7 +183,7 @@ export default function AdminContentPage() {
                                     </TableRow>
                                 ) : (
                                     items.map((item) => (
-                                        <TableRow key={item.id}>
+                                        <TableRow key={item.id} className="group">
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <FileText className="h-4 w-4 text-muted-foreground" />
@@ -193,26 +191,34 @@ export default function AdminContentPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <code className="text-xs">{item.slug}</code>
+                                                <code className="text-xs px-2 py-1 rounded-md bg-muted/50 text-muted-foreground">
+                                                    {item.slug}
+                                                </code>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant={item.origin === 'panel' ? 'default' : 'outline'}>
+                                                <Badge 
+                                                    className={cn(
+                                                        item.origin === 'panel' 
+                                                            ? 'bg-primary/10 text-primary border-primary/20' 
+                                                            : 'bg-muted text-muted-foreground border-border'
+                                                    )}
+                                                >
                                                     {originLabel(item.origin)}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge
                                                     variant="outline"
-                                                    className={
+                                                    className={cn(
                                                         item.status === 'published'
-                                                            ? 'bg-green-500/15 text-green-700 border-green-200'
-                                                            : 'bg-gray-500/15 text-gray-700 border-gray-200'
-                                                    }
+                                                            ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/20'
+                                                            : 'bg-amber-500/15 text-amber-600 border-amber-500/20'
+                                                    )}
                                                 >
                                                     {item.status === 'published' ? 'Yayında' : 'Taslak'}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="text-muted-foreground">
                                                 {formatDistanceToNow(new Date(item.updated_at), {
                                                     addSuffix: true,
                                                     locale: tr,
@@ -250,7 +256,7 @@ export default function AdminContentPage() {
                                                             </DropdownMenuItem>
                                                         )}
                                                         <DropdownMenuSeparator />
-                                                        <DropdownMenuItem className="text-red-600">
+                                                        <DropdownMenuItem className="text-destructive">
                                                             Sil
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
@@ -264,9 +270,9 @@ export default function AdminContentPage() {
                     </div>
 
                     {total && total > 20 && (
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded-xl glass border border-border/50 px-4 py-3">
                             <p className="text-sm text-muted-foreground">
-                                Toplam {total} sayfa
+                                Toplam <span className="font-medium text-foreground">{total}</span> sayfa
                             </p>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -277,7 +283,7 @@ export default function AdminContentPage() {
                                 >
                                     Önceki
                                 </Button>
-                                <span className="text-sm">Sayfa {page}</span>
+                                <span className="text-sm font-medium px-2">Sayfa {page}</span>
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -292,19 +298,19 @@ export default function AdminContentPage() {
                 </TabsContent>
 
                 <TabsContent value="posts" className="space-y-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <div className="relative flex-1 md:max-w-sm">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 type="search"
                                 placeholder="İlan ara..."
-                                className="pl-9"
+                                className="pl-10 glass border-border/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-[160px] glass border-border/50">
                                 <SelectValue placeholder="Tüm Durumlar" />
                             </SelectTrigger>
                             <SelectContent>
@@ -316,20 +322,20 @@ export default function AdminContentPage() {
                     </div>
 
                     {error && (
-                        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
+                        <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 glass">
                             <p className="text-sm text-destructive">İlanlar yüklenirken bir hata oluştu.</p>
                         </div>
                     )}
 
-                    <div className="rounded-md border">
+                    <div className="rounded-xl glass border border-border/50 overflow-hidden">
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <TableHead>Başlık</TableHead>
-                                    <TableHead>Slug</TableHead>
-                                    <TableHead>Durum</TableHead>
-                                    <TableHead>Son Güncelleme</TableHead>
-                                    <TableHead className="text-right">İşlemler</TableHead>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="font-semibold">Başlık</TableHead>
+                                    <TableHead className="font-semibold">Slug</TableHead>
+                                    <TableHead className="font-semibold">Durum</TableHead>
+                                    <TableHead className="font-semibold">Son Güncelleme</TableHead>
+                                    <TableHead className="text-right font-semibold">İşlemler</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -364,7 +370,7 @@ export default function AdminContentPage() {
                                     </TableRow>
                                 ) : (
                                     items.map((item) => (
-                                        <TableRow key={item.id}>
+                                        <TableRow key={item.id} className="group">
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <FileText className="h-4 w-4 text-muted-foreground" />
@@ -372,21 +378,23 @@ export default function AdminContentPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <code className="text-xs">{item.slug}</code>
+                                                <code className="text-xs px-2 py-1 rounded-md bg-muted/50 text-muted-foreground">
+                                                    {item.slug}
+                                                </code>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge
                                                     variant="outline"
-                                                    className={
+                                                    className={cn(
                                                         item.status === 'published'
-                                                            ? 'bg-green-500/15 text-green-700 border-green-200'
-                                                            : 'bg-gray-500/15 text-gray-700 border-gray-200'
-                                                    }
+                                                            ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/20'
+                                                            : 'bg-amber-500/15 text-amber-600 border-amber-500/20'
+                                                    )}
                                                 >
                                                     {item.status === 'published' ? 'Yayında' : 'Taslak'}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="text-muted-foreground">
                                                 {formatDistanceToNow(new Date(item.updated_at), {
                                                     addSuffix: true,
                                                     locale: tr,
@@ -412,7 +420,7 @@ export default function AdminContentPage() {
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem>Düzenle</DropdownMenuItem>
                                                         <DropdownMenuSeparator />
-                                                        <DropdownMenuItem className="text-red-600">
+                                                        <DropdownMenuItem className="text-destructive">
                                                             Sil
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
@@ -426,9 +434,9 @@ export default function AdminContentPage() {
                     </div>
 
                     {total && total > 20 && (
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded-xl glass border border-border/50 px-4 py-3">
                             <p className="text-sm text-muted-foreground">
-                                Toplam {total} ilan
+                                Toplam <span className="font-medium text-foreground">{total}</span> ilan
                             </p>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -439,7 +447,7 @@ export default function AdminContentPage() {
                                 >
                                     Önceki
                                 </Button>
-                                <span className="text-sm">Sayfa {page}</span>
+                                <span className="text-sm font-medium px-2">Sayfa {page}</span>
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -454,7 +462,7 @@ export default function AdminContentPage() {
                 </TabsContent>
 
                 <TabsContent value="media" className="space-y-4">
-                    <div className="rounded-md border p-12 text-center">
+                    <div className="rounded-xl glass border border-border/50 p-12 text-center">
                         <p className="text-muted-foreground">
                             Medya yönetimi henüz API&apos;ye bağlanmadı. Yakında eklenecek.
                         </p>

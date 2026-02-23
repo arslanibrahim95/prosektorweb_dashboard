@@ -31,23 +31,23 @@ const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
 
 // Moved outside component for performance
 const borderColorMap: Record<string, string> = {
-  'text-blue-500': 'border-l-blue-500',
-  'text-emerald-500': 'border-l-emerald-500',
-  'text-amber-500': 'border-l-amber-500',
-  'text-violet-500': 'border-l-violet-500',
+  'text-info': 'border-l-info',
+  'text-success': 'border-l-success',
+  'text-warning': 'border-l-warning',
+  'text-violet': 'border-l-violet',
 };
 
 const gradientMap: Record<string, string> = {
-  'text-blue-500': 'bg-gradient-to-br from-blue-500/5 to-transparent',
-  'text-emerald-500': 'bg-gradient-to-br from-emerald-500/5 to-transparent',
-  'text-amber-500': 'bg-gradient-to-br from-amber-500/5 to-transparent',
-  'text-violet-500': 'bg-gradient-to-br from-violet-500/5 to-transparent',
+  'text-info': 'bg-gradient-to-br from-info/5 to-transparent',
+  'text-success': 'bg-gradient-to-br from-success/5 to-transparent',
+  'text-warning': 'bg-gradient-to-br from-warning/5 to-transparent',
+  'text-violet': 'bg-gradient-to-br from-violet/5 to-transparent',
 };
 
 function TrendBadge({ pct }: { pct: number }) {
   if (pct > 0) {
     return (
-      <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-0 gap-1 text-xs font-medium">
+      <Badge className="badge-success border-0 gap-1 text-xs font-medium">
         <TrendingUp className="h-3 w-3" />
         +{pct}%
       </Badge>
@@ -55,7 +55,7 @@ function TrendBadge({ pct }: { pct: number }) {
   }
   if (pct < 0) {
     return (
-      <Badge className="bg-red-500/15 text-red-600 dark:text-red-400 border-0 gap-1 text-xs font-medium">
+      <Badge className="badge-danger border-0 gap-1 text-xs font-medium">
         <TrendingDown className="h-3 w-3" />
         {pct}%
       </Badge>
@@ -111,32 +111,32 @@ export default function AnalyticsPage() {
         icon: FileText,
         value: overview.offers.current,
         change: overview.offers.change_pct,
-        color: 'text-blue-500',
-        bg: 'bg-blue-500/10',
+        color: 'text-info',
+        bg: 'bg-info/10',
       },
       {
         title: 'İletişim Mesajları',
         icon: Mail,
         value: overview.contacts.current,
         change: overview.contacts.change_pct,
-        color: 'text-emerald-500',
-        bg: 'bg-emerald-500/10',
+        color: 'text-success',
+        bg: 'bg-success/10',
       },
       {
         title: 'İş Başvuruları',
         icon: Briefcase,
         value: overview.applications.current,
         change: overview.applications.change_pct,
-        color: 'text-amber-500',
-        bg: 'bg-amber-500/10',
+        color: 'text-warning',
+        bg: 'bg-warning/10',
       },
       {
         title: 'Toplam Gönderim',
         icon: Activity,
         value: overview.total.current,
         change: overview.total.change_pct,
-        color: 'text-violet-500',
-        bg: 'bg-violet-500/10',
+        color: 'text-violet',
+        bg: 'bg-violet/10',
       },
     ];
   }, [overview]);
@@ -228,15 +228,15 @@ export default function AnalyticsPage() {
           {/* Legend */}
           <div className="flex items-center gap-4 mt-3">
             <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-sm bg-blue-500" />
+              <div className="h-2.5 w-2.5 rounded-sm bg-info" />
               <span className="text-xs text-muted-foreground">Teklifler</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-sm bg-emerald-500" />
+              <div className="h-2.5 w-2.5 rounded-sm bg-success" />
               <span className="text-xs text-muted-foreground">İletişim</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-sm bg-amber-500" />
+              <div className="h-2.5 w-2.5 rounded-sm bg-warning" />
               <span className="text-xs text-muted-foreground">Başvurular</span>
             </div>
           </div>
@@ -275,15 +275,15 @@ export default function AnalyticsPage() {
                         <div className="bg-popover border border-border/50 text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg whitespace-nowrap">
                           <div className="font-medium mb-1">{point.date}</div>
                           <div className="flex items-center gap-1.5">
-                            <div className="h-2 w-2 rounded-sm bg-blue-500" />
+                            <div className="h-2 w-2 rounded-sm bg-info" />
                             Teklif: {point.offers}
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <div className="h-2 w-2 rounded-sm bg-emerald-500" />
+                            <div className="h-2 w-2 rounded-sm bg-success" />
                             İletişim: {point.contacts}
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <div className="h-2 w-2 rounded-sm bg-amber-500" />
+                            <div className="h-2 w-2 rounded-sm bg-warning" />
                             Başvuru: {point.applications}
                           </div>
                         </div>
@@ -297,19 +297,19 @@ export default function AnalyticsPage() {
                       >
                         {appH > 0 && (
                           <div
-                            className="w-full bg-amber-500 first:rounded-b-sm transition-all duration-500"
+                            className="w-full bg-warning first:rounded-b-sm transition-all duration-500"
                             style={{ height: `${(appH / barH) * 100}%` }}
                           />
                         )}
                         {contactH > 0 && (
                           <div
-                            className="w-full bg-emerald-500 transition-all duration-500"
+                            className="w-full bg-success transition-all duration-500"
                             style={{ height: `${(contactH / barH) * 100}%` }}
                           />
                         )}
                         {offerH > 0 && (
                           <div
-                            className="w-full bg-blue-500 rounded-t-md transition-all duration-500"
+                            className="w-full bg-info rounded-t-md transition-all duration-500"
                             style={{ height: `${(offerH / barH) * 100}%` }}
                           />
                         )}
@@ -360,19 +360,19 @@ export default function AnalyticsPage() {
                 <div className="flex h-4 rounded-full overflow-hidden bg-muted/30">
                   {distributionPcts.offers > 0 && (
                     <div
-                      className="bg-blue-500 transition-all duration-500"
+                      className="bg-info transition-all duration-500"
                       style={{ width: `${distributionPcts.offers}%` }}
                     />
                   )}
                   {distributionPcts.contacts > 0 && (
                     <div
-                      className="bg-emerald-500 transition-all duration-500"
+                      className="bg-success transition-all duration-500"
                       style={{ width: `${distributionPcts.contacts}%` }}
                     />
                   )}
                   {distributionPcts.applications > 0 && (
                     <div
-                      className="bg-amber-500 transition-all duration-500"
+                      className="bg-warning transition-all duration-500"
                       style={{ width: `${distributionPcts.applications}%` }}
                     />
                   )}
@@ -384,22 +384,22 @@ export default function AnalyticsPage() {
                     label: 'Teklif Talepleri',
                     count: totalSubmissions.offers,
                     pct: distributionPcts.offers,
-                    color: 'bg-blue-500',
-                    textColor: 'text-blue-500',
+                    color: 'bg-info',
+                    textColor: 'text-info',
                   },
                   {
                     label: 'İletişim Mesajları',
                     count: totalSubmissions.contacts,
                     pct: distributionPcts.contacts,
-                    color: 'bg-emerald-500',
-                    textColor: 'text-emerald-500',
+                    color: 'bg-success',
+                    textColor: 'text-success',
                   },
                   {
                     label: 'İş Başvuruları',
                     count: totalSubmissions.applications,
                     pct: distributionPcts.applications,
-                    color: 'bg-amber-500',
-                    textColor: 'text-amber-500',
+                    color: 'bg-warning',
+                    textColor: 'text-warning',
                   },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center justify-between">
@@ -438,19 +438,19 @@ export default function AnalyticsPage() {
                     label: 'Teklifler',
                     read: overview.read_unread.offers.read,
                     unread: overview.read_unread.offers.unread,
-                    color: 'bg-blue-500',
+                    color: 'bg-info',
                   },
                   {
                     label: 'İletişim',
                     read: overview.read_unread.contacts.read,
                     unread: overview.read_unread.contacts.unread,
-                    color: 'bg-emerald-500',
+                    color: 'bg-success',
                   },
                   {
                     label: 'Başvurular',
                     read: overview.read_unread.applications.read,
                     unread: overview.read_unread.applications.unread,
-                    color: 'bg-amber-500',
+                    color: 'bg-warning',
                   },
                 ].map((item) => {
                   const total = item.read + item.unread;

@@ -114,10 +114,10 @@ function resolveTriggerLabel(
 }
 
 const typeColors = {
-    email: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
-    sms: 'bg-green-500/10 text-green-700 dark:text-green-400',
-    push: 'bg-purple-500/10 text-purple-700 dark:text-purple-400',
-    in_app: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
+    email: 'bg-info/10 text-info',
+    sms: 'bg-success/10 text-success',
+    push: 'bg-violet/10 text-violet',
+    in_app: 'bg-warning/10 text-warning',
 };
 
 const typeLabels = {
@@ -128,9 +128,9 @@ const typeLabels = {
 };
 
 const statusColors = {
-    sent: 'bg-green-500/10 text-green-700 dark:text-green-400',
-    failed: 'bg-red-500/10 text-red-700 dark:text-red-400',
-    pending: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+    sent: 'bg-success/10 text-success',
+    failed: 'bg-destructive/10 text-destructive',
+    pending: 'bg-warning/10 text-warning',
 };
 
 const statusLabels = {
@@ -311,6 +311,15 @@ export default function NotificationsPage() {
 
     return (
         <div className="space-y-6">
+            {/* ── Taşındı Banner ── */}
+            <div className="flex items-start gap-3 rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-warning-foreground">
+                <span className="mt-0.5 text-lg">ℹ️</span>
+                <div className="text-sm">
+                    <span className="font-semibold">Navigasyon Güncellemesi</span>
+                    <span className="ml-2 text-warning/80">— Bu sayfa artık <strong>Sistem &amp; Güvenlik &gt; Sistem Ayarları</strong> altına taşınmıştır. URL üzerinden erişmeye devam edebilirsiniz.</span>
+                </div>
+            </div>
+
             <AdminPageHeader
                 title="Bildirim Yönetimi"
                 description="Bildirim şablonlarını yönetin ve e-posta ayarlarını yapılandırın"

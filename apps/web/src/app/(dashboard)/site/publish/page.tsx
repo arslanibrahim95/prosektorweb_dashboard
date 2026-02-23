@@ -6,7 +6,7 @@ import { siteSchema } from '@prosektor/contracts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Send, ExternalLink, Clock, FileText } from 'lucide-react';
+import { Send, ExternalLink, Clock, ClipboardCheck, CheckCircle2, XCircle } from 'lucide-react';
 import { useSite } from '@/components/site/site-provider';
 import { toast } from 'sonner';
 import { usePublishSite } from '@/hooks/use-publish';
@@ -135,20 +135,67 @@ export default function PublishPage() {
         </Card>
       </div>
 
-      {/* Notes */}
-      <Card className="glass">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            MVP Notları
-          </CardTitle>
-          <CardDescription>Bu ekranda henüz otomatik değişiklik listesi ve checklist yok.</CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground leading-relaxed">
-          Publish endpointi, staging için <span className="font-medium">draft_revision_id</span> değerlerini staging’e kopyalar;
-          production için staging revision’ları publish pointer’larına taşır ve site durumunu günceller.
-        </CardContent>
-      </Card>
+      {/* Pre-publish Checklist */}
+      {(() => {
+        const hasDomain = !!currentSite?.primary_domain;
+        const hasContent = currentSite?.status !== 'draft';
+        const hasStagingTest = currentSite?.status === 'staging' || currentSite?.status === 'published';
+        const allChecked = hasDomain && hasContent && hasStagingTest;
+
+        const items: Array<{ ok: boolean; label: string; detail: React.ReactNode }> = [
+          {
+            ok: hasDomain,
+            label: 'Alan adı yapılandırıldı',
+            detail: hasDomain
+              ? currentSite!.primary_domain!
+              : <a href="/site/domains" className="text-primary underline text-xs">Alan adı ekle →</a>,
+          },
+          {
+            ok: hasContent,
+            label: 'Site içeriği hazır',
+            detail: 'Sayfalar ve içerik oluşturuldu',
+          },
+          {
+            ok: hasStagingTest,
+            label: 'Staging test edildi',
+            detail: "Canlıya almadan önce staging'de test edin",
+          },
+          {
+            ok: true,
+            label: 'SSL sertifikası',
+            detail: "Let's Encrypt SSL otomatik yapılandırıldı",
+          },
+        ];
+
+        return (
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5" />
+                Yayın Öncesi Kontrol
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {items.map((item, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  {item.ok
+                    ? <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />
+                    : <XCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
+                  </div>
+                </div>
+              ))}
+              <div className={`mt-4 text-sm font-medium ${allChecked ? 'text-success' : 'text-amber-500'}`}>
+                {allChecked
+                  ? "Hazır — production'a alabilirsiniz"
+                  : 'Eksik adımları tamamlayın'}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }

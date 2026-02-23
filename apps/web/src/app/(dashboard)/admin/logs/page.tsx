@@ -198,7 +198,7 @@ export default function ActivityLogsPage() {
             </div>
 
             {/* Filters */}
-            <Card>
+            <Card className="glass">
                 <CardHeader>
                     <CardTitle>Filtreler</CardTitle>
                     <CardDescription>
@@ -254,7 +254,7 @@ export default function ActivityLogsPage() {
             </Card>
 
             {/* Logs Table */}
-            <Card>
+            <Card className="glass">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>

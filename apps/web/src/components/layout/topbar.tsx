@@ -14,6 +14,7 @@ import {
     Building2,
     HelpCircle,
     Loader2,
+    ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSidebar } from './app-shell';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/components/auth/auth-provider';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { useSite } from '@/components/site/site-provider';
 import { useUnreadCount } from '@/hooks/use-unread-count';
@@ -50,6 +51,40 @@ interface TopbarProps {
 
 const HEADER_ICON_SIZE_CLASS = 'h-[var(--font-size-lg)] w-[var(--font-size-lg)]';
 
+const ROUTE_LABELS: Record<string, string> = {
+  home: 'Ana Sayfa',
+  site: 'Site',
+  generate: 'Vibe Üretim',
+  pages: 'Sayfalar',
+  builder: 'Sayfa Editörü',
+  domains: 'Domainler',
+  seo: 'SEO',
+  publish: 'Yayınla',
+  modules: 'Modüller',
+  offer: 'Teklif Alma',
+  contact: 'İletişim',
+  hr: 'İK',
+  'job-posts': 'İş İlanları',
+  applications: 'Başvurular',
+  legal: 'Yasal Metinler',
+  inbox: 'Gelen Kutusu',
+  offers: 'Teklifler',
+  analytics: 'Analitik',
+  settings: 'Ayarlar',
+  users: 'Kullanıcılar',
+  billing: 'Fatura & Plan',
+  notifications: 'Bildirimler',
+  supabase: 'Supabase',
+  admin: 'Yönetici',
+  sites: 'Site Yönetimi',
+};
+
+function useBreadcrumb() {
+  const pathname = usePathname();
+  const segments = pathname.split('/').filter(Boolean);
+  return segments.map((seg) => ROUTE_LABELS[seg] ?? seg);
+}
+
 export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) {
     const { toggleMobile } = useSidebar();
     const { theme, setTheme } = useTheme();
@@ -57,6 +92,7 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
     const router = useRouter();
     const site = useSite();
     const { data: unreadCount = 0 } = useUnreadCount(site.currentSiteId);
+    const breadcrumbs = useBreadcrumb();
     const isSuperAdmin = auth.me?.role === 'super_admin';
     const availableTenants = auth.availableTenants;
     const currentTenantId = auth.me?.active_tenant_id ?? auth.activeTenantId;
@@ -96,6 +132,27 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                     >
                         <Menu className="h-5 w-5" />
                     </Button>
+
+                    {/* Desktop Breadcrumb */}
+                    <nav className="hidden lg:flex items-center gap-1.5" aria-label="Breadcrumb">
+                      {breadcrumbs.map((crumb, i) => (
+                        <span key={i} className="flex items-center gap-1.5">
+                          {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />}
+                          <span className={
+                            i === breadcrumbs.length - 1
+                              ? 'text-sm text-foreground font-medium'
+                              : 'text-sm text-muted-foreground'
+                          }>
+                            {crumb}
+                          </span>
+                        </span>
+                      ))}
+                    </nav>
+
+                    {/* Mobile: show only last segment */}
+                    <span className="lg:hidden text-sm font-medium text-foreground truncate max-w-[140px]">
+                      {breadcrumbs[breadcrumbs.length - 1] ?? ''}
+                    </span>
 
                     {/* Command Palette Trigger */}
                     <Button

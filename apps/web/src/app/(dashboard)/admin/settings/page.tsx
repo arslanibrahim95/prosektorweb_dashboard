@@ -158,12 +158,12 @@ export default function SettingsPage() {
 
     if (isLoading) {
         return (
-            <div className="space-y-6">
+            <div className="dashboard-page page-enter">
                 <AdminPageHeader
                     title="Sistem Ayarları"
                     description="Genel sistem ayarlarını yapılandırın"
                 />
-                <Card>
+                <Card className="glass border-border/50">
                     <CardHeader>
                         <Skeleton className="h-6 w-48" />
                         <Skeleton className="h-4 w-64" />
@@ -179,22 +179,25 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="dashboard-page page-enter">
             <AdminPageHeader
                 title="Sistem Ayarları"
                 description="Genel sistem ayarlarını yapılandırın"
             />
 
-            {/* General Settings */}
-            <Card>
+            <Card className="glass border-border/50 shadow-sm">
                 <CardHeader>
                     <div className="flex items-center gap-2">
-                        <Globe className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle>Genel Ayarlar</CardTitle>
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Globe className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                            <CardTitle>Genel Ayarlar</CardTitle>
+                            <CardDescription>
+                                Site bilgileri ve temel yapılandırma
+                            </CardDescription>
+                        </div>
                     </div>
-                    <CardDescription>
-                        Site bilgileri ve temel yapılandırma
-                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...generalForm}>
@@ -209,7 +212,7 @@ export default function SettingsPage() {
                                     <FormItem>
                                         <FormLabel>Site Adı</FormLabel>
                                         <FormControl>
-                                            <Input {...field} />
+                                            <Input {...field} className="glass border-border/50" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -223,7 +226,7 @@ export default function SettingsPage() {
                                     <FormItem>
                                         <FormLabel>Site Açıklaması</FormLabel>
                                         <FormControl>
-                                            <Textarea {...field} />
+                                            <Textarea {...field} className="glass border-border/50" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -237,7 +240,7 @@ export default function SettingsPage() {
                                     <FormItem>
                                         <FormLabel>Site URL</FormLabel>
                                         <FormControl>
-                                            <Input {...field} placeholder="https://example.com" />
+                                            <Input {...field} placeholder="https://example.com" className="glass border-border/50" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -252,7 +255,7 @@ export default function SettingsPage() {
                                         <FormItem>
                                             <FormLabel>Logo URL</FormLabel>
                                             <FormControl>
-                                                <Input {...field} placeholder="https://example.com/logo.png" />
+                                                <Input {...field} placeholder="https://example.com/logo.png" className="glass border-border/50" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -266,7 +269,7 @@ export default function SettingsPage() {
                                         <FormItem>
                                             <FormLabel>Favicon URL</FormLabel>
                                             <FormControl>
-                                                <Input {...field} placeholder="https://example.com/favicon.ico" />
+                                                <Input {...field} placeholder="https://example.com/favicon.ico" className="glass border-border/50" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -286,7 +289,7 @@ export default function SettingsPage() {
                                                 value={field.value}
                                             >
                                                 <FormControl>
-                                                    <SelectTrigger>
+                                                    <SelectTrigger className="glass border-border/50">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                 </FormControl>
@@ -314,7 +317,7 @@ export default function SettingsPage() {
                                                 value={field.value}
                                             >
                                                 <FormControl>
-                                                    <SelectTrigger>
+                                                    <SelectTrigger className="glass border-border/50">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                 </FormControl>
@@ -338,7 +341,7 @@ export default function SettingsPage() {
                                 control={generalForm.control}
                                 name="maintenance_mode"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <FormItem className="flex flex-row items-center justify-between rounded-xl glass border border-border/50 p-4">
                                         <div className="space-y-0.5">
                                             <FormLabel className="text-base">
                                                 Bakım Modu
@@ -358,16 +361,16 @@ export default function SettingsPage() {
                             />
 
                             {maintenanceMode && (
-                                <div className="flex items-start gap-2 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3">
-                                    <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5" />
-                                    <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                                <div className="flex items-start gap-2 rounded-xl border border-warning/50 bg-warning/10 p-4 glass">
+                                    <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+                                    <div className="text-sm text-warning-foreground">
                                         <strong>Uyarı:</strong> Bakım modu etkinleştirildiğinde, yalnızca yöneticiler siteye erişebilir.
                                     </div>
                                 </div>
                             )}
 
                             <div className="flex justify-end">
-                                <Button type="submit" disabled={updateSettings.isPending}>
+                                <Button type="submit" disabled={updateSettings.isPending} className="gradient-primary border-0">
                                     <Save className="mr-2 h-4 w-4" />
                                     {updateSettings.isPending ? 'Kaydediliyor...' : 'Kaydet'}
                                 </Button>

@@ -35,9 +35,9 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 }
 
 const PLAN_COLORS: Record<string, { bg: string; badge: 'default' | 'secondary' | 'outline' }> = {
-  demo: { bg: 'bg-zinc-500', badge: 'secondary' },
-  starter: { bg: 'bg-blue-500', badge: 'default' },
-  pro: { bg: 'bg-emerald-500', badge: 'outline' },
+  demo: { bg: 'bg-muted-foreground', badge: 'secondary' },
+  starter: { bg: 'bg-info', badge: 'default' },
+  pro: { bg: 'bg-success', badge: 'outline' },
 };
 
 // ── Page ─────────────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ function StatCardsSection({ data }: { data: AnalyticsData }) {
       sub: `${data.totals.active_tenants} aktif · ${data.totals.suspended_tenants} askıda`,
       indicator: tenantActiveRate,
       indicatorLabel: 'aktif oran',
-      indicatorColor: tenantActiveRate >= 80 ? 'text-emerald-500' : tenantActiveRate >= 50 ? 'text-yellow-500' : 'text-red-500',
+      indicatorColor: tenantActiveRate >= 80 ? 'text-success' : tenantActiveRate >= 50 ? 'text-warning' : 'text-destructive',
     },
     {
       icon: '👥',
@@ -129,7 +129,7 @@ function StatCardsSection({ data }: { data: AnalyticsData }) {
       sub: 'Benzersiz kullanıcı sayısı',
       indicator: data.totals.tenants > 0 ? Math.round(data.totals.active_users / data.totals.tenants * 10) / 10 : 0,
       indicatorLabel: 'ort. / tenant',
-      indicatorColor: 'text-blue-500',
+      indicatorColor: 'text-info',
     },
     {
       icon: '🌐',
@@ -138,7 +138,7 @@ function StatCardsSection({ data }: { data: AnalyticsData }) {
       sub: data.totals.tenants > 0 ? `Ort. ${(data.totals.sites / data.totals.tenants).toFixed(1)} site/tenant` : '—',
       indicator: data.totals.sites,
       indicatorLabel: 'site',
-      indicatorColor: 'text-violet-500',
+      indicatorColor: 'text-violet',
     },
     {
       icon: '📬',
@@ -147,7 +147,7 @@ function StatCardsSection({ data }: { data: AnalyticsData }) {
       sub: `${data.totals.offers} teklif · ${data.totals.contacts} iletişim · ${data.totals.applications} başvuru`,
       indicator: totalInbox,
       indicatorLabel: 'mesaj',
-      indicatorColor: 'text-orange-500',
+      indicatorColor: 'text-warning',
     },
   ];
 
@@ -185,8 +185,8 @@ function PlatformHealthCard({ data }: { data: AnalyticsData }) {
   const suspendedRate = pct(data.totals.suspended_tenants, data.totals.tenants);
 
   const healthStatus = activeRate >= 90 ? 'Sağlıklı' : activeRate >= 70 ? 'Normal' : 'Dikkat';
-  const healthColor = activeRate >= 90 ? 'text-emerald-500' : activeRate >= 70 ? 'text-yellow-500' : 'text-red-500';
-  const healthDot = activeRate >= 90 ? 'bg-emerald-500' : activeRate >= 70 ? 'bg-yellow-500' : 'bg-red-500';
+  const healthColor = activeRate >= 90 ? 'text-success' : activeRate >= 70 ? 'text-warning' : 'text-destructive';
+  const healthDot = activeRate >= 90 ? 'bg-success' : activeRate >= 70 ? 'bg-warning' : 'bg-destructive';
 
   return (
     <Card>
@@ -208,7 +208,7 @@ function PlatformHealthCard({ data }: { data: AnalyticsData }) {
             <span className="text-muted-foreground">Aktif Tenant Oranı</span>
             <span className="font-medium">{activeRate}%</span>
           </div>
-          <ProgressBar value={data.totals.active_tenants} max={data.totals.tenants} color="bg-emerald-500" />
+          <ProgressBar value={data.totals.active_tenants} max={data.totals.tenants} color="bg-success" />
         </div>
 
         <div>
@@ -216,7 +216,7 @@ function PlatformHealthCard({ data }: { data: AnalyticsData }) {
             <span className="text-muted-foreground">Askıya Alınan</span>
             <span className="font-medium">{suspendedRate}%</span>
           </div>
-          <ProgressBar value={data.totals.suspended_tenants} max={data.totals.tenants} color="bg-red-500" />
+          <ProgressBar value={data.totals.suspended_tenants} max={data.totals.tenants} color="bg-destructive" />
         </div>
 
         <Separator />
@@ -227,11 +227,11 @@ function PlatformHealthCard({ data }: { data: AnalyticsData }) {
             <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Toplam</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-emerald-500">{data.totals.active_tenants}</div>
+            <div className="text-lg font-bold text-success">{data.totals.active_tenants}</div>
             <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Aktif</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-red-500">{data.totals.suspended_tenants}</div>
+            <div className="text-lg font-bold text-destructive">{data.totals.suspended_tenants}</div>
             <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Askıda</div>
           </div>
         </div>
@@ -286,9 +286,9 @@ function InboxBreakdownCard({ data }: { data: AnalyticsData }) {
   const totalInbox = data.totals.offers + data.totals.contacts + data.totals.applications;
 
   const items = [
-    { label: 'Teklif Talepleri', value: data.totals.offers, color: 'bg-blue-500', icon: '📋' },
-    { label: 'İletişim Mesajları', value: data.totals.contacts, color: 'bg-violet-500', icon: '✉️' },
-    { label: 'İş Başvuruları', value: data.totals.applications, color: 'bg-amber-500', icon: '💼' },
+    { label: 'Teklif Talepleri', value: data.totals.offers, color: 'bg-info', icon: '📋' },
+    { label: 'İletişim Mesajları', value: data.totals.contacts, color: 'bg-success', icon: '✉️' },
+    { label: 'İş Başvuruları', value: data.totals.applications, color: 'bg-warning', icon: '💼' },
   ];
 
   return (
@@ -378,10 +378,10 @@ function RecentActivityCard({ data }: { data: AnalyticsData }) {
                         max={maxTotal}
                         color={
                           intensity === 'high'
-                            ? 'bg-emerald-500'
+                            ? 'bg-success'
                             : intensity === 'medium'
-                              ? 'bg-blue-500'
-                              : 'bg-zinc-400'
+                              ? 'bg-info'
+                              : 'bg-muted-foreground'
                         }
                       />
                     </TableCell>

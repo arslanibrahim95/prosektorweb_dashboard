@@ -73,21 +73,21 @@ export default function AnalyticsPage() {
                     <div className="flex items-center gap-2">
                         <div className="flex gap-1 border rounded-md p-1">
                             <Button
-                                variant={period === '7d' ? 'secondary' : 'ghost'}
+                                variant={period === '7d' ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => setPeriod('7d')}
                             >
                                 Son 7 Gün
                             </Button>
                             <Button
-                                variant={period === '30d' ? 'secondary' : 'ghost'}
+                                variant={period === '30d' ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => setPeriod('30d')}
                             >
                                 Son 30 Gün
                             </Button>
                             <Button
-                                variant={period === '90d' ? 'secondary' : 'ghost'}
+                                variant={period === '90d' ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => setPeriod('90d')}
                             >
@@ -95,7 +95,7 @@ export default function AnalyticsPage() {
                             </Button>
                         </div>
                         <Button
-                            variant={showCustomRange ? 'secondary' : 'outline'}
+                            variant={showCustomRange ? 'default' : 'outline'}
                             onClick={() => setShowCustomRange(!showCustomRange)}
                         >
                             <Calendar className="mr-2 h-4 w-4" />
@@ -110,7 +110,7 @@ export default function AnalyticsPage() {
             />
 
             {showCustomRange && (
-                <Card>
+                <Card className="glass">
                     <CardContent className="flex items-center gap-4 py-3">
                         <label htmlFor="analytics-start-date" className="text-sm font-medium">Başlangıç:</label>
                         <Input
@@ -152,7 +152,7 @@ export default function AnalyticsPage() {
             {isLoading ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {[1, 2, 3, 4].map((i) => (
-                        <Card key={i}>
+                        <Card key={i} className="glass">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <Skeleton className="h-4 w-24" />
                                 <Skeleton className="h-4 w-4" />
@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
                     />
                 </div>
             ) : (
-                <Card>
+                <Card className="glass">
                     <CardContent className="pt-6">
                         <EmptyState
                             icon={<TrendingUp className="h-12 w-12" />}
@@ -212,7 +212,7 @@ export default function AnalyticsPage() {
             )}
 
             {/* Timeline Chart */}
-            <Card>
+            <Card className="glass">
                 <CardHeader>
                     <CardTitle>Aktivite Zaman Çizelgesi</CardTitle>
                     <p className="text-sm text-muted-foreground">Günlük aktivite dağılımı</p>
@@ -242,13 +242,13 @@ export default function AnalyticsPage() {
                                                         style={{ height: `${heightPct}%` }}
                                                     >
                                                         {appsPct > 0 && (
-                                                            <div className="bg-purple-500" style={{ height: `${appsPct}%` }} />
+                                                            <div className="bg-warning" style={{ height: `${appsPct}%` }} />
                                                         )}
                                                         {contactsPct > 0 && (
-                                                            <div className="bg-green-500" style={{ height: `${contactsPct}%` }} />
+                                                            <div className="bg-success" style={{ height: `${contactsPct}%` }} />
                                                         )}
                                                         {offersPct > 0 && (
-                                                            <div className="bg-blue-500" style={{ height: `${offersPct}%` }} />
+                                                            <div className="bg-info" style={{ height: `${offersPct}%` }} />
                                                         )}
                                                     </div>
                                                 </div>
@@ -262,15 +262,15 @@ export default function AnalyticsPage() {
                                     </div>
                                     <div className="mt-4 flex items-center gap-4 text-sm">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 bg-blue-500 rounded" />
+                                            <div className="w-3 h-3 bg-info rounded" />
                                             <span>Teklifler</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 bg-green-500 rounded" />
+                                            <div className="w-3 h-3 bg-success rounded" />
                                             <span>Mesajlar</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 bg-purple-500 rounded" />
+                                            <div className="w-3 h-3 bg-warning rounded" />
                                             <span>Başvurular</span>
                                         </div>
                                     </div>

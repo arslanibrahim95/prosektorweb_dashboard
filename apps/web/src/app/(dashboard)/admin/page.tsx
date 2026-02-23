@@ -31,6 +31,8 @@ import { useRouter } from 'next/navigation';
 import { useAdminDashboard, useAdminHealth } from '@/hooks/use-admin';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { AdminPageHeader } from '@/features/admin/components/admin-page-header';
+import { AdminStatCard } from '@/features/admin/components/admin-stat-card';
 
 interface DashboardData {
     stats: {
@@ -70,10 +72,10 @@ interface HealthData {
 
 function StatusIcon({ status }: { status: string }) {
     if (status === 'connected' || status === 'running' || status === 'active' || status === 'healthy') {
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-success" />;
     }
     if (status === 'degraded') {
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+        return <AlertTriangle className="h-4 w-4 text-warning" />;
     }
     return <XCircle className="h-4 w-4 text-destructive" />;
 }
@@ -95,9 +97,9 @@ function statusLabel(status: string): string {
 
 function statusColor(status: string): string {
     if (status === 'connected' || status === 'running' || status === 'active' || status === 'healthy') {
-        return 'text-green-500';
+        return 'text-success';
     }
-    if (status === 'degraded') return 'text-yellow-500';
+    if (status === 'degraded') return 'text-warning';
     return 'text-destructive';
 }
 
@@ -118,18 +120,28 @@ export default function AdminOverviewPage() {
         [searchQuery, router],
     );
 
+    const searchInput = (
+        <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+                type="search"
+                placeholder="Kullanıcı ara (Enter ile)"
+                className="w-[200px] pl-9 lg:w-[300px]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearch}
+            />
+        </div>
+    );
+
     if (error) {
         return (
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Admin Paneli</h1>
-                        <p className="text-muted-foreground">
-                            Sistem genel bakış ve yönetim paneli.
-                        </p>
-                    </div>
-                </div>
-                <Card>
+                <AdminPageHeader
+                    title="Admin Paneli"
+                    description="Sistem genel bakış ve yönetim paneli."
+                />
+                <Card className="glass">
                     <CardContent className="pt-6">
                         <p className="text-destructive">Veriler yüklenirken bir hata oluştu.</p>
                     </CardContent>
@@ -140,129 +152,66 @@ export default function AdminOverviewPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Admin Paneli</h1>
-                    <p className="text-muted-foreground">
-                        Sistem genel bakış ve yönetim paneli.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Kullanıcı ara (Enter ile)"
-                            className="w-[200px] pl-9 lg:w-[300px]"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyDown={handleSearch}
-                        />
-                    </div>
-                </div>
-            </div>
+            <AdminPageHeader
+                title="Admin Paneli"
+                description="Sistem genel bakış ve yönetim paneli."
+                actions={searchInput}
+            />
 
             {/* Key Metrics */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Toplam Kullanıcı</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <>
-                                <Skeleton className="h-8 w-24 mb-2" />
-                                <Skeleton className="h-4 w-32" />
-                            </>
-                        ) : (
-                            <>
-                                <div className="text-2xl font-bold">{dashboardData?.stats?.totalUsers ?? 0}</div>
-                                <p className="text-xs text-muted-foreground">
-                                    Sistemdeki toplam kullanıcı sayısı
-                                </p>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Toplam Sayfa</CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <>
-                                <Skeleton className="h-8 w-24 mb-2" />
-                                <Skeleton className="h-4 w-32" />
-                            </>
-                        ) : (
-                            <>
-                                <div className="text-2xl font-bold">{dashboardData?.stats?.totalPages ?? 0}</div>
-                                <p className="text-xs text-muted-foreground">
-                                    Oluşturulan sayfa sayısı
-                                </p>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Toplam İçerik</CardTitle>
-                        <Activity className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <>
-                                <Skeleton className="h-8 w-24 mb-2" />
-                                <Skeleton className="h-4 w-32" />
-                            </>
-                        ) : (
-                            <>
-                                <div className="text-2xl font-bold">{dashboardData?.stats?.totalContent ?? 0}</div>
-                                <p className="text-xs text-muted-foreground">
-                                    Sayfa ve iş ilanları toplamı
-                                </p>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Bugünkü İşlemler</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <>
-                                <Skeleton className="h-8 w-24 mb-2" />
-                                <Skeleton className="h-4 w-32" />
-                            </>
-                        ) : (
-                            <>
-                                <div className="text-2xl font-bold">{dashboardData?.stats?.todayOperations ?? 0}</div>
-                                <p className="text-xs text-muted-foreground">
-                                    Bugün gerçekleştirilen işlem sayısı
-                                </p>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+                {isLoading ? (
+                    <>
+                        <Skeleton className="h-28 w-full rounded-xl" />
+                        <Skeleton className="h-28 w-full rounded-xl" />
+                        <Skeleton className="h-28 w-full rounded-xl" />
+                        <Skeleton className="h-28 w-full rounded-xl" />
+                    </>
+                ) : (
+                    <>
+                        <AdminStatCard
+                            title="Toplam Kullanıcı"
+                            value={dashboardData?.stats?.totalUsers ?? 0}
+                            icon={<Users className="h-4 w-4" />}
+                            description="Sistemdeki toplam kullanıcı"
+                        />
+                        <AdminStatCard
+                            title="Toplam Sayfa"
+                            value={dashboardData?.stats?.totalPages ?? 0}
+                            icon={<FileText className="h-4 w-4" />}
+                            description="Oluşturulan sayfa sayısı"
+                        />
+                        <AdminStatCard
+                            title="Toplam İçerik"
+                            value={dashboardData?.stats?.totalContent ?? 0}
+                            icon={<Activity className="h-4 w-4" />}
+                            description="Sayfa ve iş ilanları toplamı"
+                        />
+                        <AdminStatCard
+                            title="Bugünkü İşlemler"
+                            value={dashboardData?.stats?.todayOperations ?? 0}
+                            icon={<TrendingUp className="h-4 w-4" />}
+                            description="Bugün gerçekleştirilen işlem sayısı"
+                        />
+                    </>
+                )}
             </div>
 
             {/* Quick Access */}
             <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
                 {[
-                    { label: 'Siteler', href: '/admin/sites', icon: Globe, color: 'text-indigo-500' },
-                    { label: 'Kullanıcılar', href: '/admin/users', icon: Users, color: 'text-blue-500' },
-                    { label: 'Güvenlik', href: '/admin/security', icon: Shield, color: 'text-red-500' },
-                    { label: 'Loglar', href: '/admin/logs', icon: ScrollText, color: 'text-amber-500' },
-                    { label: 'Analitik', href: '/admin/analytics', icon: BarChart3, color: 'text-emerald-500' },
+                    { label: 'Siteler', href: '/admin/sites', icon: Globe, color: 'text-primary', bg: 'bg-primary/10' },
+                    { label: 'Kullanıcılar', href: '/admin/users', icon: Users, color: 'text-info', bg: 'bg-info/10' },
+                    { label: 'Güvenlik', href: '/admin/security', icon: Shield, color: 'text-destructive', bg: 'bg-destructive/10' },
+                    { label: 'Loglar', href: '/admin/logs', icon: ScrollText, color: 'text-warning', bg: 'bg-warning/10' },
+                    { label: 'Analitik', href: '/admin/analytics', icon: BarChart3, color: 'text-success', bg: 'bg-success/10' },
                 ].map((item) => (
                     <Link key={item.href} href={item.href}>
-                        <Card className="hover:bg-accent/50 transition-colors cursor-pointer group">
+                        <Card className="glass hover:bg-accent/50 transition-colors cursor-pointer group">
                             <CardContent className="flex items-center gap-3 p-4">
-                                <item.icon className={`h-5 w-5 ${item.color}`} />
+                                <div className={`p-2 rounded-lg ${item.bg}`}>
+                                    <item.icon className={`h-4 w-4 ${item.color}`} />
+                                </div>
                                 <span className="text-sm font-medium flex-1">{item.label}</span>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                             </CardContent>
@@ -273,7 +222,7 @@ export default function AdminOverviewPage() {
 
             {/* Recent Activity & User Distribution */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4">
+                <Card className="glass col-span-4">
                     <CardHeader>
                         <CardTitle>Son Aktiviteler</CardTitle>
                         <CardDescription>
@@ -322,7 +271,7 @@ export default function AdminOverviewPage() {
                         )}
                     </CardContent>
                 </Card>
-                <Card className="col-span-3">
+                <Card className="glass col-span-3">
                     <CardHeader>
                         <CardTitle>Kullanıcı Dağılımı</CardTitle>
                         <CardDescription>
@@ -372,7 +321,7 @@ export default function AdminOverviewPage() {
 
             {/* Recent Users */}
             {!isLoading && dashboardData?.recentUsers && dashboardData.recentUsers.length > 0 && (
-                <Card>
+                <Card className="glass">
                     <CardHeader>
                         <CardTitle>Son Eklenen Kullanıcılar</CardTitle>
                         <CardDescription>
@@ -405,7 +354,7 @@ export default function AdminOverviewPage() {
             )}
 
             {/* System Status — Live */}
-            <Card>
+            <Card className="glass">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
@@ -419,8 +368,8 @@ export default function AdminOverviewPage() {
                                 <Loader2 className="h-3 w-3 animate-spin" />
                             ) : (
                                 <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success/70 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
                                 </span>
                             )}
                             <span>Canlı</span>
@@ -436,7 +385,7 @@ export default function AdminOverviewPage() {
                     ) : healthData ? (
                         <div className="grid gap-3 sm:grid-cols-3">
                             {/* API */}
-                            <div className="rounded-lg border bg-card p-3 space-y-1.5">
+                            <div className="rounded-lg border border-border/50 bg-card/50 p-3 space-y-1.5">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">API</span>
                                     <StatusIcon status={healthData.api.status} />
@@ -447,7 +396,7 @@ export default function AdminOverviewPage() {
                                 <p className="text-xs text-muted-foreground">Uptime: {healthData.api.uptime}</p>
                             </div>
                             {/* DB */}
-                            <div className="rounded-lg border bg-card p-3 space-y-1.5">
+                            <div className="rounded-lg border border-border/50 bg-card/50 p-3 space-y-1.5">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Veritabanı</span>
                                     <StatusIcon status={healthData.database.status} />
@@ -458,7 +407,7 @@ export default function AdminOverviewPage() {
                                 <p className="text-xs text-muted-foreground">Latency: {healthData.database.latency_ms}ms</p>
                             </div>
                             {/* Cache */}
-                            <div className="rounded-lg border bg-card p-3 space-y-1.5">
+                            <div className="rounded-lg border border-border/50 bg-card/50 p-3 space-y-1.5">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Cache</span>
                                     <StatusIcon status={healthData.cache.status} />

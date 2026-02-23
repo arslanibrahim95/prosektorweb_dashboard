@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { formatRelativeTime, formatDate } from '@/lib/format';
 import { downloadBlob } from '@/lib/download';
 import { PAGINATION, SEARCH_DEBOUNCE_MS, SEARCH_MIN_CHARS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 import {
   InboxHeader,
   InboxFilterBar,
@@ -25,6 +26,11 @@ import {
   InboxDetailDrawer,
   type InboxColumnDef,
 } from '@/components/inbox';
+import {
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 type ContactMessage = z.infer<typeof contactMessageSchema>;
@@ -260,66 +266,118 @@ function ContactInboxContent() {
       />
 
       {/* Detail Drawer */}
-      <InboxDetailDrawer
-        item={selectedMessage}
-        onClose={() => setSelectedMessage(null)}
-        renderTitle={(message) => message.full_name}
-        renderDescription={(message) => formatDate(message.created_at)}
-        renderContent={(message) => (
-          <div className="dashboard-sheet-stack">
-            {/* Contact Info */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <a
-                  href={`mailto:${message.email}`}
-                  className="text-primary hover:underline"
-                >
-                  {message.email}
-                </a>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <a href={`tel:${message.phone}`} className="text-primary hover:underline">
-                  {message.phone}
-                </a>
-              </div>
-            </div>
+      {selectedMessage && (
+        <InboxDetailDrawer
+          item={selectedMessage}
+          onClose={() => setSelectedMessage(null)}
+          renderTitle={() => selectedMessage.full_name}
+          renderDescription={() => formatDate(selectedMessage.created_at)}
+          renderContent={(message) => (
+            <>
+              {/* Status Strip */}
+              <div
+                className={cn(
+                  'h-1 w-full shrink-0 -mx-6 -mt-4',
+                  message.is_read ? 'bg-muted' : 'gradient-primary',
+                )}
+              />
 
-            {/* Subject */}
-            {message.subject && (
-              <div>
-                <h4 className="text-sm font-medium text-foreground mb-2">Konu</h4>
-                <Badge variant="outline">{message.subject}</Badge>
+              {/* Header with Avatar */}
+              <div className="px-6 pt-5 pb-4 -mx-6 -mt-4">
+                <SheetHeader className="flex-row items-start gap-4 space-y-0">
+                  <div className="h-12 w-12 rounded-full gradient-primary flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-white">
+                      {message.full_name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <SheetTitle className="text-lg">{message.full_name}</SheetTitle>
+                    <SheetDescription className="flex items-center gap-2 mt-0.5">
+                      {formatDate(message.created_at)}
+                      {!message.is_read && (
+                        <Badge className="bg-warning/10 text-warning border-warning/20 text-[10px] h-5">
+                          Yeni
+                        </Badge>
+                      )}
+                    </SheetDescription>
+                  </div>
+                </SheetHeader>
               </div>
-            )}
 
-            {/* Message */}
-            <div>
-              <h4 className="text-sm font-medium text-foreground mb-2">Mesaj</h4>
-              <p className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg">
-                {message.message}
-              </p>
-            </div>
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto px-6 space-y-4 -mx-6">
+                {/* Contact Info Card */}
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    İletişim Bilgileri
+                  </h4>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <a
+                      href={`mailto:${message.email}`}
+                      className="text-primary hover:underline truncate"
+                    >
+                      {message.email}
+                    </a>
+                  </div>
+                  {message.phone && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <a href={`tel:${message.phone}`} className="text-primary hover:underline">
+                        {message.phone}
+                      </a>
+                    </div>
+                  )}
+                </div>
 
-            {/* Actions */}
-            <div className="flex gap-2 pt-4 border-t">
-              <Button className="flex-1" asChild>
-                <a href={`mailto:${message.email}`}>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Email Gönder
-                </a>
-              </Button>
-              <Button variant="outline" className="flex-1" asChild>
-                <a href={`tel:${message.phone}`}>
-                  <Phone className="mr-2 h-4 w-4" />
-                  Ara
-                </a>
-              </Button>
-            </div>
-          </div>
-        )}
-      />
+                {/* Subject Card */}
+                {message.subject && (
+                  <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                      Konu
+                    </h4>
+                    <Badge variant="outline">{message.subject}</Badge>
+                  </div>
+                )}
+
+                {/* Message Card */}
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Mesaj
+                  </h4>
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                    {message.message}
+                  </p>
+                </div>
+              </div>
+
+              {/* Fixed Bottom Actions */}
+              <div className="shrink-0 border-t bg-background/80 backdrop-blur-sm px-6 py-4 -mx-6 -mb-4 flex gap-2">
+                <Button className="flex-1 gradient-primary border-0 text-white" asChild>
+                  <a href={`mailto:${message.email}`}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Email Gönder
+                  </a>
+                </Button>
+                {message.phone && (
+                  <Button variant="outline" className="flex-1" asChild>
+                    <a href={`tel:${message.phone}`}>
+                      <Phone className="mr-2 h-4 w-4" />
+                      Ara
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+          className="sm:max-w-lg p-0 flex flex-col"
+        />
+      )}
     </div>
   );
 }

@@ -165,7 +165,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Reports Table */}
-            <Card>
+            <Card className="glass">
                 <CardHeader>
                     <CardTitle>Rapor Geçmişi</CardTitle>
                     <CardDescription>

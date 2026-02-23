@@ -148,12 +148,31 @@ describe('modules/hr/job-posts/page.tsx smoke test', () => {
   });
 });
 
-// — HR Applications Sayfası (redirect-only) —
+// — HR Applications Sayfası —
 describe('modules/hr/applications/page.tsx smoke test', () => {
   const source = readFileSync(path.join(MOD_DIR, 'hr/applications/page.tsx'), 'utf8');
 
-  it('redirect kullanıyor', () => {
-    expect(source).toContain('redirect');
+  it("'use client' direktifi var", () => {
+    expect(source).toContain("'use client'");
+  });
+
+  it('useApplications hook import ediliyor', () => {
+    expect(source).toContain('useApplications');
+    expect(source).toContain("from '@/hooks/use-inbox'");
+  });
+
+  it('useJobPosts hook import ediliyor', () => {
+    expect(source).toContain('useJobPosts');
+    expect(source).toContain("from '@/hooks/use-hr'");
+  });
+
+  it('useSite provider kullanılıyor', () => {
+    expect(source).toContain('useSite');
+    expect(source).toContain("from '@/components/site/site-provider'");
+  });
+
+  it('ErrorBoundary ile sarılı', () => {
+    expect(source).toContain('ErrorBoundary');
   });
 
   it('export default function var', () => {

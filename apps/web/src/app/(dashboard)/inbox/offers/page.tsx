@@ -7,7 +7,7 @@ import { offerRequestSchema } from '@prosektor/contracts';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TableSkeleton } from '@/components/layout';
-import { Mail, Phone, Building, FileText } from 'lucide-react';
+import { Mail, Phone, Building, FileText, CheckCheck, Loader2 } from 'lucide-react';
 import { useSite } from '@/components/site/site-provider';
 import { useAuth } from '@/components/auth/auth-provider';
 import { exportInbox } from '@/features/inbox';
@@ -130,6 +130,22 @@ function OffersInboxContent() {
     }
   }, [offers, selectedIds, bulkMarkAsReadMutation]);
 
+  const handleMarkAllRead = useCallback(async () => {
+    const unreadAll = offers.filter((o) => !o.is_read);
+    if (unreadAll.length === 0) {
+      toast.info('Tüm öğeler zaten okundu');
+      return;
+    }
+    try {
+      const result = await bulkMarkAsReadMutation.mutateAsync({
+        ids: unreadAll.map((o) => o.id),
+      });
+      toast.success(`${result.updated ?? unreadAll.length} öge okundu olarak işaretlendi`);
+    } catch {
+      toast.error('Toplu işlem başarısız');
+    }
+  }, [offers, bulkMarkAsReadMutation]);
+
   const handleBulkExport = useCallback(async () => {
     if (!site.currentSiteId) return;
     try {
@@ -215,6 +231,22 @@ function OffersInboxContent() {
         unreadCount={unreadCount}
         onExport={() => void handleBulkExport()}
       />
+
+      {unreadCount > 0 && (
+        <div className="flex justify-end -mt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handleMarkAllRead()}
+            disabled={bulkMarkAsReadMutation.isPending}
+          >
+            {bulkMarkAsReadMutation.isPending
+              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              : <CheckCheck className="h-4 w-4 mr-2" />}
+            Tümünü Okundu İşaretle
+          </Button>
+        </div>
+      )}
 
       {/* Filters */}
       <InboxFilterBar
