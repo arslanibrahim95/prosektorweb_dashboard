@@ -38,43 +38,17 @@ import {
     Download,
     Search,
 } from "lucide-react";
-import { localeNames } from "@/i18n";
 import enMessages from "@/i18n/messages/en.json";
 import trMessages from "@/i18n/messages/tr.json";
 import { useAdminSettings, useUpdateAdminSettings } from "@/hooks/use-admin";
 import { toast } from "sonner";
-
-interface Language {
-    id: string;
-    name: string;
-    code: string;
-    status: "active" | "inactive";
-    isDefault: boolean;
-    progress: number;
-}
-
-interface Translation {
-    id: string;
-    key: string;
-    turkish: string;
-    target: string;
-    status: "translated" | "untranslated" | "review";
-}
-
-interface I18nSettings {
-    defaultLanguage?: string;
-    enabledLanguages?: string[];
-    languages?: Language[];
-    translations?: Record<string, Record<string, string>>;
-}
-
-interface AdminSettingsResponse {
-    tenant?: {
-        settings?: {
-            i18n?: I18nSettings;
-        };
-    };
-}
+import type { Language, Translation, I18nAdminSettingsResponse } from "@/features/admin/types/i18n";
+import {
+    normalizeCode,
+    flattenMessages,
+    resolveLanguageName,
+    normalizeTranslations,
+} from "@/features/admin/utils/i18n-helpers";
 
 const messageCatalog: Record<string, Record<string, unknown>> = {
     tr: trMessages as Record<string, unknown>,
@@ -83,62 +57,7 @@ const messageCatalog: Record<string, Record<string, unknown>> = {
 
 const defaultLanguageCode = "tr";
 
-function normalizeCode(code: string): string {
-    return code.trim().toLowerCase();
-}
 
-function flattenMessages(
-    input: Record<string, unknown>,
-    prefix = "",
-): Record<string, string> {
-    return Object.entries(input).reduce<Record<string, string>>((acc, [key, value]) => {
-        const nextKey = prefix ? `${prefix}.${key}` : key;
-        if (value && typeof value === "object" && !Array.isArray(value)) {
-            Object.assign(acc, flattenMessages(value as Record<string, unknown>, nextKey));
-            return acc;
-        }
-        if (typeof value === "string") {
-            acc[nextKey] = value;
-        }
-        return acc;
-    }, {});
-}
-
-function resolveLanguageName(code: string): string {
-    if (code === "tr") return localeNames.tr;
-    if (code === "en") return localeNames.en;
-    return code.toUpperCase();
-}
-
-function normalizeTranslations(
-    value: unknown,
-): Record<string, Record<string, string>> {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-        return {};
-    }
-
-    const entries = Object.entries(value as Record<string, unknown>);
-    const result: Record<string, Record<string, string>> = {};
-
-    for (const [language, mapValue] of entries) {
-        if (!mapValue || typeof mapValue !== "object" || Array.isArray(mapValue)) {
-            continue;
-        }
-
-        const normalizedLanguage = normalizeCode(language);
-        const normalizedMap: Record<string, string> = {};
-
-        for (const [key, translation] of Object.entries(mapValue as Record<string, unknown>)) {
-            if (typeof translation === "string") {
-                normalizedMap[key] = translation;
-            }
-        }
-
-        result[normalizedLanguage] = normalizedMap;
-    }
-
-    return result;
-}
 
 export default function LocalizationPage() {
     const [activeTab, setActiveTab] = useState("languages");
@@ -163,7 +82,7 @@ export default function LocalizationPage() {
     );
 
     useEffect(() => {
-        const response = settingsData as AdminSettingsResponse | undefined;
+        const response = settingsData as I18nAdminSettingsResponse | undefined;
         const i18n = response?.tenant?.settings?.i18n;
         const normalizedTranslations = normalizeTranslations(i18n?.translations);
         const defaultCode = normalizeCode(i18n?.defaultLanguage ?? defaultLanguageCode);
@@ -462,11 +381,11 @@ export default function LocalizationPage() {
     return (
         <div className="space-y-6">
             {/* ── Phase-2 Banner ── */}
-            <div className="flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-blue-700 dark:text-blue-400">
+            <div className="flex items-start gap-3 rounded-xl border border-info/20 bg-info/10 px-4 py-3 text-info-foreground">
                 <span className="mt-0.5 text-lg">🔵</span>
                 <div className="text-sm">
                     <span className="font-semibold">Phase-2 Özelliği</span>
-                    <span className="ml-2 text-blue-600/80 dark:text-blue-500/80">— OSGB müşterileri şu an yalnızca Türkçe kullanmaktadır. Çok dil desteği ilerleyen aşamada eklenecektir.</span>
+                    <span className="ml-2 text-info-foreground/70">— OSGB müşterileri şu an yalnızca Türkçe kullanmaktadır. Çok dil desteği ilerleyen aşamada eklenecektir.</span>
                 </div>
             </div>
 
