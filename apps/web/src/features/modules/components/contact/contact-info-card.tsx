@@ -6,6 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { X, Plus, MapPin, Phone, Mail } from 'lucide-react';
 import { ContactFormState } from './types';
 import { useState } from 'react';
@@ -27,6 +34,40 @@ export function ContactInfoCard({
 }: ContactInfoCardProps) {
     const [newPhone, setNewPhone] = useState('');
     const [newEmail, setNewEmail] = useState('');
+    const [countryCode, setCountryCode] = useState('+90');
+    const [phoneNumber, setPhoneNumber] = useState('');
+
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Sadece rakamları al
+        const value = e.target.value.replace(/\D/g, '');
+        let formatted = value;
+        if (value.length > 0) {
+            formatted = value.substring(0, 10);
+
+            // Formatlama: XXX XXX XX XX
+            const match = formatted.match(/^(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})$/);
+            if (match) {
+                const g1 = match[1] || '';
+                const g2 = match[2] || '';
+                const g3 = match[3] || '';
+                const g4 = match[4] || '';
+
+                formatted = !g2 ? g1
+                    : !g3 ? `${g1} ${g2}`
+                        : !g4 ? `${g1} ${g2} ${g3}`
+                            : `${g1} ${g2} ${g3} ${g4}`;
+            }
+        }
+        setPhoneNumber(formatted);
+    };
+
+    const handleAddPhone = () => {
+        const rawDigits = phoneNumber.replace(/\s/g, '');
+        if (rawDigits.length !== 10) return;
+        addItem('phones', `${countryCode} ${phoneNumber}`, () => {
+            setPhoneNumber('');
+        });
+    };
 
     return (
         <Card className="glass">
@@ -70,22 +111,39 @@ export function ContactInfoCard({
                         ))}
                     </div>
                     <div className="flex gap-2">
+                        <Select
+                            value={countryCode}
+                            onValueChange={setCountryCode}
+                            disabled={isDisabled}
+                        >
+                            <SelectTrigger className="w-[110px] shrink-0">
+                                <SelectValue placeholder="Ülke" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="+90">🇹🇷 +90</SelectItem>
+                                <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                                <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                                <SelectItem value="+49">🇩🇪 +49</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <Input
                             id="contact-phone"
                             type="tel"
                             autoComplete="tel"
-                            placeholder="+90 xxx xxx xxxx"
-                            value={newPhone}
-                            onChange={(e) => setNewPhone(e.target.value)}
+                            placeholder="5XX XXX XX XX"
+                            value={phoneNumber}
+                            onChange={handlePhoneChange}
                             onKeyDown={(e) =>
-                                e.key === 'Enter' && addItem('phones', newPhone, () => setNewPhone(''))
+                                e.key === 'Enter' && handleAddPhone()
                             }
                             disabled={isDisabled}
+                            maxLength={13}
+                            className="flex-1"
                         />
                         <Button
                             variant="outline"
-                            onClick={() => addItem('phones', newPhone, () => setNewPhone(''))}
-                            disabled={isDisabled}
+                            onClick={handleAddPhone}
+                            disabled={isDisabled || phoneNumber.replace(/\s/g, '').length !== 10}
                         >
                             <Plus className="h-4 w-4" />
                         </Button>
