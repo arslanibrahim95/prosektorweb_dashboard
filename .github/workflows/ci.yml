@@ -165,6 +165,64 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:54322/postgres
 
   # ─────────────────────────────────────────────────────────────
+  # PR Smoke E2E (Secretless)
+  # ─────────────────────────────────────────────────────────────
+  test-e2e-pr-smoke:
+    name: 🫧 PR Smoke E2E (Login)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start Web App (Secretless)
+        run: |
+          nohup pnpm --filter web dev -- --hostname 127.0.0.1 --port 3000 > /tmp/web-pr-smoke.log 2>&1 &
+          echo $! > /tmp/web-pr-smoke.pid
+
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/login >/dev/null; then
+              echo "Web app is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Web app failed to start in time"
+          tail -n 200 /tmp/web-pr-smoke.log || true
+          exit 1
+
+      - name: Run PR Smoke E2E (Login)
+        run: pnpm --filter web test:e2e -- tests/e2e/pr-smoke-login.spec.ts
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+
+      - name: Stop Web App
+        if: always()
+        run: |
+          if [ -f /tmp/web-pr-smoke.pid ]; then
+            kill "$(cat /tmp/web-pr-smoke.pid)" 2>/dev/null || true
+          fi
+          tail -n 200 /tmp/web-pr-smoke.log || true
+
+  # ─────────────────────────────────────────────────────────────
   # E2E Tests (Main Only)
   # NOTE: PR-safe smoke E2E is intentionally not enabled yet because the current
   # Playwright specs depend on secrets/test-user seeding that are not available
