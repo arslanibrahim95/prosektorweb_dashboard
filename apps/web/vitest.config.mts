@@ -16,6 +16,7 @@ export default defineConfig({
       "tests/**/*.test.ts",
       "tests/**/*.test.tsx",
       "src/**/*.test.ts",
+      "src/**/*.test.tsx",
     ],
     exclude: [
       "tests/e2e/**",

@@ -1,71 +1,20 @@
 'use client';
 
-import { useState, useId, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { MoreHorizontal, Search, UserPlus, FileDown, Users, ChevronDown, X, Shield, Crown, Eye, Edit3 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
+import { FileDown, UserPlus } from 'lucide-react';
 import { useAdminUsers, useInviteUser, useUpdateUserRole, useDeleteUser } from '@/hooks/use-admin';
-import { formatDistanceToNow } from 'date-fns';
-import { tr } from 'date-fns/locale';
 import { toast } from 'sonner';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/components/auth/auth-provider';
 import { AdminPageHeader } from '@/features/admin/components/admin-page-header';
-import { cn } from '@/lib/utils';
 
-interface User {
-    id: string;
-    user_id: string;
-    email?: string;
-    name?: string;
-    avatar_url?: string;
-    role: string;
-    created_at: string;
-    invited_at?: string;
-    last_sign_in_at?: string;
-}
-
-interface UsersResponse {
-    items: User[];
-    total: number;
-}
+import { UsersResponse, User } from '@/features/admin/components/users/types';
+import { InviteUserDialog } from '@/features/admin/components/users/invite-user-dialog';
+import { UsersToolbar } from '@/features/admin/components/users/users-toolbar';
+import { BulkActionBar } from '@/features/admin/components/users/bulk-action-bar';
+import { UsersTable } from '@/features/admin/components/users/users-table';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Beklenmeyen bir hata oluştu';
@@ -102,6 +51,35 @@ export default function AdminUsersPage() {
         [currentUserId],
     );
 
+    const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+    const debouncedRoleFilter = useDebouncedValue(roleFilter, 300);
+
+    const { data, isLoading, error } = useAdminUsers({
+        search: debouncedSearchTerm || undefined,
+        role: debouncedRoleFilter === 'all' ? undefined : debouncedRoleFilter,
+        page,
+        limit: 20,
+    });
+
+    const inviteMutation = useInviteUser();
+    const updateRoleMutation = useUpdateUserRole();
+    const deleteMutation = useDeleteUser();
+
+    const usersData = data as UsersResponse | undefined;
+
+    const selectableIds = useMemo(() => {
+        if (!usersData?.items) return [] as string[];
+        return usersData.items.filter((u) => !isCurrentUser(u)).map((u) => u.id);
+    }, [usersData?.items, isCurrentUser]);
+
+    const headerCheckboxState = useMemo<boolean | 'indeterminate'>(() => {
+        if (selectableIds.length === 0) return false;
+        const selectedCount = selectableIds.filter((id) => selectedIds.has(id)).length;
+        if (selectedCount === 0) return false;
+        if (selectedCount === selectableIds.length) return true;
+        return 'indeterminate';
+    }, [selectableIds, selectedIds]);
+
     const toggleSelect = (id: string) => {
         setSelectedIds((prev) => {
             const user = usersData?.items?.find((u) => u.id === id);
@@ -116,8 +94,6 @@ export default function AdminUsersPage() {
 
     const toggleSelectAll = () => {
         if (!usersData?.items) return;
-
-        const selectableIds = usersData.items.filter((u) => !isCurrentUser(u)).map((u) => u.id);
         if (selectableIds.length === 0) return;
 
         setSelectedIds((prev) => {
@@ -151,35 +127,20 @@ export default function AdminUsersPage() {
         setSelectedIds(new Set());
     };
 
-    // Debounce search and filter to prevent excessive API calls
-    const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
-    const debouncedRoleFilter = useDebouncedValue(roleFilter, 300);
-
-    const { data, isLoading, error } = useAdminUsers({
-        search: debouncedSearchTerm || undefined,
-        role: debouncedRoleFilter === 'all' ? undefined : debouncedRoleFilter,
-        page,
-        limit: 20,
-    });
-
-    const inviteMutation = useInviteUser();
-    const updateRoleMutation = useUpdateUserRole();
-    const deleteMutation = useDeleteUser();
-
-    const usersData = data as UsersResponse | undefined;
-
-    const selectableIds = useMemo(() => {
-        if (!usersData?.items) return [] as string[];
-        return usersData.items.filter((u) => !isCurrentUser(u)).map((u) => u.id);
-    }, [usersData?.items, isCurrentUser]);
-
-    const headerCheckboxState = useMemo<boolean | 'indeterminate'>(() => {
-        if (selectableIds.length === 0) return false;
-        const selectedCount = selectableIds.filter((id) => selectedIds.has(id)).length;
-        if (selectedCount === 0) return false;
-        if (selectedCount === selectableIds.length) return true;
-        return 'indeterminate';
-    }, [selectableIds, selectedIds]);
+    const handleExportAll = () => {
+        if (!usersData?.items) return;
+        const csv = [
+            'Name,Email,Role,Created At',
+            ...usersData.items.map((u) => `"${u.name ?? ''}","${u.email ?? ''}","${u.role}","${u.created_at}"`),
+        ].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'users-export.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     const handleInvite = async () => {
         if (!inviteEmail) {
@@ -249,35 +210,6 @@ export default function AdminUsersPage() {
         }
     };
 
-    const handleExportAll = () => {
-        if (!usersData?.items) return;
-        const csv = [
-            'Name,Email,Role,Created At',
-            ...usersData.items.map((u) => `"${u.name ?? ''}","${u.email ?? ''}","${u.role}","${u.created_at}"`),
-        ].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'users-export.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    const roleColors: Record<string, string> = {
-        owner: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
-        admin: 'bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/20',
-        editor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20',
-        viewer: 'bg-muted text-muted-foreground border-border',
-    };
-
-    const roleIcons: Record<string, React.ReactNode> = {
-        owner: <Crown className="h-3 w-3" />,
-        admin: <Shield className="h-3 w-3" />,
-        editor: <Edit3 className="h-3 w-3" />,
-        viewer: <Eye className="h-3 w-3" />,
-    };
-
     return (
         <div className="dashboard-page page-enter">
             <AdminPageHeader
@@ -297,64 +229,20 @@ export default function AdminUsersPage() {
                 }
             />
 
-            {/* Bulk Action Toolbar */}
-            {selectedIds.size > 0 && (
-                <div className="flex items-center gap-3 rounded-xl glass border border-border/50 px-4 py-3">
-                    <span className="text-sm font-medium">{selectedIds.size} kullanıcı seçildi</span>
-                    <div className="flex items-center gap-2 ml-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                    Rol Değiştir <ChevronDown className="ml-1 h-3 w-3" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                {['viewer', 'editor', 'admin'].map((r) => (
-                                    <DropdownMenuItem key={r} onClick={async () => {
-                                        if (!usersData?.items) return;
-                                        const targets = usersData.items.filter((u) => selectedIds.has(u.id) && u.role !== r);
-                                        await Promise.all(targets.map((u) => updateRoleMutation.mutateAsync({ id: u.id, role: r })));
-                                        toast.success(`${targets.length} kullanıcı rolü güncellendi`);
-                                        setSelectedIds(new Set());
-                                    }} className="capitalize">{r}</DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button variant="outline" size="sm" onClick={handleBulkExport}>
-                            <FileDown className="mr-1.5 h-3 w-3" />
-                            Dışa Aktar
-                        </Button>
-                    </div>
-                    <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setSelectedIds(new Set())}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
+            <BulkActionBar
+                selectedIds={selectedIds}
+                setSelectedIds={setSelectedIds}
+                usersData={usersData}
+                handleBulkExport={handleBulkExport}
+                updateRoleMutateAsync={(vars) => updateRoleMutation.mutateAsync(vars)}
+            />
 
-            <div className="flex items-center gap-3">
-                <div className="relative flex-1 md:max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="İsim veya e-posta ara..."
-                        className="pl-10 glass border-border/50"
-                        value={searchTerm}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                    />
-                </div>
-                <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-                    <SelectTrigger className="w-[160px] glass border-border/50">
-                        <SelectValue placeholder="Tüm Roller" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Tüm Roller</SelectItem>
-                        <SelectItem value="owner">Owner</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="editor">Editor</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+            <UsersToolbar
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                roleFilter={roleFilter}
+                onRoleFilterChange={handleRoleFilterChange}
+            />
 
             {error && (
                 <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 glass">
@@ -362,193 +250,24 @@ export default function AdminUsersPage() {
                 </div>
             )}
 
-            <div className="rounded-xl glass border border-border/50 overflow-hidden">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-10">
-                                <Checkbox
-                                    checked={headerCheckboxState}
-                                    onCheckedChange={toggleSelectAll}
-                                    aria-label="Tümünü seç"
-                                />
-                            </TableHead>
-                            <TableHead>Kullanıcı</TableHead>
-                            <TableHead>Rol</TableHead>
-                            <TableHead>Son Giriş</TableHead>
-                            <TableHead>Kayıt Tarihi</TableHead>
-                            <TableHead className="text-right">İşlemler</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            Array.from({ length: 5 }).map((_, i) => (
-                                <TableRow key={i}>
-                                    <TableCell><Skeleton className="h-4 w-4" /></TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Skeleton className="h-9 w-9 rounded-full" />
-                                            <div className="space-y-2">
-                                                <Skeleton className="h-4 w-32" />
-                                                <Skeleton className="h-3 w-48" />
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Skeleton className="h-5 w-16" />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Skeleton className="h-4 w-24" />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Skeleton className="h-4 w-24" />
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Skeleton className="h-8 w-8 ml-auto" />
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : !usersData?.items || usersData.items.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="h-32 text-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Users className="h-8 w-8 text-muted-foreground/50" />
-                                        <p className="text-muted-foreground">Kullanıcı bulunamadı.</p>
-                                        {(searchTerm || roleFilter !== 'all') && (
-                                            <Button
-                                                variant="link"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setSearchTerm('');
-                                                    setRoleFilter('all');
-                                                }}
-                                            >
-                                                Filtreleri temizle
-                                            </Button>
-                                        )}
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            usersData.items.map((user) => (
-                                <TableRow key={user.id} data-state={selectedIds.has(user.id) ? 'selected' : undefined}>
-                                    <TableCell>
-                                        <Checkbox
-                                            checked={selectedIds.has(user.id)}
-                                            disabled={isCurrentUser(user)}
-                                            onCheckedChange={() => toggleSelect(user.id)}
-                                            aria-label={`${user.name ?? user.email} seç`}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-9 w-9">
-                                                <AvatarImage
-                                                    src={
-                                                        user.avatar_url ||
-                                                        `https://api.dicebear.com/9.x/avataaars/png?seed=${encodeURIComponent(user.email || user.id)}`
-                                                    }
-                                                    alt={user.name || user.email}
-                                                    onError={(e) => {
-                                                        e.currentTarget.style.display = 'none';
-                                                    }}
-                                                />
-                                                <AvatarFallback>
-                                                    {(user.name || user.email || 'U')
-                                                        .slice(0, 2)
-                                                        .toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">
-                                                    {user.name || 'İsimsiz Kullanıcı'}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {user.email || 'E-posta yok'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant="outline"
-                                            className={cn('capitalize gap-1 font-medium', roleColors[user.role] || roleColors.viewer)}
-                                        >
-                                            {roleIcons[user.role]}
-                                            {user.role}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        {user.last_sign_in_at
-                                            ? formatDistanceToNow(new Date(user.last_sign_in_at), {
-                                                addSuffix: true,
-                                                locale: tr,
-                                            })
-                                            : 'Hiç giriş yapmadı'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {formatDistanceToNow(new Date(user.created_at), {
-                                            addSuffix: true,
-                                            locale: tr,
-                                        })}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="p-0"
-                                                >
-                                                    <span className="sr-only">Menüyü aç</span>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
-                                                {user.role !== 'admin' && (
-                                                    <DropdownMenuItem
-                                                        disabled={isCurrentUser(user)}
-                                                        onClick={() => handleRoleChangeRequest(user, 'admin')}
-                                                    >
-                                                        Admin Yap
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {user.role !== 'editor' && (
-                                                    <DropdownMenuItem
-                                                        disabled={isCurrentUser(user)}
-                                                        onClick={() => handleRoleChangeRequest(user, 'editor')}
-                                                    >
-                                                        Editor Yap
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {user.role !== 'viewer' && (
-                                                    <DropdownMenuItem
-                                                        disabled={isCurrentUser(user)}
-                                                        onClick={() => handleRoleChangeRequest(user, 'viewer')}
-                                                    >
-                                                        Viewer Yap
-                                                    </DropdownMenuItem>
-                                                )}
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem
-                                                    className="text-red-600"
-                                                    disabled={isCurrentUser(user)}
-                                                    onClick={() => setDeleteTarget(user.id)}
-                                                >
-                                                    Kullanıcıyı Sil
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+            <UsersTable
+                usersData={usersData}
+                isLoading={isLoading}
+                headerCheckboxState={headerCheckboxState}
+                selectedIds={selectedIds}
+                toggleSelectAll={toggleSelectAll}
+                toggleSelect={toggleSelect}
+                isCurrentUser={isCurrentUser}
+                searchTerm={searchTerm}
+                roleFilter={roleFilter}
+                handleRoleChangeRequest={handleRoleChangeRequest}
+                setDeleteTarget={setDeleteTarget}
+                onClearFilters={() => {
+                    setSearchTerm('');
+                    setRoleFilter('all');
+                }}
+            />
 
-            {/* Pagination */}
             {usersData && usersData.total > 20 && (
                 <div className="flex items-center justify-between rounded-xl glass border border-border/50 px-4 py-3">
                     <p className="text-sm text-muted-foreground">
@@ -576,82 +295,17 @@ export default function AdminUsersPage() {
                 </div>
             )}
 
-            {/* Invite Dialog */}
-            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-                <DialogContent className="glass border-border/50">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-                                <UserPlus className="h-4 w-4 text-white" />
-                            </div>
-                            Yeni Kullanıcı Davet Et
-                        </DialogTitle>
-                        <DialogDescription id={useId()}>
-                            Sisteme yeni bir kullanıcı davet edin. Kullanıcıya e-posta ile davet
-                            gönderilecektir.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">E-posta</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                autoComplete="email"
-                                placeholder="kullanici@example.com"
-                                value={inviteEmail}
-                                onChange={(e) => setInviteEmail(e.target.value)}
-                                className="glass border-border/50"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="role">Rol</Label>
-                            <Select value={inviteRole} onValueChange={setInviteRole}>
-                                <SelectTrigger id="role" className="glass border-border/50">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="viewer">
-                                        <div className="flex items-center gap-2">
-                                            <Eye className="h-4 w-4 text-muted-foreground" />
-                                            <span>Viewer</span>
-                                        </div>
-                                    </SelectItem>
-                                    <SelectItem value="editor">
-                                        <div className="flex items-center gap-2">
-                                            <Edit3 className="h-4 w-4 text-blue-500" />
-                                            <span>Editor</span>
-                                        </div>
-                                    </SelectItem>
-                                    <SelectItem value="admin">
-                                        <div className="flex items-center gap-2">
-                                            <Shield className="h-4 w-4 text-violet-500" />
-                                            <span>Admin</span>
-                                        </div>
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setInviteDialogOpen(false)}
-                        >
-                            İptal
-                        </Button>
-                        <Button
-                            onClick={handleInvite}
-                            disabled={inviteMutation.isPending}
-                            className="gradient-primary border-0"
-                        >
-                            {inviteMutation.isPending ? 'Gönderiliyor...' : 'Davet Gönder'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <InviteUserDialog
+                open={inviteDialogOpen}
+                onOpenChange={setInviteDialogOpen}
+                inviteEmail={inviteEmail}
+                setInviteEmail={setInviteEmail}
+                inviteRole={inviteRole}
+                setInviteRole={setInviteRole}
+                handleInvite={handleInvite}
+                isPending={inviteMutation.isPending}
+            />
 
-            {/* Role Change Confirm Dialog */}
             <ConfirmDialog
                 open={!!roleChangeTarget}
                 onOpenChange={(open) => !open && setRoleChangeTarget(null)}
@@ -666,7 +320,6 @@ export default function AdminUsersPage() {
                 isLoading={updateRoleMutation.isPending}
             />
 
-            {/* Delete Confirm Dialog */}
             <ConfirmDialog
                 open={!!deleteTarget}
                 onOpenChange={(open) => !open && setDeleteTarget(null)}

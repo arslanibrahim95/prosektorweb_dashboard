@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { logger } from '@/lib/logger';
+import { useTranslations } from '@/hooks/use-translation';
 
 export interface ErrorBoundaryProps {
     /** Child components */
@@ -52,47 +53,56 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             }
 
             // Default error UI
-            return (
-                <div className="p-6 max-w-2xl mx-auto animate-in fade-in duration-300">
-                    <Card className="border-destructive/20 bg-destructive/5">
-                        <CardHeader>
-                            <div className="flex items-start gap-4">
-                                <div className="h-12 w-12 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
-                                    <AlertTriangle className="h-6 w-6 text-destructive" />
-                                </div>
-                                <div className="flex-1">
-                                    <CardTitle className="text-foreground">
-                                        Bir şeyler yanlış gitti
-                                    </CardTitle>
-                                    <CardDescription className="mt-1">
-                                        Bu bileşeni yüklerken bir hata oluştu.
-                                    </CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {process.env.NODE_ENV === 'development' && (
-                                <div className="mb-4 p-3 rounded-md bg-muted/50 border border-border">
-                                    <p className="text-xs font-mono text-destructive break-all">
-                                        {this.state.error.message}
-                                    </p>
-                                </div>
-                            )}
-                            <Button
-                                onClick={this.reset}
-                                variant="outline"
-                                className="border-destructive/20 text-destructive hover:bg-destructive/10"
-                            >
-                                Tekrar Dene
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-            );
+            return <DefaultErrorFallback error={this.state.error} onReset={this.reset} />;
         }
 
         return this.props.children;
     }
+}
+
+/**
+ * Default error fallback UI - separate component to use hooks
+ */
+function DefaultErrorFallback({ error, onReset }: { error: Error; onReset: () => void }) {
+    const t = useTranslations('error');
+
+    return (
+        <div className="p-6 max-w-2xl mx-auto animate-in fade-in duration-300">
+            <Card className="border-destructive/20 bg-destructive/5">
+                <CardHeader>
+                    <div className="flex items-start gap-4">
+                        <div className="h-12 w-12 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                            <AlertTriangle className="h-6 w-6 text-destructive" />
+                        </div>
+                        <div className="flex-1">
+                            <CardTitle className="text-foreground">
+                                {t('title')}
+                            </CardTitle>
+                            <CardDescription className="mt-1">
+                                {t('description')}
+                            </CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {process.env.NODE_ENV === 'development' && (
+                        <div className="mb-4 p-3 rounded-md bg-muted/50 border border-border">
+                            <p className="text-xs font-mono text-destructive break-all">
+                                {error.message}
+                            </p>
+                        </div>
+                    )}
+                    <Button
+                        onClick={onReset}
+                        variant="outline"
+                        className="border-destructive/20 text-destructive hover:bg-destructive/10"
+                    >
+                        {t('tryAgain')}
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
 }
 
 /**

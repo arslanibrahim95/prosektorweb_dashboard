@@ -48,6 +48,12 @@
         "warning": "Uyarı",
         "info": "Bilgi"
     },
+    "error": {
+        "title": "Bir şeyler yanlış gitti",
+        "description": "Bu bileşeni yüklerken bir hata oluştu.",
+        "tryAgain": "Tekrar Dene",
+        "devOnly": "Bu hata sadece geliştirme modunda gösterilir"
+    },
     "nav": {
         "home": "Ana Sayfa",
         "site": "Site",

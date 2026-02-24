@@ -48,6 +48,12 @@
         "warning": "Warning",
         "info": "Info"
     },
+    "error": {
+        "title": "Something went wrong",
+        "description": "An error occurred while loading this component.",
+        "tryAgain": "Try Again",
+        "devOnly": "This error is only shown in development mode"
+    },
     "nav": {
         "home": "Home",
         "site": "Site",

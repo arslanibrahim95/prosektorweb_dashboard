@@ -1,0 +1,14 @@
+export { authPaths } from './auth';
+export { userPaths } from './user';
+export { dashboardPaths } from './dashboard';
+export { analyticsPaths } from './analytics';
+export { inboxPaths } from './inbox';
+export { contentPaths } from './content';
+export { sitesPaths } from './sites';
+export { domainsPaths } from './domains';
+export { modulesPaths } from './modules';
+export { teamPaths } from './team';
+export { hrPaths } from './hr';
+export { publishingPaths } from './publishing';
+export { publicPaths } from './public';
+export { adminPaths } from './admin';

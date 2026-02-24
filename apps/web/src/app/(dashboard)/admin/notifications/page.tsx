@@ -3,87 +3,22 @@
 import { useMemo, useState } from 'react';
 import { AdminPageHeader } from '@/features/admin/components/admin-page-header';
 import { NotificationTemplateDialog } from '@/features/admin/components/notification-template-dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-    Bell,
-    Plus,
-    MoreVertical,
-    Edit,
-    Copy,
-    Send,
-    Trash2,
-    Mail,
-    CheckCircle2,
-    XCircle,
-    Clock,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Bell, Mail } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useAdminNotifications, useUpdateAdminNotifications } from '@/hooks/use-admin';
 import { toast } from 'sonner';
 
-type NotificationTemplate = {
-    id: string;
-    name: string;
-    type: 'email' | 'sms' | 'push' | 'in_app';
-    trigger_event: string;
-    trigger_label: string;
-    subject?: string;
-    body: string;
-    is_active: boolean;
-    updated_at: string;
-};
-
-type NotificationTemplateFormData = {
-    name: string;
-    type: NotificationTemplate['type'];
-    trigger_event: string;
-    subject?: string;
-    body: string;
-    is_active: boolean;
-};
-
-type EmailHistoryItem = {
-    id: string;
-    recipient: string;
-    subject: string;
-    status: 'sent' | 'failed' | 'pending';
-    sent_at: string;
-};
-
-interface NotificationSettings {
-    enabled?: boolean;
-    email_notifications?: boolean;
-    slack_notifications?: boolean;
-    webhook_url?: string;
-}
-
-interface NotificationSettingsResponse extends NotificationSettings {
-    templates?: NotificationTemplate[];
-    email_history?: EmailHistoryItem[];
-}
+import {
+    NotificationTemplate,
+    NotificationTemplateFormData,
+    EmailHistoryItem,
+    NotificationSettings,
+    NotificationSettingsResponse,
+} from '@/features/admin/components/notifications/types';
+import { TemplatesTab } from '@/features/admin/components/notifications/templates-tab';
+import { EmailSettingsTab } from '@/features/admin/components/notifications/email-settings-tab';
 
 const triggerLabels: Record<string, string> = {
     user_welcome: 'Kullanıcı Hoş Geldiniz',
@@ -112,38 +47,6 @@ function resolveTriggerLabel(
     if (existing?.trigger_label) return existing.trigger_label;
     return triggerLabels[triggerEvent] ?? triggerEvent;
 }
-
-const typeColors = {
-    email: 'bg-info/10 text-info',
-    sms: 'bg-success/10 text-success',
-    push: 'bg-violet/10 text-violet',
-    in_app: 'bg-warning/10 text-warning',
-};
-
-const typeLabels = {
-    email: 'E-posta',
-    sms: 'SMS',
-    push: 'Push',
-    in_app: 'Uygulama İçi',
-};
-
-const statusColors = {
-    sent: 'bg-success/10 text-success',
-    failed: 'bg-destructive/10 text-destructive',
-    pending: 'bg-warning/10 text-warning',
-};
-
-const statusLabels = {
-    sent: 'Gönderildi',
-    failed: 'Başarısız',
-    pending: 'Beklemede',
-};
-
-const statusIcons = {
-    sent: CheckCircle2,
-    failed: XCircle,
-    pending: Clock,
-};
 
 export default function NotificationsPage() {
     const auth = useAuth();
@@ -311,7 +214,6 @@ export default function NotificationsPage() {
 
     return (
         <div className="space-y-6">
-            {/* ── Taşındı Banner ── */}
             <div className="flex items-start gap-3 rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-warning-foreground">
                 <span className="mt-0.5 text-lg">ℹ️</span>
                 <div className="text-sm">
@@ -338,251 +240,27 @@ export default function NotificationsPage() {
                 </TabsList>
 
                 <TabsContent value="templates" className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="text-sm text-muted-foreground">
-                            {templates.length} şablon
-                        </div>
-                        <Button onClick={handleCreateTemplate}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Yeni Şablon
-                        </Button>
-                    </div>
-
-                    <Card>
-                        <CardContent className="p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Şablon Adı</TableHead>
-                                        <TableHead>Tür</TableHead>
-                                        <TableHead>Durum</TableHead>
-                                        <TableHead>Tetikleyici Olay</TableHead>
-                                        <TableHead>Son Güncelleme</TableHead>
-                                        <TableHead className="w-[70px]">İşlemler</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {templates.map((template) => (
-                                        <TableRow key={template.id}>
-                                            <TableCell className="font-medium">
-                                                {template.name}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge
-                                                    variant="secondary"
-                                                    className={cn(typeColors[template.type])}
-                                                >
-                                                    {typeLabels[template.type]}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge
-                                                    variant={template.is_active ? 'default' : 'secondary'}
-                                                >
-                                                    {template.is_active ? 'Aktif' : 'Pasif'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground">
-                                                {template.trigger_label}
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground">
-                                                {formatDate(template.updated_at)}
-                                            </TableCell>
-                                            <TableCell>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                        >
-                                                            <MoreVertical className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleEditTemplate(template)}
-                                                        >
-                                                            <Edit className="mr-2 h-4 w-4" />
-                                                            Düzenle
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleCopyTemplate(template)}
-                                                        >
-                                                            <Copy className="mr-2 h-4 w-4" />
-                                                            Kopyala
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleTestSend(template)}
-                                                        >
-                                                            <Send className="mr-2 h-4 w-4" />
-                                                            Test Gönder
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleDeleteTemplate(template)}
-                                                            className="text-destructive"
-                                                        >
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            Sil
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {templates.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                                                Kayıtlı şablon bulunmuyor
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    <TemplatesTab
+                        templates={templates}
+                        handleCreateTemplate={handleCreateTemplate}
+                        handleEditTemplate={handleEditTemplate}
+                        handleCopyTemplate={handleCopyTemplate}
+                        handleTestSend={handleTestSend}
+                        handleDeleteTemplate={handleDeleteTemplate}
+                        formatDate={formatDate}
+                    />
                 </TabsContent>
 
                 <TabsContent value="email" className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Bildirim Ayarları</CardTitle>
-                            <CardDescription>
-                                Bildirim tercihlerini yapılandırın
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-0.5">
-                                    <Label htmlFor="enabled">Bildirimleri Etkinleştir</Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Tüm bildirimleri etkinleştir veya devre dışı bırak
-                                    </p>
-                                </div>
-                                <Switch
-                                    id="enabled"
-                                    checked={emailSettings.enabled}
-                                    onCheckedChange={(checked) =>
-                                        setEmailSettingsOverride({ ...emailSettings, enabled: checked })
-                                    }
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-0.5">
-                                    <Label htmlFor="email_notifications">E-posta Bildirimleri</Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        E-posta ile bildirim gönder
-                                    </p>
-                                </div>
-                                <Switch
-                                    id="email_notifications"
-                                    checked={emailSettings.email_notifications}
-                                    onCheckedChange={(checked) =>
-                                        setEmailSettingsOverride({ ...emailSettings, email_notifications: checked })
-                                    }
-                                    disabled={!emailSettings.enabled}
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-0.5">
-                                    <Label htmlFor="slack_notifications">Slack Bildirimleri</Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        Slack&apos;e bildirim gönder
-                                    </p>
-                                </div>
-                                <Switch
-                                    id="slack_notifications"
-                                    checked={emailSettings.slack_notifications}
-                                    onCheckedChange={(checked) =>
-                                        setEmailSettingsOverride({ ...emailSettings, slack_notifications: checked })
-                                    }
-                                    disabled={!emailSettings.enabled}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="webhook_url">Webhook URL</Label>
-                                <Input
-                                    id="webhook_url"
-                                    type="url"
-                                    placeholder="https://hooks.slack.com/services/..."
-                                    value={emailSettings.webhook_url}
-                                    onChange={(event) =>
-                                        setEmailSettingsOverride({ ...emailSettings, webhook_url: event.target.value })
-                                    }
-                                    disabled={!emailSettings.enabled}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Bildirimlerin gönderileceği webhook URL&apos;si
-                                </p>
-                            </div>
-
-                            <div className="flex gap-2 pt-4">
-                                <Button onClick={handleTestEmail} variant="outline" disabled={!emailSettings.enabled}>
-                                    <Send className="mr-2 h-4 w-4" />
-                                    Test Bildirimi Gönder
-                                </Button>
-                                <Button onClick={handleSaveEmailSettings} disabled={updateNotifications.isPending}>
-                                    {updateNotifications.isPending ? 'Kaydediliyor...' : 'Kaydet'}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>E-posta Geçmişi</CardTitle>
-                            <CardDescription>
-                                Son gönderilen e-postaları görüntüleyin
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Alıcı</TableHead>
-                                        <TableHead>Konu</TableHead>
-                                        <TableHead>Durum</TableHead>
-                                        <TableHead>Tarih</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {emailHistory.map((email) => {
-                                        const StatusIcon = statusIcons[email.status];
-                                        return (
-                                            <TableRow key={email.id}>
-                                                <TableCell className="font-medium">
-                                                    {email.recipient}
-                                                </TableCell>
-                                                <TableCell>{email.subject}</TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className={cn(statusColors[email.status])}
-                                                    >
-                                                        <StatusIcon className="mr-1 h-3 w-3" />
-                                                        {statusLabels[email.status]}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-muted-foreground">
-                                                    {formatDate(email.sent_at)}
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                    {emailHistory.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                                                Henüz e-posta geçmişi bulunmuyor
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    <EmailSettingsTab
+                        emailSettings={emailSettings}
+                        setEmailSettingsOverride={setEmailSettingsOverride}
+                        emailHistory={emailHistory}
+                        handleSaveEmailSettings={handleSaveEmailSettings}
+                        handleTestEmail={handleTestEmail}
+                        formatDate={formatDate}
+                        isPending={updateNotifications.isPending}
+                    />
                 </TabsContent>
             </Tabs>
 

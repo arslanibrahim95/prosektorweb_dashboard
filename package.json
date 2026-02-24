@@ -10,6 +10,7 @@
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
     "validate:agents-team": "node scripts/validate-agents-team.mjs",
+    "validate:agents-team:codebase-control": "node scripts/validate-codebase-control-team.mjs",
     "inventory:backend": "node scripts/generate-backend-hardening-inventory.mjs",
     "inventory:backend:check": "node scripts/generate-backend-hardening-inventory.mjs --check",
     "db:migrations:sync-report": "node scripts/check-migration-sync.mjs",

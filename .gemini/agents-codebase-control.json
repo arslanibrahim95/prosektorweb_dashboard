@@ -1,0 +1,112 @@
+{
+  "agents": [
+    {
+      "name": "Codebase Map Agent",
+      "description": "Repo envanteri, modul sinirlari ve hotspot tespiti",
+      "tool": "Gemini CLI",
+      "model": "Gemini 2.5 Pro",
+      "workflow": ".agent/workflows/codebase-map-agent.md",
+      "scope": [
+        "*"
+      ],
+      "trigger": "/cb-map"
+    },
+    {
+      "name": "Codebase Risk Agent",
+      "description": "Mimari uyum, regresyon riski ve sinir ihlali analizi",
+      "tool": "OpenCode",
+      "model": "Kimi 2.5",
+      "workflow": ".agent/workflows/codebase-risk-agent.md",
+      "scope": [
+        "apps/",
+        "packages/",
+        "supabase/",
+        "docs/architecture.md",
+        "docs/agent-ops/"
+      ],
+      "trigger": "/cb-risk"
+    },
+    {
+      "name": "Codebase Security Agent",
+      "description": "Guvenlik, config hijyeni ve secret/rule anti-pattern taramasi",
+      "tool": "z.ai",
+      "model": "glm-4.5",
+      "workflow": ".agent/workflows/codebase-security-agent.md",
+      "scope": [
+        "apps/api/",
+        "apps/web/src/server/",
+        "packages/contracts/",
+        "supabase/",
+        ".env.example",
+        "deploy/",
+        "docker-compose.yml"
+      ],
+      "trigger": "/cb-security"
+    },
+    {
+      "name": "Codebase Test Gap Agent",
+      "description": "Test kapsami bosluklari, dogrulanmayan riskler ve CI kontrol analizi",
+      "tool": "MiniMax",
+      "model": "MiniMax-M1",
+      "workflow": ".agent/workflows/codebase-test-gap-agent.md",
+      "scope": [
+        "apps/web/tests/",
+        "apps/web/__tests__/",
+        "apps/api/tests/",
+        "packages/testing/",
+        ".github/workflows/"
+      ],
+      "trigger": "/cb-tests"
+    },
+    {
+      "name": "Codebase Triage Agent",
+      "description": "Coklu ajan bulgularini birlestirir ve final aksiyon plani uretir",
+      "tool": "OpenCode",
+      "model": "GLM5",
+      "workflow": ".agent/workflows/codebase-triage-agent.md",
+      "scope": [
+        "*"
+      ],
+      "trigger": "/cb-triage"
+    }
+  ],
+  "pipeline": {
+    "description": "Codebase kontrol pipeline (Claude yok): Map -> Risk -> Security -> Test Gap -> Triage",
+    "notes": [
+      "Claude provider bilincli olarak kullanilmaz.",
+      "multi_model_delegate fallback chain onerisi: gemini,opencode,zai,minimax"
+    ],
+    "stages": [
+      {
+        "agent": "Codebase Map Agent",
+        "phase": "discovery",
+        "tool": "Gemini CLI",
+        "model": "Gemini 2.5 Pro"
+      },
+      {
+        "agent": "Codebase Risk Agent",
+        "phase": "analysis",
+        "tool": "OpenCode",
+        "model": "Kimi 2.5"
+      },
+      {
+        "agent": "Codebase Security Agent",
+        "phase": "analysis",
+        "tool": "z.ai",
+        "model": "glm-4.5"
+      },
+      {
+        "agent": "Codebase Test Gap Agent",
+        "phase": "analysis",
+        "tool": "MiniMax",
+        "model": "MiniMax-M1"
+      },
+      {
+        "agent": "Codebase Triage Agent",
+        "phase": "verification",
+        "tool": "OpenCode",
+        "model": "GLM5"
+      }
+    ]
+  }
+}
