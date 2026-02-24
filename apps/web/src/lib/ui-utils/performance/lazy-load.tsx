@@ -51,7 +51,9 @@ const LazyLoad: React.FC<LazyLoadProps> = ({
         return () => {
             observerRef.current?.disconnect();
         };
-    }, [threshold, rootMargin, triggerOnce, onVisible]);
+    // Note: onVisible intentionally omitted to prevent observer recreation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [threshold, rootMargin, triggerOnce]);
 
     return (
         <div ref={containerRef} className="min-h-[1px]">

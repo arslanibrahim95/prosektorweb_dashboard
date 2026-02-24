@@ -63,7 +63,8 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
     const auth = useAuth();
     const router = useRouter();
     const site = useSite();
-    const { data: unreadCount = 0 } = useUnreadCount(site.currentSiteId);
+    const { data: unreadData } = useUnreadCount(site.currentSiteId);
+    const unreadCount = unreadData?.total ?? 0;
     const breadcrumbs = useBreadcrumb();
     const isSuperAdmin = auth.me?.role === 'super_admin';
     const availableTenants = auth.availableTenants;
@@ -254,30 +255,36 @@ export function Topbar({ user, tenant, sidebarCollapsed = false }: TopbarProps) 
                                 )}
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            {unreadCount > 0 ? (
+                            {unreadCount > 0 && unreadData ? (
                                 <>
-                                    <DropdownMenuItem onClick={() => router.push('/inbox/offers')}>
-                                        <div className="flex flex-col gap-1 w-full">
-                                            <span className="font-medium text-sm">Yeni teklifler</span>
-                                            <span className="text-xs text-muted-foreground">Gelen kutunuzda okunmamış teklifler var</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => router.push('/inbox/contact')}>
-                                        <div className="flex flex-col gap-1 w-full">
-                                            <span className="font-medium text-sm">İletişim mesajları</span>
-                                            <span className="text-xs text-muted-foreground">Yeni iletişim mesajlarınız var</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => router.push('/inbox/applications')}>
-                                        <div className="flex flex-col gap-1 w-full">
-                                            <span className="font-medium text-sm">İş başvuruları</span>
-                                            <span className="text-xs text-muted-foreground">Yeni başvurular incelemenizi bekliyor</span>
-                                        </div>
-                                    </DropdownMenuItem>
+                                    {unreadData.offers > 0 && (
+                                        <DropdownMenuItem onClick={() => router.push('/inbox/offers')}>
+                                            <div className="flex flex-col gap-1 w-full">
+                                                <span className="font-medium text-sm">Teklifler ({unreadData.offers})</span>
+                                                <span className="text-xs text-muted-foreground">Gelen kutunuzda okunmamış teklifler var</span>
+                                            </div>
+                                        </DropdownMenuItem>
+                                    )}
+                                    {unreadData.contacts > 0 && (
+                                        <DropdownMenuItem onClick={() => router.push('/inbox/contact')}>
+                                            <div className="flex flex-col gap-1 w-full">
+                                                <span className="font-medium text-sm">İletişim ({unreadData.contacts})</span>
+                                                <span className="text-xs text-muted-foreground">Yeni iletişim mesajlarınız var</span>
+                                            </div>
+                                        </DropdownMenuItem>
+                                    )}
+                                    {unreadData.applications > 0 && (
+                                        <DropdownMenuItem onClick={() => router.push('/inbox/applications')}>
+                                            <div className="flex flex-col gap-1 w-full">
+                                                <span className="font-medium text-sm">Başvurular ({unreadData.applications})</span>
+                                                <span className="text-xs text-muted-foreground">Yeni başvurular incelemenizi bekliyor</span>
+                                            </div>
+                                        </DropdownMenuItem>
+                                    )}
                                 </>
                             ) : (
                                 <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                                    Yeni bildiriminiz yok
+                                    Tüm bildirimler okundu
                                 </div>
                             )}
                         </DropdownMenuContent>

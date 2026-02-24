@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { useSite } from '@/components/site/site-provider';
 import { useUnreadCount } from '@/hooks/use-unread-count';
 import { getMobileNavItems, type MobileNavItem } from './sidebar-nav-data';
@@ -41,7 +42,8 @@ function getBadgeText(count: number): string {
 export function MobileNav() {
   const pathname = usePathname();
   const site = useSite();
-  const { data: unreadCount = 0 } = useUnreadCount(site?.currentSiteId ?? '');
+  const { data: unreadData } = useUnreadCount(site?.currentSiteId ?? '');
+  const unreadCount = unreadData?.total ?? 0;
 
   // Error handling: site ID yoksa navigasyonu gösterme
   if (!site?.currentSiteId) {
@@ -68,7 +70,7 @@ export function MobileNav() {
             unreadCount > 0;
 
           if (!Icon) {
-            console.warn(`Icon not found: ${item.icon}`);
+            logger.warn(`Icon not found: ${item.icon}`);
             return null;
           }
 

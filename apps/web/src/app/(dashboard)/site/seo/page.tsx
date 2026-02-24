@@ -95,11 +95,11 @@ export default function SEOPage() {
   }, [clearDraft, formData, saveMutation]);
 
   const openSitemap = useCallback(() => {
-    window.open('/sitemap.xml', '_blank');
+    window.open('/sitemap.xml', '_blank', 'noopener,noreferrer');
   }, []);
 
   const openRobots = useCallback(() => {
-    window.open('/robots.txt', '_blank');
+    window.open('/robots.txt', '_blank', 'noopener,noreferrer');
   }, []);
 
   const currentSite = site.sites.find((s) => s.id === site.currentSiteId);

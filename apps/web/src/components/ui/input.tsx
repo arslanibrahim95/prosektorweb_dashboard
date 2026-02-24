@@ -23,9 +23,9 @@ function Input({
 }) {
   const variantClasses = {
     default:
-      "border-input bg-transparent",
+      "bg-background border-input hover:border-primary/40 hover:bg-muted/10",
     glass:
-      "glass border-white/20 bg-white/5",
+      "glass border-white/20 bg-white/5 hover:bg-white/10",
     neo:
       "neo-pressed border-transparent bg-transparent",
     filled:
@@ -40,16 +40,21 @@ function Input({
       maxLength={maxLength}
       className={cn(
         // Base styles
-        "file:text-foreground placeholder:text-muted-foreground/70 selection:bg-primary selection:text-primary-foreground",
+        "flex file:text-foreground placeholder:text-muted-foreground/70 text-foreground selection:bg-primary selection:text-primary-foreground",
         // Sizing & layout
-        "h-10 w-full min-w-0 rounded-lg border px-4 py-2 text-base shadow-xs",
+        "h-10 w-full min-w-0 rounded-lg border px-4 py-2 text-base shadow-sm",
         // Transitions
-        "transition-all duration-200 ease-out-expo outline-none",
+        "transition-all duration-300 ease-in-out outline-none",
         // Focus states with glow
-        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:shadow-glow-primary",
-        // Error states (include both aria and native HTML validation)
-        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-        "[&:not(:placeholder-shown):invalid]:border-destructive [&:not(:placeholder-shown):invalid]:ring-destructive/20 [&:not(:placeholder-shown):invalid]:text-destructive",
+        "focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:shadow-[0_0_15px_rgba(var(--primary),0.15)]",
+        // Error states 
+        "aria-invalid:border-destructive aria-invalid:ring-destructive/30 aria-invalid:shadow-[0_0_15px_rgba(var(--destructive),0.15)]",
+        "[&:not(:placeholder-shown):invalid]:border-destructive [&:not(:placeholder-shown):invalid]:ring-destructive/30 [&:not(:placeholder-shown):invalid]:text-destructive",
+        // Disabled
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        // Type specific adjustments
+        "type-[file]:border-0 type-[file]:bg-transparent type-[file]:text-sm type-[file]:font-medium",
+        "md:text-sm",
         // Variant
         variantClasses[variant],
         className

@@ -67,7 +67,7 @@ export function buildInboxParams(
  * Mark item as read — uses API client for consistent auth handling
  */
 export async function markAsRead(
-    endpoint: 'offers' | 'contact' | 'applications',
+    endpoint: 'offers' | 'contact' | 'applications' | 'appointments',
     id: string,
 ): Promise<void> {
     await api.post(`/inbox/${endpoint}/${id}/read`);
@@ -77,7 +77,7 @@ export async function markAsRead(
  * Export inbox data
  */
 export async function exportInbox(
-    endpoint: 'offers' | 'contact' | 'applications',
+    endpoint: 'offers' | 'contact' | 'applications' | 'appointments',
     filters: InboxFilters,
     options?: { accessToken?: string; siteId?: string }
 ): Promise<Blob> {

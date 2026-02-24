@@ -28,6 +28,10 @@ import {
     CreditCard,
     Bell,
     Activity,
+    Calendar,
+    FolderKanban,
+    UserCircle,
+    LineChart,
 } from 'lucide-react';
 
 export const NAV_ICON_SIZE_CLASS = 'h-[18px] w-[18px]';
@@ -63,6 +67,10 @@ export const NavIcons = {
     CreditCard,
     Bell,
     Activity,
+    Calendar,
+    FolderKanban,
+    UserCircle,
+    LineChart,
 } as const;
 
 export type NavIconName = keyof typeof NavIcons;

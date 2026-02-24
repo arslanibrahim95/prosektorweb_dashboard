@@ -139,13 +139,17 @@ export async function middleware(req: NextRequest) {
   }
 
   // Protected paths - check authentication
-  if (isProtectedPath(pathname)) {
+  if (isProtectedPath(pathname) || (pathname.startsWith('/api') && !isPublicPath(pathname))) {
+    const isApiRoute = pathname.startsWith('/api');
     try {
       const supabase = await getSupabaseClient(req);
 
       if (!supabase) {
         // SECURITY: If we can't create a Supabase client, deny access
         console.error('[Middleware] Cannot create Supabase client for protected path');
+        if (isApiRoute) {
+          return new NextResponse(JSON.stringify({ error: 'Internal Server Error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        }
         const loginUrl = new URL('/login', req.url);
         loginUrl.searchParams.set('redirect', pathname);
         loginUrl.searchParams.set('reason', 'system_error');
@@ -153,26 +157,25 @@ export async function middleware(req: NextRequest) {
       }
 
       // SECURITY FIX: Use getUser() instead of getSession() to verify JWT server-side
-      // getSession() reads unverified JWT from cookies — attacker can forge cookies
       const { data: { user }, error } = await supabase.auth.getUser();
 
       // SECURITY: Treat any error as authentication failure
-      if (error) {
-        console.warn('[Middleware] Auth error on protected path:', {
-          path: pathname,
-          error: error.message,
-        });
-        const loginUrl = new URL('/login', req.url);
-        loginUrl.searchParams.set('redirect', pathname);
-        loginUrl.searchParams.set('reason', 'auth_error');
-        return NextResponse.redirect(loginUrl);
-      }
+      if (error || !user) {
+        if (error) {
+          console.warn('[Middleware] Auth error on protected path:', {
+            path: pathname,
+            error: error.message,
+          });
+        }
 
-      if (!user) {
+        if (isApiRoute) {
+          return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+        }
+
         // Not authenticated - redirect to login with return URL
         const loginUrl = new URL('/login', req.url);
         loginUrl.searchParams.set('redirect', pathname);
-        loginUrl.searchParams.set('reason', 'auth_required');
+        loginUrl.searchParams.set('reason', error ? 'auth_error' : 'auth_required');
         return NextResponse.redirect(loginUrl);
       }
     } catch (error) {
@@ -181,6 +184,9 @@ export async function middleware(req: NextRequest) {
         path: pathname,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+      if (isApiRoute) {
+        return new NextResponse(JSON.stringify({ error: 'Internal Server Error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      }
       const loginUrl = new URL('/login', req.url);
       loginUrl.searchParams.set('redirect', pathname);
       loginUrl.searchParams.set('reason', 'auth_error');

@@ -53,6 +53,23 @@ export const jobApplicationSchema = z.object({
   created_at: isoDateTimeSchema,
 });
 
+export const appointmentRequestSchema = z.object({
+  id: uuidSchema,
+  tenant_id: uuidSchema,
+  site_id: uuidSchema,
+  full_name: z.string().min(2).max(100),
+  email: z.string().email(),
+  phone: z.string().min(10).max(20),
+  company_name: z.string().max(200).nullable().optional(),
+  message: z.string().max(2000).nullable().optional(),
+  preferred_date: z.string().nullable().optional(),
+  preferred_time: z.string().max(20).nullable().optional(),
+  kvkk_accepted_at: isoDateTimeSchema,
+  source: z.record(z.string(), z.unknown()).default({}),
+  is_read: z.boolean(),
+  created_at: isoDateTimeSchema,
+});
+
 export const listOfferRequestsResponseSchema = z.object({
   items: z.array(offerRequestSchema),
   total: z.number().int(),
@@ -68,10 +85,16 @@ export const listJobApplicationsResponseSchema = z.object({
   total: z.number().int(),
 });
 
+export const listAppointmentRequestsResponseSchema = z.object({
+  items: z.array(appointmentRequestSchema),
+  total: z.number().int(),
+});
+
 // Spec-friendly aliases
 export const InboxOffersResponseSchema = listOfferRequestsResponseSchema;
 export const InboxContactResponseSchema = listContactMessagesResponseSchema;
 export const InboxHrApplicationsResponseSchema = listJobApplicationsResponseSchema;
+export const InboxAppointmentsResponseSchema = listAppointmentRequestsResponseSchema;
 
 export const markReadRequestSchema = z.object({
   is_read: z.boolean(),

@@ -30,6 +30,13 @@ import { componentRegistry } from '../components-library/registry';
 import { cn } from '@/lib/utils';
 import { DevicePreviewToolbar, type DeviceType } from './DevicePreviewToolbar';
 
+// Device widths - defined outside component to prevent recreation
+const DEVICE_WIDTHS: Record<DeviceType, number> = {
+    desktop: 1280,
+    tablet: 768,
+    mobile: 375,
+};
+
 // ============================================================================
 // Sortable Item Component
 // ============================================================================
@@ -193,24 +200,18 @@ export function BuilderCanvas({ onDragStart, onDragEnd }: BuilderCanvasProps) {
     const components = layoutData.components;
     const isEmpty = components.length === 0;
 
-    // Device widths
-    const deviceWidths: Record<DeviceType, number> = {
-        desktop: 1280,
-        tablet: 768,
-        mobile: 375,
-    };
+    // Use constant device widths
 
-    // DnD Sensors
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 8,
-            },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
+    // DnD Sensors - hooks must be called at top level, not inside useMemo
+    const pointerSensor = useSensor(PointerSensor, {
+        activationConstraint: {
+            distance: 8,
+        },
+    });
+    const keyboardSensor = useSensor(KeyboardSensor, {
+        coordinateGetter: sortableKeyboardCoordinates,
+    });
+    const sensors = useSensors(pointerSensor, keyboardSensor);
 
     // Handle drag start
     const handleDragStart = useCallback(() => {
@@ -284,7 +285,7 @@ export function BuilderCanvas({ onDragStart, onDragEnd }: BuilderCanvasProps) {
                 >
                     <div
                         className="mx-auto bg-white rounded-lg shadow-sm min-h-[600px] transition-all duration-300"
-                        style={{ width: deviceWidths[currentDevice], maxWidth: '100%' }}
+                        style={{ width: DEVICE_WIDTHS[currentDevice], maxWidth: '100%' }}
                     >
                         {isEmpty ? (
                             <DropZone isOver={false} isEmpty={isEmpty} />

@@ -16,7 +16,7 @@ export type SiteStatus = z.infer<typeof siteStatusSchema>;
 export const pageStatusSchema = z.enum(["draft", "published"]);
 export type PageStatus = z.infer<typeof pageStatusSchema>;
 
-export const moduleKeySchema = z.enum(["offer", "contact", "hr", "legal"]);
+export const moduleKeySchema = z.enum(["offer", "contact", "hr", "legal", "appointment"]);
 export type ModuleKey = z.infer<typeof moduleKeySchema>;
 
 export const paginationQuerySchema = z.object({

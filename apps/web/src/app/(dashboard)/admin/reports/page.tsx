@@ -142,7 +142,7 @@ export default function ReportsPage() {
 
     const handleDownload = (report: ReportItem) => {
         if (report.file_url) {
-            window.open(report.file_url, '_blank');
+            window.open(report.file_url, '_blank', 'noopener,noreferrer');
             toast.success("İndirme başladı");
         } else {
             toast.error("Dosya henüz hazırlanmadı");

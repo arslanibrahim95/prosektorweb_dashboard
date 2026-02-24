@@ -32,7 +32,6 @@ export function ContactInfoCard({
     removeItem,
     isDisabled,
 }: ContactInfoCardProps) {
-    const [newPhone, setNewPhone] = useState('');
     const [newEmail, setNewEmail] = useState('');
     const [countryCode, setCountryCode] = useState('+90');
     const [phoneNumber, setPhoneNumber] = useState('');

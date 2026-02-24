@@ -11,6 +11,7 @@ import {
     listOfferRequestsResponseSchema,
     listContactMessagesResponseSchema,
     listJobApplicationsResponseSchema,
+    listAppointmentRequestsResponseSchema,
 } from '@prosektor/contracts';
 import { api } from '@/server/api';
 import type { QueryParams } from '@prosektorweb/shared';
@@ -29,6 +30,9 @@ export const inboxKeys = {
     applicationsBase: (siteId: string) => ['inbox', 'applications', siteId] as const,
     applicationsList: (siteId: string, filters?: Record<string, unknown>) =>
         ['inbox', 'applications', siteId, 'list', filters] as const,
+    appointmentsBase: (siteId: string) => ['inbox', 'appointments', siteId] as const,
+    appointmentsList: (siteId: string, filters?: Record<string, unknown>) =>
+        ['inbox', 'appointments', siteId, 'list', filters] as const,
 };
 
 type InboxStatus = 'read' | 'unread';
@@ -106,9 +110,32 @@ export function useApplications(
     });
 }
 
+// === Appointments ===
+export function useAppointments(siteId: string | null, filters?: { search?: string; page?: number; status?: InboxStatus }) {
+    const search = filters?.search?.trim();
+    const page = filters?.page ?? PAGINATION.DEFAULT_PAGE;
+    const status = filters?.status;
+    return useQuery({
+        queryKey: inboxKeys.appointmentsList(siteId ?? '', { ...filters, page }),
+        queryFn: () =>
+            api.get(
+                '/inbox/appointments',
+                {
+                    site_id: siteId,
+                    page,
+                    limit: PAGINATION.DEFAULT_LIMIT,
+                    search: search && search.length >= SEARCH_MIN_CHARS ? search : undefined,
+                    status,
+                } as QueryParams,
+                listAppointmentRequestsResponseSchema,
+            ),
+        enabled: !!siteId,
+    });
+}
+
 // === Mark as Read Mutation ===
 export function useMarkAsRead(
-    endpoint: 'offers' | 'contact' | 'applications',
+    endpoint: 'offers' | 'contact' | 'applications' | 'appointments',
     siteId: string | null,
 ) {
     const queryClient = useQueryClient();
@@ -122,6 +149,7 @@ export function useMarkAsRead(
                     offers: inboxKeys.offersBase(siteId),
                     contact: inboxKeys.contactsBase(siteId),
                     applications: inboxKeys.applicationsBase(siteId),
+                    appointments: inboxKeys.appointmentsBase(siteId),
                 };
                 void queryClient.invalidateQueries({ queryKey: keyMap[endpoint] });
                 void queryClient.invalidateQueries({ queryKey: unreadCountKeys.total(siteId) });
@@ -131,7 +159,7 @@ export function useMarkAsRead(
 }
 
 export function useBulkMarkAsRead(
-    endpoint: 'offers' | 'contact' | 'applications',
+    endpoint: 'offers' | 'contact' | 'applications' | 'appointments',
     siteId: string | null,
 ) {
     const queryClient = useQueryClient();
@@ -149,6 +177,7 @@ export function useBulkMarkAsRead(
                     offers: inboxKeys.offersBase(siteId),
                     contact: inboxKeys.contactsBase(siteId),
                     applications: inboxKeys.applicationsBase(siteId),
+                    appointments: inboxKeys.appointmentsBase(siteId),
                 };
                 void queryClient.invalidateQueries({ queryKey: keyMap[endpoint] });
                 void queryClient.invalidateQueries({ queryKey: unreadCountKeys.total(siteId) });

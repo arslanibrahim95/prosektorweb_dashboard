@@ -289,7 +289,7 @@ export default function BackupRestorePage() {
                                         <TableCell>
                                             <div className="flex gap-1">
                                                 {backup.file_url && backup.status === 'completed' && (
-                                                    <Button variant="ghost" size="icon" onClick={() => { window.open(backup.file_url!, '_blank'); }}>
+                                                    <Button variant="ghost" size="icon" onClick={() => { window.open(backup.file_url!, '_blank', 'noopener,noreferrer'); }}>
                                                         <Download className="h-4 w-4" />
                                                     </Button>
                                                 )}

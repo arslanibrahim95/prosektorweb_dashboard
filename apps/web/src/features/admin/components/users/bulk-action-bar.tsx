@@ -8,7 +8,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ChevronDown, FileDown, X } from 'lucide-react';
-import { User, UsersResponse } from './types';
+import { UsersResponse } from './types';
 import { toast } from 'sonner';
 
 interface BulkActionBarProps {
@@ -16,7 +16,7 @@ interface BulkActionBarProps {
     setSelectedIds: (ids: Set<string>) => void;
     usersData?: UsersResponse;
     handleBulkExport: () => void;
-    updateRoleMutateAsync: (vars: { id: string; role: string }) => Promise<any>;
+    updateRoleMutateAsync: (vars: { id: string; role: string }) => Promise<unknown>;
 }
 
 export function BulkActionBar({

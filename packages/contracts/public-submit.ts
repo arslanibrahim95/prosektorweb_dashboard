@@ -38,6 +38,19 @@ export const publicJobApplyFieldsSchema = z.object({
   honeypot: honeypotSchema,
 });
 
+export const publicAppointmentSubmitSchema = z.object({
+  site_token: siteTokenSchema,
+  full_name: z.string().min(2).max(100),
+  email: z.string().email(),
+  phone: z.string().min(10).max(20),
+  company_name: z.string().max(200).optional(),
+  message: z.string().max(2000).optional(),
+  preferred_date: z.string().nullable().optional(),
+  preferred_time: z.string().max(20).nullable().optional(),
+  kvkk_consent: z.literal(true),
+  honeypot: honeypotSchema,
+});
+
 export const cvFileSchema = z
   .custom<File>((v) => typeof File !== "undefined" && v instanceof File, "Invalid file")
   // SAFARI/ANDROID: browsers often send empty or application/octet-stream; defer real validation to server sniffing
@@ -62,5 +75,6 @@ export const publicSubmitSuccessSchema = z.object({
 export const OfferSubmitSchema = publicOfferSubmitSchema;
 export const ContactSubmitSchema = publicContactSubmitSchema;
 export const HrApplySchema = publicJobApplyFieldsSchema;
+export const AppointmentSubmitSchema = publicAppointmentSubmitSchema;
 export const HrApplyCvFileSchema = cvFileSchema;
 export const PublicSubmitSuccessSchema = publicSubmitSuccessSchema;

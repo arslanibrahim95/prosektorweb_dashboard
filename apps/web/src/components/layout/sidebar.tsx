@@ -40,7 +40,8 @@ interface SidebarProps {
 export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
     const { isMobileOpen } = useSidebar();
     const site = useSite();
-    const { data: unreadCount = 0 } = useUnreadCount(site.currentSiteId);
+    const { data: unreadData } = useUnreadCount(site.currentSiteId);
+    const unreadCount = unreadData?.total ?? 0;
     const auth = useAuth();
     const pathname = usePathname();
 

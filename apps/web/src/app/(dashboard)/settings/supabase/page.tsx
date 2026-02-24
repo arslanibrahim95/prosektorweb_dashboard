@@ -41,22 +41,30 @@ export default function SupabaseSettingsPage() {
     });
 
     useEffect(() => {
+        let mounted = true;
+        
         async function loadSettings() {
             try {
                 const settings = await getSupabaseSettings();
+                if (!mounted) return;
                 form.reset({
                     url: settings.url || '',
                     anonKey: settings.anonKey || '',
                     hasServiceRoleKey: settings.hasServiceRoleKey ?? false,
                 });
             } catch (error) {
+                if (!mounted) return;
                 logger.error('Failed to load settings', { error });
                 toast.error('Ayarlar yüklenirken bir hata oluştu.');
             } finally {
-                setIsLoading(false);
+                if (mounted) {
+                    setIsLoading(false);
+                }
             }
         }
         loadSettings();
+        
+        return () => { mounted = false; };
     }, [form]);
 
     if (isLoading) {

@@ -19,6 +19,7 @@ export type OnboardingEvent =
     | 'onboarding_skipped';
 
 export interface OnboardingEventProperties {
+    [key: string]: unknown;
     step?: string;
     duration?: number;
     organizationName?: string;

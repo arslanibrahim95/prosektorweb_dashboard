@@ -43,11 +43,20 @@ export const legalModuleSettingsSchema = z.object({
   disclosure_text: z.string().min(1).max(20000).optional(),
 });
 
+export const appointmentModuleSettingsSchema = z.object({
+  recipients: emailRecipientsSchema,
+  success_message: z.string().min(1).max(2000).optional(),
+  kvkk_legal_text_id: uuidSchema.optional(),
+  // Backwards-compatible (older UI may still store raw text)
+  kvkk_text: z.string().min(1).max(20000).optional(),
+});
+
 export const moduleSettingsSchema = z.discriminatedUnion("module_key", [
   z.object({ module_key: z.literal("offer"), settings: offerModuleSettingsSchema }),
   z.object({ module_key: z.literal("contact"), settings: contactModuleSettingsSchema }),
   z.object({ module_key: z.literal("hr"), settings: hrModuleSettingsSchema }),
   z.object({ module_key: z.literal("legal"), settings: legalModuleSettingsSchema }),
+  z.object({ module_key: z.literal("appointment"), settings: appointmentModuleSettingsSchema }),
 ]);
 
 export const moduleInstanceSchema = z.object({

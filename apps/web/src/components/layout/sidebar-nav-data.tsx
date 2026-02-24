@@ -42,7 +42,7 @@ export const navSections: NavSection[] = [
                 children: [
                     { label: 'Vibe Üretim', labelKey: 'nav.generate', href: '/site/generate', icon: 'Sparkles' },
                     { label: 'Sayfalar', labelKey: 'nav.pages', href: '/site/pages', icon: 'FileText' },
-                    { label: 'Sayfa Editörü', labelKey: 'nav.builder', href: '/site/builder', icon: 'Pencil' },
+                    { label: 'Sayfa Düzenleyici', labelKey: 'nav.builder', href: '/site/builder', icon: 'Pencil' },
                     { label: 'Domainler', labelKey: 'nav.domains', href: '/site/domains', icon: 'Link2' },
                     { label: 'SEO', labelKey: 'nav.seo', href: '/site/seo', icon: 'Search' },
                     { label: 'Yayınla', labelKey: 'nav.publish', href: '/site/publish', icon: 'Send' },
@@ -57,6 +57,7 @@ export const navSections: NavSection[] = [
                 children: [
                     { label: 'Teklif Alma', labelKey: 'nav.offers', href: '/modules/offer', icon: 'Zap' },
                     { label: 'İletişim', labelKey: 'nav.contacts', href: '/modules/contact', icon: 'MessageSquare' },
+                    { label: 'Randevu Talebi', labelKey: 'nav.appointments', href: '/modules/appointment', icon: 'Calendar' },
                     { label: 'İş İlanları', labelKey: 'nav.jobPosts', href: '/modules/hr/job-posts', icon: 'Briefcase' },
                     { label: 'Başvurular', labelKey: 'nav.applications', href: '/modules/hr/applications', icon: 'Users' },
                     { label: 'Yasal Metinler', labelKey: 'nav.legalTexts', href: '/modules/legal', icon: 'Scale' },
@@ -76,21 +77,41 @@ export const navSections: NavSection[] = [
                 children: [
                     { label: 'Teklifler', labelKey: 'nav.offers', href: '/inbox/offers', icon: 'Zap' },
                     { label: 'İletişim', labelKey: 'nav.contacts', href: '/inbox/contact', icon: 'MessageSquare' },
+                    { label: 'Randevular', labelKey: 'nav.appointments', href: '/inbox/appointments', icon: 'Calendar' },
                     { label: 'Başvurular', labelKey: 'nav.applications', href: '/inbox/applications', icon: 'Briefcase' },
                 ],
             },
         ],
     },
     {
-        label: 'HESAP',
+        label: 'İŞLEMLER',
         items: [
+            {
+                label: 'Müşteriler',
+                labelKey: 'nav.crm',
+                href: '/crm',
+                icon: 'UserCircle',
+                color: 'text-cyan-400',
+            },
+            {
+                label: 'Projeler',
+                labelKey: 'nav.projects',
+                href: '/projects',
+                icon: 'FolderKanban',
+                color: 'text-rose-400',
+            },
             {
                 label: 'Analitik',
                 labelKey: 'nav.analytics',
                 href: '/analytics',
-                icon: 'BarChart2',
+                icon: 'LineChart',
                 color: 'text-amber-400',
             },
+        ],
+    },
+    {
+        label: 'HESAP',
+        items: [
             {
                 label: 'Ayarlar',
                 labelKey: 'nav.settings',
@@ -100,7 +121,9 @@ export const navSections: NavSection[] = [
                     { label: 'Kullanıcılar', labelKey: 'nav.users', href: '/settings/users', icon: 'Users' },
                     { label: 'Bildirimler', labelKey: 'nav.notifications', href: '/settings/notifications', icon: 'Inbox' },
                     { label: 'Fatura & Plan', labelKey: 'nav.billing', href: '/settings/billing', icon: 'FileText' },
+                    { label: 'Dosyalar', labelKey: 'nav.files', href: '/settings/files', icon: 'HardDrive' },
                     { label: 'Supabase', labelKey: 'nav.supabase', href: '/settings/supabase', icon: 'Database' },
+                    { label: 'Aktivite Logu', labelKey: 'nav.activityLog', href: '/settings/activity-log', icon: 'Activity' },
                 ],
             },
         ],

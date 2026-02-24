@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Save, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/components/auth/auth-provider';
 import { useSite } from '@/components/site/site-provider';
 import { usePages, useUpdatePage } from '@/hooks/use-pages';
 import { useBuilderStore } from '@/hooks/use-builder';
@@ -33,6 +34,9 @@ export default function SiteBuilderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedPageId = searchParams.get('pageId');
+
+  const auth = useAuth();
+  const isSuperAdmin = auth.me?.role === 'super_admin';
 
   const site = useSite();
   const { data, isLoading } = usePages(site.currentSiteId);
@@ -242,11 +246,22 @@ export default function SiteBuilderPage() {
             </CardContent>
           </Card>
 
-          <div className="flex h-[calc(100vh-240px)] min-h-[680px] overflow-hidden rounded-xl border bg-background">
-            <ComponentPalette />
-            <BuilderCanvas />
-            <PropertiesPanel />
-          </div>
+          {isSuperAdmin ? (
+            <div className="flex h-[calc(100vh-240px)] min-h-[680px] overflow-hidden rounded-xl border bg-background">
+              <ComponentPalette />
+              <BuilderCanvas />
+              <PropertiesPanel />
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <h2 className="text-lg font-semibold">Görsel Düzenleyici</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Sayfa düzen editörü şu an yalnızca sistem yöneticilerine açıktır.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>

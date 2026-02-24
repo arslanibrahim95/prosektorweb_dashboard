@@ -6,6 +6,13 @@ import {
 } from '@prosektor/contracts';
 import { api } from '@/server/api';
 
+export interface UnreadCounts {
+    total: number;
+    offers: number;
+    contacts: number;
+    applications: number;
+}
+
 export const unreadCountKeys = {
     total: (siteId: string) => ['inbox', 'unread-count', siteId] as const,
 };
@@ -13,8 +20,8 @@ export const unreadCountKeys = {
 export function useUnreadCount(siteId: string | null) {
     return useQuery({
         queryKey: unreadCountKeys.total(siteId ?? ''),
-        queryFn: async () => {
-            if (!siteId) return 0;
+        queryFn: async (): Promise<UnreadCounts> => {
+            if (!siteId) return { total: 0, offers: 0, contacts: 0, applications: 0 };
 
             const params = {
                 site_id: siteId,
@@ -29,7 +36,16 @@ export function useUnreadCount(siteId: string | null) {
                 api.get('/inbox/applications', params, listJobApplicationsResponseSchema),
             ]);
 
-            return offers.total + contacts.total + applications.total;
+            const offersCount = offers.total;
+            const contactsCount = contacts.total;
+            const applicationsCount = applications.total;
+
+            return {
+                total: offersCount + contactsCount + applicationsCount,
+                offers: offersCount,
+                contacts: contactsCount,
+                applications: applicationsCount,
+            };
         },
         enabled: !!siteId,
         staleTime: 30 * 1000,

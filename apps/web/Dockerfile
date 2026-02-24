@@ -6,7 +6,6 @@ RUN corepack enable
 # Workspace manifests (kept separate for better layer caching).
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/package.json
-COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/design-tokens/package.json packages/design-tokens/package.json
